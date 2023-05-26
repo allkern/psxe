@@ -140,6 +140,8 @@ void psx_cpu_cycle(psx_cpu_t* cpu) {
     cpu->pc += 4;
 
     g_psx_cpu_primary_table[OP](cpu);
+
+    cpu->r[0] = 0;
 }
 
 #define DO_PENDING_LOAD \
@@ -573,9 +575,14 @@ void psx_cpu_i_add(psx_cpu_t* cpu) {
 }
 
 void psx_cpu_i_addu(psx_cpu_t* cpu) {
-    log_error("%08x: addu (unimplemented)", cpu->pc - 8);
+    TRACE_RT("addu");
 
-    exit(1);
+    uint32_t s = cpu->r[S];
+    uint32_t t = cpu->r[T];
+
+    DO_PENDING_LOAD;
+
+    cpu->r[D] = s + t;
 }
 
 void psx_cpu_i_sub(psx_cpu_t* cpu) {
@@ -626,9 +633,14 @@ void psx_cpu_i_slt(psx_cpu_t* cpu) {
 }
 
 void psx_cpu_i_sltu(psx_cpu_t* cpu) {
-    log_error("%08x: sltu (unimplemented)", cpu->pc - 8);
+    TRACE_RT("sltu");
 
-    exit(1);
+    uint32_t s = cpu->r[S];
+    uint32_t t = cpu->r[T];
+
+    DO_PENDING_LOAD;
+
+    cpu->r[D] = s < t;
 }
 
 // COP0
