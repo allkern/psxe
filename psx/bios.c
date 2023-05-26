@@ -16,11 +16,15 @@ void psx_bios_init(psx_bios_t* bios) {
 void psx_bios_load(psx_bios_t* bios, const char* path) {
     FILE* file = fopen(path, "rb");
 
+    if (!file) {
+        log_error("Couldn't open BIOS file \"%s\", path");
+
+        exit(1);
+    }
+
     fread(bios->buf, 1, PSX_BIOS_SIZE, file);
 
-#ifdef PSXE_DEBUG_BIOS
     log_info("Loaded BIOS file \"%s\"", path);
-#endif
 
     fclose(file);
 }

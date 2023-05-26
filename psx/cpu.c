@@ -23,25 +23,6 @@ void psx_cpu_destroy(psx_cpu_t* cpu) {
     free(cpu);
 }
 
-/*
-    SLL     N/A     SRL     SRA
-    SLLV    N/A     SRLV    SRAV
-    JR      JALR    N/A     N/A
-    SYSCALL BREAK   N/A     N/A
-    MFHI    MTHI    MFLO    MTLO
-    N/A     N/A     N/A     N/A
-    MULT    MULTU   DIV     DIVU
-    N/A     N/A     N/A     N/A
-    ADD     ADDU    SUB     SUBU
-    AND     OR      XOR     NOR
-    N/A     N/A     SLT     SLTU
-    N/A     N/A     N/A     N/A
-    N/A     N/A     N/A     N/A
-    N/A     N/A     N/A     N/A
-    N/A     N/A     N/A     N/A
-    N/A     N/A     N/A     N/A
-*/
-
 psx_cpu_instruction_t g_psx_cpu_secondary_table[] = {
     psx_cpu_i_sll    , psx_cpu_i_invalid, psx_cpu_i_srl    , psx_cpu_i_sra    ,
     psx_cpu_i_sllv   , psx_cpu_i_invalid, psx_cpu_i_srlv   , psx_cpu_i_srav   ,
@@ -60,24 +41,6 @@ psx_cpu_instruction_t g_psx_cpu_secondary_table[] = {
     psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
     psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid
 };
-
-/*
-    SPC     BCZ     J       JAL
-    BEQ     BNE     BLEZ    BGTZ
-    ADDI    ADDIU   SLTI    SLTIU
-    ANDI    ORI     XORI    LUI
-    COP0    COP1    COP2    COP3
-    N/A     N/A     N/A     N/A
-    N/A     N/A     N/A     N/A
-    N/A     N/A     N/A     N/A
-    LB      LH      LWL     LW
-    LBU     LHU     LWR     N/A
-    SB      SH      SWL     SW
-    N/A     N/A     SWR     N/A
-    LWC0    LWC1    LWC2    LWC3
-    SWC0    SWC1    SWC2    SWC3
-    N/A     N/A     N/A     N/A
-*/
 
 psx_cpu_instruction_t g_psx_cpu_primary_table[] = {
     psx_cpu_i_special, psx_cpu_i_bcz    , psx_cpu_i_j      , psx_cpu_i_jal    ,
@@ -138,6 +101,31 @@ psx_cpu_instruction_t g_psx_cpu_cop0_table[] = {
 #define TRACE_RT(m) \
     log_trace("%08x: %-7s $%s, $%s, $%s", cpu->pc-8, m, g_mips_cc_register_names[D], g_mips_cc_register_names[S], g_mips_cc_register_names[T])
 
+#define TRACE_C0M(m) \
+    log_trace("%08x: %-7s $%s, $%s", cpu->pc-8, m, g_mips_cc_register_names[T], g_mips_cop0_register_names[D])
+
+#define TRACE_B(m) \
+    log_trace("%08x: %-7s $%s, %s, $%-i", cpu->pc-8, m, g_mips_cc_register_names[S], g_mips_cc_register_names[T], IMM16S << 2)
+
+const char* g_mips_cop0_register_names[] = {
+    "cop0_r0",
+    "cop0_r1",
+    "cop0_r2",
+    "cop0_bpc",
+    "cop0_r4",
+    "cop0_bda",
+    "cop0_jumpdest",
+    "cop0_dcic",
+    "cop0_badvaddr",
+    "cop0_bdam",
+    "cop0_r10",
+    "cop0_bpcm",
+    "cop0_sr",
+    "cop0_cause",
+    "cop0_epc",
+    "cop0_prid"
+};
+
 const char* g_mips_cc_register_names[] = {
     "r0", "at", "v0", "v1", "a0", "a1", "a2", "a3",
     "t0", "t1", "t2", "t3", "t4", "t5", "t6", "t7",
@@ -155,7 +143,7 @@ void psx_cpu_cycle(psx_cpu_t* cpu) {
 }
 
 void psx_cpu_i_invalid(psx_cpu_t* cpu) {
-    log_error("Instruction invalid unimplemented");
+    log_error("%08x: invalid (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
@@ -166,7 +154,7 @@ void psx_cpu_i_special(psx_cpu_t* cpu) {
 }
 
 void psx_cpu_i_bcz(psx_cpu_t* cpu) {
-    log_error("Instruction bcz unimplemented");
+    log_error("%08x: bcz (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
@@ -178,39 +166,53 @@ void psx_cpu_i_j(psx_cpu_t* cpu) {
 }
 
 void psx_cpu_i_jal(psx_cpu_t* cpu) {
-    log_error("Instruction jal unimplemented");
+    log_error("%08x: jal (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_beq(psx_cpu_t* cpu) {
-    log_error("Instruction beq unimplemented");
+    log_error("%08x: beq (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_bne(psx_cpu_t* cpu) {
-    log_error("Instruction bne unimplemented");
+    TRACE_B("bne");
 
-    exit(1);
+    if (cpu->r[S] != cpu->r[T]) {
+        uint32_t before = cpu->pc;
+
+        cpu->pc -= 4;
+        cpu->pc += (IMM16S << 2);
+    }
 }
 
 void psx_cpu_i_blez(psx_cpu_t* cpu) {
-    log_error("Instruction blez unimplemented");
+    log_error("%08x: blez (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_bgtz(psx_cpu_t* cpu) {
-    log_error("Instruction bgtz unimplemented");
+    log_error("%08x: bgtz (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_addi(psx_cpu_t* cpu) {
-    log_error("Instruction addi unimplemented");
+    TRACE_I16D("addi");
 
-    exit(1);
+    uint32_t s = cpu->r[S];
+    uint32_t i = IMM16S;
+    uint32_t r = s + IMM16S;
+    uint32_t o = (s ^ r) & (i ^ r);
+
+    if (o & 0x80000000) {
+        log_warn("Overflow on addi %08x + %08x = %08x (%08x)", s, i, r, o);
+    } else {
+        cpu->r[T] = r;
+    }
 }
 
 void psx_cpu_i_addiu(psx_cpu_t* cpu) {
@@ -220,19 +222,19 @@ void psx_cpu_i_addiu(psx_cpu_t* cpu) {
 }
 
 void psx_cpu_i_slti(psx_cpu_t* cpu) {
-    log_error("Instruction slti unimplemented");
+    log_error("%08x: slti (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_sltiu(psx_cpu_t* cpu) {
-    log_error("Instruction sltiu unimplemented");
+    log_error("%08x: sltiu (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_andi(psx_cpu_t* cpu) {
-    log_error("Instruction andi unimplemented");
+    log_error("%08x: andi (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
@@ -244,7 +246,7 @@ void psx_cpu_i_ori(psx_cpu_t* cpu) {
 }
 
 void psx_cpu_i_xori(psx_cpu_t* cpu) {
-    log_error("Instruction xori unimplemented");
+    log_error("%08x: xori (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
@@ -260,79 +262,79 @@ void psx_cpu_i_cop0(psx_cpu_t* cpu) {
 }
 
 void psx_cpu_i_cop1(psx_cpu_t* cpu) {
-    log_error("Instruction cop1 unimplemented");
+    log_error("%08x: cop1 (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_cop2(psx_cpu_t* cpu) {
-    log_error("Instruction cop2 unimplemented");
+    log_error("%08x: cop2 (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_cop3(psx_cpu_t* cpu) {
-    log_error("Instruction cop3 unimplemented");
+    log_error("%08x: cop3 (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_lb(psx_cpu_t* cpu) {
-    log_error("Instruction lb unimplemented");
+    log_error("%08x: lb (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_lh(psx_cpu_t* cpu) {
-    log_error("Instruction lh unimplemented");
+    log_error("%08x: lh (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_lwl(psx_cpu_t* cpu) {
-    log_error("Instruction lwl unimplemented");
+    log_error("%08x: lwl (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_lw(psx_cpu_t* cpu) {
-    log_error("Instruction lw unimplemented");
+    log_error("%08x: lw (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_lbu(psx_cpu_t* cpu) {
-    log_error("Instruction lbu unimplemented");
+    log_error("%08x: lbu (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_lhu(psx_cpu_t* cpu) {
-    log_error("Instruction lhu unimplemented");
+    log_error("%08x: lhu (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_lwr(psx_cpu_t* cpu) {
-    log_error("Instruction lwr unimplemented");
+    log_error("%08x: lwr (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_sb(psx_cpu_t* cpu) {
-    log_error("Instruction sb unimplemented");
+    log_error("%08x: sb (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_sh(psx_cpu_t* cpu) {
-    log_error("Instruction sh unimplemented");
+    log_error("%08x: sh (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_swl(psx_cpu_t* cpu) {
-    log_error("Instruction swl unimplemented");
+    log_error("%08x: swl (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
@@ -340,59 +342,66 @@ void psx_cpu_i_swl(psx_cpu_t* cpu) {
 void psx_cpu_i_sw(psx_cpu_t* cpu) {
     TRACE_M("sw");
 
+    // Cache isolated
+    if (cpu->cop0_sr & SR_ISC) {
+        log_warn("Ignoring write while cache is isolated");
+
+        return;
+    }
+
     psx_bus_write32(cpu->bus, cpu->r[S] + IMM16S, cpu->r[T]);
 }
 
 void psx_cpu_i_swr(psx_cpu_t* cpu) {
-    log_error("Instruction swr unimplemented");
+    log_error("%08x: swr (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_lwc0(psx_cpu_t* cpu) {
-    log_error("Instruction lwc0 unimplemented");
+    log_error("%08x: lwc0 (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_lwc1(psx_cpu_t* cpu) {
-    log_error("Instruction lwc1 unimplemented");
+    log_error("%08x: lwc1 (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_lwc2(psx_cpu_t* cpu) {
-    log_error("Instruction lwc2 unimplemented");
+    log_error("%08x: lwc2 (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_lwc3(psx_cpu_t* cpu) {
-    log_error("Instruction lwc3 unimplemented");
+    log_error("%08x: lwc3 (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_swc0(psx_cpu_t* cpu) {
-    log_error("Instruction swc0 unimplemented");
+    log_error("%08x: swc0 (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_swc1(psx_cpu_t* cpu) {
-    log_error("Instruction swc1 unimplemented");
+    log_error("%08x: swc1 (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_swc2(psx_cpu_t* cpu) {
-    log_error("Instruction swc2 unimplemented");
+    log_error("%08x: swc2 (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_swc3(psx_cpu_t* cpu) {
-    log_error("Instruction swc3 unimplemented");
+    log_error("%08x: swc3 (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
@@ -405,133 +414,133 @@ void psx_cpu_i_sll(psx_cpu_t* cpu) {
 }
 
 void psx_cpu_i_srl(psx_cpu_t* cpu) {
-    log_error("Instruction srl unimplemented");
+    log_error("%08x: srl (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_sra(psx_cpu_t* cpu) {
-    log_error("Instruction sra unimplemented");
+    log_error("%08x: sra (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_sllv(psx_cpu_t* cpu) {
-    log_error("Instruction sllv unimplemented");
+    log_error("%08x: sllv (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_srlv(psx_cpu_t* cpu) {
-    log_error("Instruction srlv unimplemented");
+    log_error("%08x: srlv (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_srav(psx_cpu_t* cpu) {
-    log_error("Instruction srav unimplemented");
+    log_error("%08x: srav (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_jr(psx_cpu_t* cpu) {
-    log_error("Instruction jr unimplemented");
+    log_error("%08x: jr (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_jalr(psx_cpu_t* cpu) {
-    log_error("Instruction jalr unimplemented");
+    log_error("%08x: jalr (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_syscall(psx_cpu_t* cpu) {
-    log_error("Instruction syscall unimplemented");
+    log_error("%08x: syscall (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_break(psx_cpu_t* cpu) {
-    log_error("Instruction break unimplemented");
+    log_error("%08x: break (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_mfhi(psx_cpu_t* cpu) {
-    log_error("Instruction mfhi unimplemented");
+    log_error("%08x: mfhi (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_mthi(psx_cpu_t* cpu) {
-    log_error("Instruction mthi unimplemented");
+    log_error("%08x: mthi (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_mflo(psx_cpu_t* cpu) {
-    log_error("Instruction mflo unimplemented");
+    log_error("%08x: mflo (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_mtlo(psx_cpu_t* cpu) {
-    log_error("Instruction mtlo unimplemented");
+    log_error("%08x: mtlo (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_mult(psx_cpu_t* cpu) {
-    log_error("Instruction mult unimplemented");
+    log_error("%08x: mult (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_multu(psx_cpu_t* cpu) {
-    log_error("Instruction multu unimplemented");
+    log_error("%08x: multu (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_div(psx_cpu_t* cpu) {
-    log_error("Instruction div unimplemented");
+    log_error("%08x: div (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_divu(psx_cpu_t* cpu) {
-    log_error("Instruction divu unimplemented");
+    log_error("%08x: divu (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_add(psx_cpu_t* cpu) {
-    log_error("Instruction add unimplemented");
+    log_error("%08x: add (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_addu(psx_cpu_t* cpu) {
-    log_error("Instruction addu unimplemented");
+    log_error("%08x: addu (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_sub(psx_cpu_t* cpu) {
-    log_error("Instruction sub unimplemented");
+    log_error("%08x: sub (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_subu(psx_cpu_t* cpu) {
-    log_error("Instruction subu unimplemented");
+    log_error("%08x: subu (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_and(psx_cpu_t* cpu) {
-    log_error("Instruction and unimplemented");
+    log_error("%08x: and (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
@@ -543,63 +552,70 @@ void psx_cpu_i_or(psx_cpu_t* cpu) {
 }
 
 void psx_cpu_i_xor(psx_cpu_t* cpu) {
-    log_error("Instruction xor unimplemented");
+    log_error("%08x: xor (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_nor(psx_cpu_t* cpu) {
-    log_error("Instruction nor unimplemented");
+    log_error("%08x: nor (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_slt(psx_cpu_t* cpu) {
-    log_error("Instruction slt unimplemented");
+    log_error("%08x: slt (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_sltu(psx_cpu_t* cpu) {
-    log_error("Instruction sltu unimplemented");
+    log_error("%08x: sltu (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 // COP0
 void psx_cpu_i_mfc0(psx_cpu_t* cpu) {
-    log_error("Instruction mfc0 unimplemented");
+    log_error("%08x: mfc0 (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_cfc0(psx_cpu_t* cpu) {
-    log_error("Instruction cfc0 unimplemented");
+    log_error("%08x: cfc0 (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_mtc0(psx_cpu_t* cpu) {
-    log_error("Instruction mtc0 unimplemented");
+    TRACE_C0M("mtc0");
 
-    exit(1);
+    switch (D) {
+        case 3: cpu->cop0_bpc = cpu->r[T]; break;
+        case 5: cpu->cop0_bda = cpu->r[T]; break;
+        case 7: cpu->cop0_dcic = cpu->r[T]; break;
+        case 9: cpu->cop0_bdam = cpu->r[T]; break;
+        case 11: cpu->cop0_bpcm = cpu->r[T]; break;
+        case 12: cpu->cop0_sr = cpu->r[T]; break;
+    }
 }
 
 void psx_cpu_i_ctc0(psx_cpu_t* cpu) {
-    log_error("Instruction ctc0 unimplemented");
+    log_error("%08x: ctc0 (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 void psx_cpu_i_bc0c(psx_cpu_t* cpu) {
-    log_error("Instruction bc0c unimplemented");
+    log_error("%08x: bc0c (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
 
 // COP0-specific
 void psx_cpu_i_rfe(psx_cpu_t* cpu) {
-    log_error("Instruction rfe unimplemented");
+    log_error("%08x: rfe (unimplemented)", cpu->pc - 8);
 
     exit(1);
 }
