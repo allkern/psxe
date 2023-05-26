@@ -172,6 +172,8 @@ void psx_cpu_i_bcz(psx_cpu_t* cpu) {
 void psx_cpu_i_j(psx_cpu_t* cpu) {
     TRACE_I26("j");
 
+    DO_PENDING_LOAD;
+
     cpu->pc = (cpu->pc & 0xf0000000) | (IMM26 << 2);
 }
 
