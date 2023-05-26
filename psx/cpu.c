@@ -84,19 +84,19 @@ psx_cpu_instruction_t g_psx_cpu_cop0_table[] = {
 #define IMM16S ((int32_t)((int16_t)IMM16))
 
 #define TRACE_M(m) \
-    log_trace("%08x: %-7s $%s, $%04x($%s)", cpu->pc-8, m, g_mips_cc_register_names[T], IMM16S, g_mips_cc_register_names[S])
+    log_trace("%08x: %-7s $%s, 0x%04x($%s)", cpu->pc-8, m, g_mips_cc_register_names[T], IMM16S, g_mips_cc_register_names[S])
 
 #define TRACE_I16S(m) \
-    log_trace("%08x: %-7s $%s, $%04x", cpu->pc-8, m, g_mips_cc_register_names[T], IMM16)
+    log_trace("%08x: %-7s $%s, 0x%04x", cpu->pc-8, m, g_mips_cc_register_names[T], IMM16)
 
 #define TRACE_I16D(m) \
-    log_trace("%08x: %-7s $%s, $%s, $%04x", cpu->pc-8, m, g_mips_cc_register_names[T], g_mips_cc_register_names[S], IMM16)
+    log_trace("%08x: %-7s $%s, $%s, 0x%04x", cpu->pc-8, m, g_mips_cc_register_names[T], g_mips_cc_register_names[S], IMM16)
 
 #define TRACE_I5D(m) \
     log_trace("%08x: %-7s $%s, $%s, %u", cpu->pc-8, m, g_mips_cc_register_names[T], g_mips_cc_register_names[S], IMM5)
 
 #define TRACE_I26(m) \
-    log_trace("%08x: %-7s $%07x", cpu->pc-8, m, ((cpu->pc & 0xf0000000) | (IMM26 << 2)))
+    log_trace("%08x: %-7s 0x%07x", cpu->pc-8, m, ((cpu->pc & 0xf0000000) | (IMM26 << 2)))
 
 #define TRACE_RT(m) \
     log_trace("%08x: %-7s $%s, $%s, $%s", cpu->pc-8, m, g_mips_cc_register_names[D], g_mips_cc_register_names[S], g_mips_cc_register_names[T])
@@ -105,7 +105,7 @@ psx_cpu_instruction_t g_psx_cpu_cop0_table[] = {
     log_trace("%08x: %-7s $%s, $%s", cpu->pc-8, m, g_mips_cc_register_names[T], g_mips_cop0_register_names[D])
 
 #define TRACE_B(m) \
-    log_trace("%08x: %-7s $%s, %s, $%-i", cpu->pc-8, m, g_mips_cc_register_names[S], g_mips_cc_register_names[T], IMM16S << 2)
+    log_trace("%08x: %-7s $%s, $%s, %-i", cpu->pc-8, m, g_mips_cc_register_names[S], g_mips_cc_register_names[T], IMM16S << 2)
 
 const char* g_mips_cop0_register_names[] = {
     "cop0_r0",
@@ -140,6 +140,16 @@ void psx_cpu_cycle(psx_cpu_t* cpu) {
     cpu->pc += 4;
 
     g_psx_cpu_primary_table[OP](cpu);
+}
+
+#define DO_PENDING_LOAD \
+    cpu->r[cpu->load_d] = cpu->load_v; \
+    cpu->load_d = 0;
+
+void psx_cpu_do_pending_load(psx_cpu_t* cpu) {
+    cpu->r[cpu->load_d] = cpu->load_v;
+
+    cpu->load_d = 0;
 }
 
 void psx_cpu_i_invalid(psx_cpu_t* cpu) {
@@ -180,9 +190,12 @@ void psx_cpu_i_beq(psx_cpu_t* cpu) {
 void psx_cpu_i_bne(psx_cpu_t* cpu) {
     TRACE_B("bne");
 
-    if (cpu->r[S] != cpu->r[T]) {
-        uint32_t before = cpu->pc;
+    uint32_t s = cpu->r[S];
+    uint32_t t = cpu->r[T];
 
+    DO_PENDING_LOAD;
+
+    if (s != t) {
         cpu->pc -= 4;
         cpu->pc += (IMM16S << 2);
     }
@@ -204,8 +217,11 @@ void psx_cpu_i_addi(psx_cpu_t* cpu) {
     TRACE_I16D("addi");
 
     uint32_t s = cpu->r[S];
+
+    DO_PENDING_LOAD;
+
     uint32_t i = IMM16S;
-    uint32_t r = s + IMM16S;
+    uint32_t r = s + i;
     uint32_t o = (s ^ r) & (i ^ r);
 
     if (o & 0x80000000) {
@@ -218,7 +234,11 @@ void psx_cpu_i_addi(psx_cpu_t* cpu) {
 void psx_cpu_i_addiu(psx_cpu_t* cpu) {
     TRACE_I16D("addiu");
 
-    cpu->r[T] = cpu->r[S] + IMM16S;
+    uint32_t s = cpu->r[S];
+
+    DO_PENDING_LOAD;
+
+    cpu->r[T] = s + IMM16S;
 }
 
 void psx_cpu_i_slti(psx_cpu_t* cpu) {
@@ -242,7 +262,11 @@ void psx_cpu_i_andi(psx_cpu_t* cpu) {
 void psx_cpu_i_ori(psx_cpu_t* cpu) {
     TRACE_I16D("ori");
 
-    cpu->r[T] = cpu->r[S] | IMM16;
+    uint32_t s = cpu->r[S];
+
+    DO_PENDING_LOAD;
+
+    cpu->r[T] = s | IMM16;
 }
 
 void psx_cpu_i_xori(psx_cpu_t* cpu) {
@@ -253,6 +277,8 @@ void psx_cpu_i_xori(psx_cpu_t* cpu) {
 
 void psx_cpu_i_lui(psx_cpu_t* cpu) {
     TRACE_I16S("lui");
+
+    DO_PENDING_LOAD;
 
     cpu->r[T] = IMM16 << 16;
 }
@@ -298,9 +324,23 @@ void psx_cpu_i_lwl(psx_cpu_t* cpu) {
 }
 
 void psx_cpu_i_lw(psx_cpu_t* cpu) {
-    log_error("%08x: lw (unimplemented)", cpu->pc - 8);
+    TRACE_M("lw");
 
-    exit(1);
+    // To-do: Emulate load delay slots
+    // In my mind, an instruction is executed in two stages.
+    // First, the instruction "microcode" fetches input registers
+    // and puts them in latches, the CPU then takes over and
+    // reads the data bus into the pending load register.
+    // Finally, the instruction is actually executed using
+    // the values fetched on the first stage.
+    // This is impossible to emulate using our current method
+
+    uint32_t s = cpu->r[S];
+
+    DO_PENDING_LOAD;
+
+    cpu->load_d = T;
+    cpu->load_v = psx_bus_read32(cpu->bus, s + IMM16S);
 }
 
 void psx_cpu_i_lbu(psx_cpu_t* cpu) {
@@ -342,6 +382,11 @@ void psx_cpu_i_swl(psx_cpu_t* cpu) {
 void psx_cpu_i_sw(psx_cpu_t* cpu) {
     TRACE_M("sw");
 
+    uint32_t s = cpu->r[S];
+    uint32_t t = cpu->r[T];
+
+    DO_PENDING_LOAD;
+
     // Cache isolated
     if (cpu->cop0_sr & SR_ISC) {
         log_warn("Ignoring write while cache is isolated");
@@ -349,7 +394,7 @@ void psx_cpu_i_sw(psx_cpu_t* cpu) {
         return;
     }
 
-    psx_bus_write32(cpu->bus, cpu->r[S] + IMM16S, cpu->r[T]);
+    psx_bus_write32(cpu->bus, s + IMM16S, t);
 }
 
 void psx_cpu_i_swr(psx_cpu_t* cpu) {
@@ -410,7 +455,11 @@ void psx_cpu_i_swc3(psx_cpu_t* cpu) {
 void psx_cpu_i_sll(psx_cpu_t* cpu) {
     TRACE_I5D("sll");
 
-    cpu->r[T] = cpu->r[S] << IMM5;
+    uint32_t s = cpu->r[S];
+
+    DO_PENDING_LOAD;
+
+    cpu->r[T] = s << IMM5;
 }
 
 void psx_cpu_i_srl(psx_cpu_t* cpu) {
@@ -548,7 +597,12 @@ void psx_cpu_i_and(psx_cpu_t* cpu) {
 void psx_cpu_i_or(psx_cpu_t* cpu) {
     TRACE_RT("or");
 
-    cpu->r[D] = cpu->r[S] | cpu->r[T];
+    uint32_t s = cpu->r[S];
+    uint32_t t = cpu->r[T];
+
+    DO_PENDING_LOAD;
+
+    cpu->r[D] = s | t;
 }
 
 void psx_cpu_i_xor(psx_cpu_t* cpu) {
@@ -591,13 +645,17 @@ void psx_cpu_i_cfc0(psx_cpu_t* cpu) {
 void psx_cpu_i_mtc0(psx_cpu_t* cpu) {
     TRACE_C0M("mtc0");
 
+    uint32_t t = cpu->r[T];
+
+    DO_PENDING_LOAD;
+
     switch (D) {
-        case 3: cpu->cop0_bpc = cpu->r[T]; break;
-        case 5: cpu->cop0_bda = cpu->r[T]; break;
-        case 7: cpu->cop0_dcic = cpu->r[T]; break;
-        case 9: cpu->cop0_bdam = cpu->r[T]; break;
-        case 11: cpu->cop0_bpcm = cpu->r[T]; break;
-        case 12: cpu->cop0_sr = cpu->r[T]; break;
+        case 3: cpu->cop0_bpc = t; break;
+        case 5: cpu->cop0_bda = t; break;
+        case 7: cpu->cop0_dcic = t; break;
+        case 9: cpu->cop0_bdam = t; break;
+        case 11: cpu->cop0_bpcm = t; break;
+        case 12: cpu->cop0_sr = t; break;
     }
 }
 

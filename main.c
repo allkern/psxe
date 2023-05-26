@@ -10,9 +10,13 @@ int main() {
     psx_bios_init(bios);
     psx_bios_load(bios, "scph1001.bin");
 
+    psx_ram_t* ram = psx_ram_create();
+
+    psx_ram_init(ram);
+
     psx_bus_t* bus = psx_bus_create();
     
-    psx_bus_init(bus, bios);
+    psx_bus_init(bus, bios, ram);
 
     psx_cpu_t* cpu = psx_cpu_create();
 
@@ -25,4 +29,5 @@ int main() {
     psx_cpu_destroy(cpu);
     psx_bios_destroy(bios);
     psx_bus_destroy(bus);
+    psx_ram_destroy(ram);
 }

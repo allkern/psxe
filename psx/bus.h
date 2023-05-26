@@ -4,9 +4,11 @@
 #include <stdint.h>
 
 #include "bios.h"
+#include "ram.h"
 
 typedef struct {
     psx_bios_t* bios;
+    psx_ram_t* ram;
 
     // Unhandled I/O ports
     uint32_t ram_size;
@@ -16,7 +18,7 @@ typedef struct {
 #define PSX_IO_RAM_SIZE_END   0x1f801063
 
 psx_bus_t* psx_bus_create();
-void psx_bus_init(psx_bus_t*, psx_bios_t*);
+void psx_bus_init(psx_bus_t*, psx_bios_t*, psx_ram_t*);
 void psx_bus_destroy(psx_bus_t*);
 uint32_t psx_bus_read32(psx_bus_t*, uint32_t);
 uint16_t psx_bus_read16(psx_bus_t*, uint32_t);
