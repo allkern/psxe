@@ -1,0 +1,9 @@
+.vscode/
+bin/
+build-win32/
+imgui/
+res/
+sdl2/
+*.bin
+*.dll
+*.exe
