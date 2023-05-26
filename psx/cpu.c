@@ -148,12 +148,6 @@ void psx_cpu_cycle(psx_cpu_t* cpu) {
     cpu->r[cpu->load_d] = cpu->load_v; \
     cpu->load_d = 0;
 
-void psx_cpu_do_pending_load(psx_cpu_t* cpu) {
-    cpu->r[cpu->load_d] = cpu->load_v;
-
-    cpu->load_d = 0;
-}
-
 void psx_cpu_i_invalid(psx_cpu_t* cpu) {
     log_error("%08x: invalid (unimplemented)", cpu->pc - 8);
 

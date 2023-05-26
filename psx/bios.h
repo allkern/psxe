@@ -10,8 +10,8 @@
 #endif
 
 #define PSX_BIOS_SIZE   0x80000
-#define PSX_BIOS_BEGIN  0xbfc00000
-#define PSX_BIOS_END    0xbfc7ffff
+#define PSX_BIOS_BEGIN  0x1fc00000
+#define PSX_BIOS_END    0x1fc7ffff
 
 typedef struct {
     uint8_t* buf;

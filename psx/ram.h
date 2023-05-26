@@ -6,8 +6,8 @@
 #include "log.h"
 
 #define PSX_RAM_SIZE    0x200000
-#define PSX_RAM_BEGIN   0xa0000000
-#define PSX_RAM_END     0xa01fffff
+#define PSX_RAM_BEGIN   0x00000000
+#define PSX_RAM_END     0x001fffff
 
 typedef struct {
     uint8_t* buf;
