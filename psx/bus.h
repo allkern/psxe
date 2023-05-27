@@ -20,6 +20,7 @@ typedef struct {
 #define PSX_EXP1_ROM_BEGIN    0x1f000000
 #define PSX_EXP1_ROM_SIZE     0x100
 #define PSX_EXP1_ROM_END      0x1f0000ff
+#define PSX_GPUSTAT           0x1f801814
 
 psx_bus_t* psx_bus_create();
 void psx_bus_init(psx_bus_t*, psx_bios_t*, psx_ram_t*);

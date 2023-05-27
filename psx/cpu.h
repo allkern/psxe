@@ -24,6 +24,9 @@ typedef struct {
     // Pending load data
     uint32_t load_d, load_v;
 
+    // Are we in a delay slot?
+    int branch, delay_slot;
+
     /*
         cop0r0      - N/A
         cop0r1      - N/A
@@ -149,6 +152,40 @@ psx_cpu_t* psx_cpu_create();
 void psx_cpu_init(psx_cpu_t*, psx_bus_t*);
 void psx_cpu_destroy(psx_cpu_t*);
 void psx_cpu_cycle(psx_cpu_t*);
+void psx_cpu_exception(psx_cpu_t*, uint32_t);
+
+/*
+    00h INT     Interrupt
+    01h MOD     Tlb modification (none such in PSX)
+    02h TLBL    Tlb load         (none such in PSX)
+    03h TLBS    Tlb store        (none such in PSX)
+    04h AdEL    Address error, Data load or Instruction fetch
+    05h AdES    Address error, Data store
+                The address errors occur when attempting to read
+                outside of KUseg in user mode and when the address
+                is misaligned. (See also: BadVaddr register)
+    06h IBE     Bus error on Instruction fetch
+    07h DBE     Bus error on Data load/store
+    08h Syscall Generated unconditionally by syscall instruction
+    09h BP      Breakpoint - break instruction
+    0Ah RI      Reserved instruction
+    0Bh CpU     Coprocessor unusable
+    0Ch Ov      Arithmetic overflow
+*/
+
+#define CAUSE_INT       0x00
+#define CAUSE_MOD       0x01
+#define CAUSE_TLBL      0x02
+#define CAUSE_TLBS      0x03
+#define CAUSE_ADEL      0x04
+#define CAUSE_ADES      0x05
+#define CAUSE_IBE       0x06
+#define CAUSE_DBE       0x07
+#define CAUSE_SYSCALL   0x08   
+#define CAUSE_BP        0x09   
+#define CAUSE_RI        0x0a   
+#define CAUSE_CPU       0x0b   
+#define CAUSE_OV        0x0c   
 
 void psx_cpu_i_invalid(psx_cpu_t*);
 

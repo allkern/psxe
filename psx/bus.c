@@ -3,6 +3,7 @@
 
 #include "bus.h"
 #include "log.h"
+#include "cpu.h"
 
 #define RANGE(v, s, e) ((v >= s) && (v <= e))
 
@@ -41,6 +42,9 @@ uint32_t psx_bus_read32(psx_bus_t* bus, uint32_t addr) {
     
     if (RANGE(addr, PSX_RAM_BEGIN, PSX_RAM_END))
         return psx_ram_read32(bus->ram, addr - PSX_RAM_BEGIN);
+    
+    if (addr == PSX_GPUSTAT)
+        return 0x10000000;
 
     log_warn("Unhandled 32-bit read from %08x:%08x", vaddr, addr);
 

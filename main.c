@@ -3,7 +3,7 @@
 #include "psx/log.h"
 
 int main() {
-    log_set_level(LOG_WARN);
+    log_set_level(LOG_ERROR);
 
     psx_bios_t* bios = psx_bios_create();
 
@@ -15,7 +15,7 @@ int main() {
     psx_ram_init(ram);
 
     psx_bus_t* bus = psx_bus_create();
-    
+
     psx_bus_init(bus, bios, ram);
 
     psx_cpu_t* cpu = psx_cpu_create();
