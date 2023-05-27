@@ -3,7 +3,7 @@
 #include "psx/log.h"
 
 int main() {
-    log_set_level(LOG_TRACE);
+    log_set_level(LOG_WARN);
 
     psx_bios_t* bios = psx_bios_create();
 

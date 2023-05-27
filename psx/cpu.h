@@ -154,7 +154,7 @@ void psx_cpu_i_invalid(psx_cpu_t*);
 
 // Primary
 void psx_cpu_i_special(psx_cpu_t*);
-void psx_cpu_i_bcz(psx_cpu_t*);
+void psx_cpu_i_bxx(psx_cpu_t*);
 void psx_cpu_i_j(psx_cpu_t*);
 void psx_cpu_i_jal(psx_cpu_t*);
 void psx_cpu_i_beq(psx_cpu_t*);
@@ -239,6 +239,12 @@ void psx_cpu_i_bc0c(psx_cpu_t*);
 
 // COP0-specific
 void psx_cpu_i_rfe(psx_cpu_t*);
+
+// BXX
+void psx_cpu_i_bltz(psx_cpu_t*);
+void psx_cpu_i_bgez(psx_cpu_t*);
+void psx_cpu_i_bltzal(psx_cpu_t*);
+void psx_cpu_i_bgezal(psx_cpu_t*);
 
 typedef void (*psx_cpu_instruction_t)(psx_cpu_t*);
 

@@ -12,7 +12,7 @@ psx_ram_t* psx_ram_create() {
 void psx_ram_init(psx_ram_t* ram) {
     ram->buf = (uint8_t*)malloc(PSX_RAM_SIZE);
 
-    memset(ram->buf, 0xaa, PSX_RAM_SIZE);
+    memset(ram->buf, 0xca, PSX_RAM_SIZE);
 }
 
 uint32_t psx_ram_read32(psx_ram_t* ram, uint32_t offset) {

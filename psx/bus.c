@@ -25,10 +25,12 @@ void psx_bus_destroy(psx_bus_t* bus) {
 }
 
 uint32_t psx_bus_read32(psx_bus_t* bus, uint32_t addr) {
+    uint32_t vaddr = addr;
+
     addr &= g_psx_bus_region_mask_table[addr >> 29];
 
     if (addr & 0x3) {
-        log_warn("Unaligned 32-bit read from %08x", addr);
+        log_warn("Unaligned 32-bit read from %08x:%08x", vaddr, addr);
     }
 
     if (RANGE(addr, PSX_BIOS_BEGIN, PSX_BIOS_END))
@@ -40,16 +42,18 @@ uint32_t psx_bus_read32(psx_bus_t* bus, uint32_t addr) {
     if (RANGE(addr, PSX_RAM_BEGIN, PSX_RAM_END))
         return psx_ram_read32(bus->ram, addr - PSX_RAM_BEGIN);
 
-    log_warn("Unhandled 32-bit read from %08x", addr);
+    log_warn("Unhandled 32-bit read from %08x:%08x", vaddr, addr);
 
-    return 0xffffffff;
+    return 0x00000000;
 }
 
 uint16_t psx_bus_read16(psx_bus_t* bus, uint32_t addr) {
+    uint32_t vaddr = addr;
+
     addr &= g_psx_bus_region_mask_table[addr >> 29];
 
     if (addr & 0x1) {
-        log_warn("Unaligned 16-bit read from %08x", addr);
+        log_warn("Unaligned 16-bit read from %08x:%08x", vaddr, addr);
     }
 
     if (RANGE(addr, PSX_BIOS_BEGIN, PSX_BIOS_END))
@@ -58,12 +62,14 @@ uint16_t psx_bus_read16(psx_bus_t* bus, uint32_t addr) {
     if (RANGE(addr, PSX_RAM_BEGIN, PSX_RAM_END))
         return psx_ram_read16(bus->ram, addr - PSX_RAM_BEGIN);
 
-    log_warn("Unhandled 16-bit read from %08x", addr);
+    log_warn("Unhandled 16-bit read from %08x:%08x", vaddr, addr);
 
-    return 0xffff;
+    return 0x0000;
 }
 
 uint8_t psx_bus_read8(psx_bus_t* bus, uint32_t addr) {
+    uint32_t vaddr = addr;
+
     addr &= g_psx_bus_region_mask_table[addr >> 29];
 
     if (RANGE(addr, PSX_BIOS_BEGIN, PSX_BIOS_END))
@@ -71,17 +77,22 @@ uint8_t psx_bus_read8(psx_bus_t* bus, uint32_t addr) {
 
     if (RANGE(addr, PSX_RAM_BEGIN, PSX_RAM_END))
         return psx_ram_read8(bus->ram, addr - PSX_RAM_BEGIN);
+    
+    if (RANGE(addr, PSX_EXP1_ROM_BEGIN, PSX_EXP1_ROM_END))
+        return 0xff;
 
-    log_warn("Unhandled 8-bit read from %08x", addr);
+    log_warn("Unhandled 8-bit read from %08x:%08x", vaddr, addr);
 
-    return 0xff;
+    return 0x00;
 }
 
 void psx_bus_write32(psx_bus_t* bus, uint32_t addr, uint32_t value) {
+    uint32_t vaddr = addr;
+
     addr &= g_psx_bus_region_mask_table[addr >> 29];
 
     if (addr & 0x3) {
-        log_warn("Unaligned 32-bit write to %08x (%08x)", addr, value);
+        log_warn("Unaligned 32-bit write to %08x:%08x (%08x)", vaddr, addr, value);
     }
 
     if (RANGE(addr, PSX_IO_RAM_SIZE_BEGIN, PSX_IO_RAM_SIZE_END)) {
@@ -96,14 +107,16 @@ void psx_bus_write32(psx_bus_t* bus, uint32_t addr, uint32_t value) {
         return;
     }
 
-    log_warn("Unhandled 32-bit write to %08x (%08x)", addr, value);
+    log_warn("Unhandled 32-bit write to %08x:%08x (%08x)", vaddr, addr, value);
 }
 
 void psx_bus_write16(psx_bus_t* bus, uint32_t addr, uint16_t value) {
+    uint32_t vaddr = addr;
+
     addr &= g_psx_bus_region_mask_table[addr >> 29];
 
     if (addr & 0x1) {
-        log_warn("Unaligned 16-bit write to %08x (%08x)", addr, value);
+        log_warn("Unaligned 16-bit write to %08x:%08x (%04x)", vaddr, addr, value);
     }
 
     if (RANGE(addr, PSX_RAM_BEGIN, PSX_RAM_END)) {
@@ -112,10 +125,12 @@ void psx_bus_write16(psx_bus_t* bus, uint32_t addr, uint16_t value) {
         return;
     }
 
-    log_warn("Unhandled 32-bit write to %08x (%04x)", addr, value);
+    log_warn("Unhandled 16-bit write to %08x:%08x (%04x)", vaddr, addr, value);
 }
 
 void psx_bus_write8(psx_bus_t* bus, uint32_t addr, uint8_t value) {
+    uint32_t vaddr = addr;
+
     addr &= g_psx_bus_region_mask_table[addr >> 29];
 
     if (RANGE(addr, PSX_RAM_BEGIN, PSX_RAM_END)) {
@@ -124,5 +139,5 @@ void psx_bus_write8(psx_bus_t* bus, uint32_t addr, uint8_t value) {
         return;
     }
 
-    log_warn("Unhandled 32-bit write to %08x (%02x)", addr, value);
+    log_warn("Unhandled 8-bit write to %08x:%08x (%02x)", vaddr, addr, value);
 }

@@ -4,6 +4,39 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define R_R0 (cpu->r[0])
+#define R_AT (cpu->r[1])
+#define R_V0 (cpu->r[2])
+#define R_V1 (cpu->r[3])
+#define R_A0 (cpu->r[4])
+#define R_A1 (cpu->r[5])
+#define R_A2 (cpu->r[6])
+#define R_A3 (cpu->r[7])
+#define R_T0 (cpu->r[8])
+#define R_T1 (cpu->r[9])
+#define R_T2 (cpu->r[10])
+#define R_T3 (cpu->r[11])
+#define R_T4 (cpu->r[12])
+#define R_T5 (cpu->r[13])
+#define R_T6 (cpu->r[14])
+#define R_T7 (cpu->r[15])
+#define R_S0 (cpu->r[16])
+#define R_S1 (cpu->r[17])
+#define R_S2 (cpu->r[18])
+#define R_S3 (cpu->r[19])
+#define R_S4 (cpu->r[20])
+#define R_S5 (cpu->r[21])
+#define R_S6 (cpu->r[22])
+#define R_S7 (cpu->r[23])
+#define R_T8 (cpu->r[24])
+#define R_T9 (cpu->r[25])
+#define R_K0 (cpu->r[26])
+#define R_K1 (cpu->r[27])
+#define R_GP (cpu->r[28])
+#define R_SP (cpu->r[29])
+#define R_FP (cpu->r[30])
+#define R_RA (cpu->r[31])
+
 psx_cpu_t* psx_cpu_create() {
     return (psx_cpu_t*)malloc(sizeof(psx_cpu_t));
 }
@@ -43,7 +76,7 @@ psx_cpu_instruction_t g_psx_cpu_secondary_table[] = {
 };
 
 psx_cpu_instruction_t g_psx_cpu_primary_table[] = {
-    psx_cpu_i_special, psx_cpu_i_bcz    , psx_cpu_i_j      , psx_cpu_i_jal    ,
+    psx_cpu_i_special, psx_cpu_i_bxx    , psx_cpu_i_j      , psx_cpu_i_jal    ,
     psx_cpu_i_beq    , psx_cpu_i_bne    , psx_cpu_i_blez   , psx_cpu_i_bgtz   ,
     psx_cpu_i_addi   , psx_cpu_i_addiu  , psx_cpu_i_slti   , psx_cpu_i_sltiu  ,
     psx_cpu_i_andi   , psx_cpu_i_ori    , psx_cpu_i_xori   , psx_cpu_i_lui    ,
@@ -72,6 +105,14 @@ psx_cpu_instruction_t g_psx_cpu_cop0_table[] = {
     psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid
 };
 
+psx_cpu_instruction_t g_psx_cpu_bxx_table[] = {
+    psx_cpu_i_bltz   , psx_cpu_i_bgez   , psx_cpu_i_invalid, psx_cpu_i_invalid,
+    psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
+    psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
+    psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
+    psx_cpu_i_bltzal , psx_cpu_i_bgezal , psx_cpu_i_invalid, psx_cpu_i_invalid
+};
+
 #define OP ((cpu->buf[1] >> 26) & 0x3f) 
 #define S ((cpu->buf[1] >> 21) & 0x1f)
 #define T ((cpu->buf[1] >> 16) & 0x1f)
@@ -84,7 +125,7 @@ psx_cpu_instruction_t g_psx_cpu_cop0_table[] = {
 #define IMM16S ((int32_t)((int16_t)IMM16))
 
 #define TRACE_M(m) \
-    log_trace("%08x: %-7s $%s, 0x%04x($%s)", cpu->pc-8, m, g_mips_cc_register_names[T], IMM16S, g_mips_cc_register_names[S])
+    log_trace("%08x: %-7s $%s, %+i($%s)", cpu->pc-8, m, g_mips_cc_register_names[T], IMM16S, g_mips_cc_register_names[S])
 
 #define TRACE_I16S(m) \
     log_trace("%08x: %-7s $%s, 0x%04x", cpu->pc-8, m, g_mips_cc_register_names[T], IMM16)
@@ -93,7 +134,7 @@ psx_cpu_instruction_t g_psx_cpu_cop0_table[] = {
     log_trace("%08x: %-7s $%s, $%s, 0x%04x", cpu->pc-8, m, g_mips_cc_register_names[T], g_mips_cc_register_names[S], IMM16)
 
 #define TRACE_I5D(m) \
-    log_trace("%08x: %-7s $%s, $%s, %u", cpu->pc-8, m, g_mips_cc_register_names[T], g_mips_cc_register_names[S], IMM5)
+    log_trace("%08x: %-7s $%s, $%s, %u", cpu->pc-8, m, g_mips_cc_register_names[D], g_mips_cc_register_names[T], IMM5)
 
 #define TRACE_I26(m) \
     log_trace("%08x: %-7s 0x%07x", cpu->pc-8, m, ((cpu->pc & 0xf0000000) | (IMM26 << 2)))
@@ -106,6 +147,18 @@ psx_cpu_instruction_t g_psx_cpu_cop0_table[] = {
 
 #define TRACE_B(m) \
     log_trace("%08x: %-7s $%s, $%s, %-i", cpu->pc-8, m, g_mips_cc_register_names[S], g_mips_cc_register_names[T], IMM16S << 2)
+
+#define TRACE_RS(m) \
+    log_trace("%08x: %-7s $%s", cpu->pc-8, m, g_mips_cc_register_names[S])
+
+#define TRACE_MTF(m) \
+    log_trace("%08x: %-7s $%s", cpu->pc-8, m, g_mips_cc_register_names[D])
+
+#define TRACE_RD(m) \
+    log_trace("%08x: %-7s $%s, $%s", cpu->pc-8, m, g_mips_cc_register_names[D], g_mips_cc_register_names[S])
+
+#define TRACE_MD(m) \
+    log_trace("%08x: %-7s $%s, $%s", cpu->pc-8, m, g_mips_cc_register_names[S], g_mips_cc_register_names[T]);
 
 const char* g_mips_cop0_register_names[] = {
     "cop0_r0",
@@ -134,6 +187,8 @@ const char* g_mips_cc_register_names[] = {
 };
 
 void psx_cpu_cycle(psx_cpu_t* cpu) {
+    cpu->r[0] = 0;
+
     cpu->buf[1] = cpu->buf[0];
     cpu->buf[0] = psx_bus_read32(cpu->bus, cpu->pc);
 
@@ -146,6 +201,7 @@ void psx_cpu_cycle(psx_cpu_t* cpu) {
 
 #define DO_PENDING_LOAD \
     cpu->r[cpu->load_d] = cpu->load_v; \
+    R_R0 = 0; \
     cpu->load_d = 0;
 
 void psx_cpu_i_invalid(psx_cpu_t* cpu) {
@@ -159,12 +215,66 @@ void psx_cpu_i_special(psx_cpu_t* cpu) {
     g_psx_cpu_secondary_table[SOP](cpu);
 }
 
-void psx_cpu_i_bcz(psx_cpu_t* cpu) {
-    log_error("%08x: bcz (unimplemented)", cpu->pc - 8);
-
-    exit(1);
+void psx_cpu_i_bxx(psx_cpu_t* cpu) {
+    g_psx_cpu_bxx_table[T](cpu);
 }
 
+// BXX
+void psx_cpu_i_bltz(psx_cpu_t* cpu) {
+    TRACE_B("bltz");
+
+    int32_t s = (int32_t)cpu->r[S];
+
+    DO_PENDING_LOAD;
+
+    if ((int32_t)s < (int32_t)0) {
+        cpu->pc -= 4;
+        cpu->pc += (IMM16S << 2);
+    }
+}
+
+void psx_cpu_i_bgez(psx_cpu_t* cpu) {
+    TRACE_B("bgez");
+
+    int32_t s = (int32_t)cpu->r[S];
+
+    DO_PENDING_LOAD;
+
+    if ((int32_t)s >= (int32_t)0) {
+        cpu->pc -= 4;
+        cpu->pc += (IMM16S << 2);
+    }
+}
+
+void psx_cpu_i_bltzal(psx_cpu_t* cpu) {
+    TRACE_B("bltzal");
+
+    int32_t s = (int32_t)cpu->r[S];
+
+    DO_PENDING_LOAD;
+
+    R_RA = cpu->pc - 4;
+
+    if ((int32_t)s < (int32_t)0) {
+        cpu->pc -= 4;
+        cpu->pc += (IMM16S << 2);
+    }
+}
+
+void psx_cpu_i_bgezal(psx_cpu_t* cpu) {
+    TRACE_B("bgezal");
+
+    int32_t s = (int32_t)cpu->r[S];
+
+    DO_PENDING_LOAD;
+
+    R_RA = cpu->pc - 4;
+
+    if ((int32_t)s >= (int32_t)0) {
+        cpu->pc -= 4;
+        cpu->pc += (IMM16S << 2);
+    }
+}
 void psx_cpu_i_j(psx_cpu_t* cpu) {
     TRACE_I26("j");
 
@@ -173,16 +283,40 @@ void psx_cpu_i_j(psx_cpu_t* cpu) {
     cpu->pc = (cpu->pc & 0xf0000000) | (IMM26 << 2);
 }
 
-void psx_cpu_i_jal(psx_cpu_t* cpu) {
-    log_error("%08x: jal (unimplemented)", cpu->pc - 8);
+#define DEBUG_ALL \
+    log_debug("r0=%08x at=%08x v0=%08x v1=%08x", R_R0, R_AT, R_V0, R_V1); \
+    log_debug("a0=%08x a1=%08x a2=%08x a3=%08x", R_A0, R_A1, R_A2, R_A3); \
+    log_debug("t0=%08x t1=%08x t2=%08x t3=%08x", R_T0, R_T1, R_T2, R_T3); \
+    log_debug("t4=%08x t5=%08x t6=%08x t7=%08x", R_T4, R_T5, R_T6, R_T7); \
+    log_debug("s0=%08x s1=%08x s2=%08x s3=%08x", R_S0, R_S1, R_S2, R_S3); \
+    log_debug("s4=%08x s5=%08x s6=%08x s7=%08x", R_S4, R_S5, R_S6, R_S7); \
+    log_debug("t8=%08x t9=%08x k0=%08x k1=%08x", R_T8, R_T9, R_K0, R_K1); \
+    log_debug("gp=%08x sp=%08x fp=%08x ra=%08x", R_GP, R_SP, R_FP, R_RA); \
+    log_debug("pc=%08x hi=%08x lo=%08x l:%s=%08x", cpu->pc, cpu->hi, cpu->lo, g_mips_cc_register_names[cpu->load_d], cpu->load_v); \
+    exit(1)
 
-    exit(1);
+void psx_cpu_i_jal(psx_cpu_t* cpu) {
+    TRACE_I26("jal");
+
+    DO_PENDING_LOAD;
+
+    cpu->r[31] = cpu->pc;
+
+    cpu->pc = (cpu->pc & 0xf0000000) | (IMM26 << 2);
 }
 
 void psx_cpu_i_beq(psx_cpu_t* cpu) {
-    log_error("%08x: beq (unimplemented)", cpu->pc - 8);
+    TRACE_B("beq");
 
-    exit(1);
+    uint32_t s = cpu->r[S];
+    uint32_t t = cpu->r[T];
+
+    DO_PENDING_LOAD;
+
+    if (s == t) {
+        cpu->pc -= 4;
+        cpu->pc += (IMM16S << 2);
+    }
 }
 
 void psx_cpu_i_bne(psx_cpu_t* cpu) {
@@ -200,15 +334,29 @@ void psx_cpu_i_bne(psx_cpu_t* cpu) {
 }
 
 void psx_cpu_i_blez(psx_cpu_t* cpu) {
-    log_error("%08x: blez (unimplemented)", cpu->pc - 8);
+    TRACE_B("blez");
 
-    exit(1);
+    int32_t s = (int32_t)cpu->r[S];
+
+    DO_PENDING_LOAD;
+
+    if ((int32_t)s <= (int32_t)0) {
+        cpu->pc -= 4;
+        cpu->pc += (IMM16S << 2);
+    }
 }
 
 void psx_cpu_i_bgtz(psx_cpu_t* cpu) {
-    log_error("%08x: bgtz (unimplemented)", cpu->pc - 8);
+    TRACE_B("bgtz");
 
-    exit(1);
+    int32_t s = (int32_t)cpu->r[S];
+
+    DO_PENDING_LOAD;
+
+    if ((int32_t)s > (int32_t)0) {
+        cpu->pc -= 4;
+        cpu->pc += (IMM16S << 2);
+    }
 }
 
 void psx_cpu_i_addi(psx_cpu_t* cpu) {
@@ -240,21 +388,33 @@ void psx_cpu_i_addiu(psx_cpu_t* cpu) {
 }
 
 void psx_cpu_i_slti(psx_cpu_t* cpu) {
-    log_error("%08x: slti (unimplemented)", cpu->pc - 8);
+    TRACE_I16D("slti");
 
-    exit(1);
+    int32_t s = (int32_t)cpu->r[S];
+
+    DO_PENDING_LOAD;
+
+    cpu->r[T] = s < IMM16S;
 }
 
 void psx_cpu_i_sltiu(psx_cpu_t* cpu) {
-    log_error("%08x: sltiu (unimplemented)", cpu->pc - 8);
+    TRACE_I16D("sltiu");
 
-    exit(1);
+    uint32_t s = cpu->r[S];
+
+    DO_PENDING_LOAD;
+
+    cpu->r[T] = s < IMM16S;
 }
 
 void psx_cpu_i_andi(psx_cpu_t* cpu) {
-    log_error("%08x: andi (unimplemented)", cpu->pc - 8);
+    TRACE_I16D("andi");
 
-    exit(1);
+    uint32_t s = cpu->r[S];
+
+    DO_PENDING_LOAD;
+
+    cpu->r[T] = s & IMM16;
 }
 
 void psx_cpu_i_ori(psx_cpu_t* cpu) {
@@ -303,10 +463,27 @@ void psx_cpu_i_cop3(psx_cpu_t* cpu) {
     exit(1);
 }
 
-void psx_cpu_i_lb(psx_cpu_t* cpu) {
-    log_error("%08x: lb (unimplemented)", cpu->pc - 8);
+#define SE8(v) ((int32_t)((int8_t)v))
+#define SE16(v) ((int32_t)((int16_t)v))
 
-    exit(1);
+void psx_cpu_i_lb(psx_cpu_t* cpu) {
+    TRACE_M("lb");
+
+    // To-do: Emulate load delay slots
+    // In my mind, an instruction is executed in two stages.
+    // First, the instruction "microcode" fetches input registers
+    // and puts them in latches, the CPU then takes over and
+    // reads the data bus into the pending load register.
+    // Finally, the instruction is actually executed using
+    // the values fetched on the first stage.
+    // This is impossible to emulate using our current method
+
+    uint32_t s = cpu->r[S];
+
+    DO_PENDING_LOAD;
+
+    cpu->load_d = T;
+    cpu->load_v = SE8(psx_bus_read8(cpu->bus, s + IMM16S));
 }
 
 void psx_cpu_i_lh(psx_cpu_t* cpu) {
@@ -342,9 +519,14 @@ void psx_cpu_i_lw(psx_cpu_t* cpu) {
 }
 
 void psx_cpu_i_lbu(psx_cpu_t* cpu) {
-    log_error("%08x: lbu (unimplemented)", cpu->pc - 8);
+    TRACE_M("lbu");
 
-    exit(1);
+    uint32_t s = cpu->r[S];
+
+    DO_PENDING_LOAD;
+
+    cpu->load_d = T;
+    cpu->load_v = psx_bus_read8(cpu->bus, s + IMM16S);
 }
 
 void psx_cpu_i_lhu(psx_cpu_t* cpu) {
@@ -360,15 +542,39 @@ void psx_cpu_i_lwr(psx_cpu_t* cpu) {
 }
 
 void psx_cpu_i_sb(psx_cpu_t* cpu) {
-    log_error("%08x: sb (unimplemented)", cpu->pc - 8);
+    TRACE_M("sb");
 
-    exit(1);
+    uint32_t s = cpu->r[S];
+    uint32_t t = cpu->r[T];
+
+    DO_PENDING_LOAD;
+
+    // Cache isolated
+    if (cpu->cop0_sr & SR_ISC) {
+        log_warn("Ignoring write while cache is isolated");
+
+        return;
+    }
+
+    psx_bus_write8(cpu->bus, s + IMM16S, t);
 }
 
 void psx_cpu_i_sh(psx_cpu_t* cpu) {
-    log_error("%08x: sh (unimplemented)", cpu->pc - 8);
+    TRACE_M("sh");
 
-    exit(1);
+    uint32_t s = cpu->r[S];
+    uint32_t t = cpu->r[T];
+
+    DO_PENDING_LOAD;
+
+    // Cache isolated
+    if (cpu->cop0_sr & SR_ISC) {
+        log_warn("Ignoring write while cache is isolated");
+
+        return;
+    }
+
+    psx_bus_write16(cpu->bus, s + IMM16S, t);
 }
 
 void psx_cpu_i_swl(psx_cpu_t* cpu) {
@@ -453,23 +659,31 @@ void psx_cpu_i_swc3(psx_cpu_t* cpu) {
 void psx_cpu_i_sll(psx_cpu_t* cpu) {
     TRACE_I5D("sll");
 
-    uint32_t s = cpu->r[S];
+    uint32_t t = cpu->r[T];
 
     DO_PENDING_LOAD;
 
-    cpu->r[T] = s << IMM5;
+    cpu->r[D] = t << IMM5;
 }
 
 void psx_cpu_i_srl(psx_cpu_t* cpu) {
-    log_error("%08x: srl (unimplemented)", cpu->pc - 8);
+    TRACE_I5D("srl");
 
-    exit(1);
+    uint32_t t = cpu->r[T];
+
+    DO_PENDING_LOAD;
+
+    cpu->r[D] = t >> IMM5;
 }
 
 void psx_cpu_i_sra(psx_cpu_t* cpu) {
-    log_error("%08x: sra (unimplemented)", cpu->pc - 8);
+    TRACE_I5D("sra");
 
-    exit(1);
+    int32_t t = (int32_t)cpu->r[T];
+
+    DO_PENDING_LOAD;
+
+    cpu->r[D] = t >> IMM5;
 }
 
 void psx_cpu_i_sllv(psx_cpu_t* cpu) {
@@ -491,15 +705,25 @@ void psx_cpu_i_srav(psx_cpu_t* cpu) {
 }
 
 void psx_cpu_i_jr(psx_cpu_t* cpu) {
-    log_error("%08x: jr (unimplemented)", cpu->pc - 8);
+    TRACE_RS("jr");
 
-    exit(1);
+    uint32_t s = cpu->r[S];
+
+    DO_PENDING_LOAD;
+
+    cpu->pc = s;
 }
 
 void psx_cpu_i_jalr(psx_cpu_t* cpu) {
-    log_error("%08x: jalr (unimplemented)", cpu->pc - 8);
+    TRACE_RD("jalr");
 
-    exit(1);
+    uint32_t s = cpu->r[S];
+
+    DO_PENDING_LOAD;
+
+    cpu->r[D] = cpu->pc;
+
+    cpu->pc = s;
 }
 
 void psx_cpu_i_syscall(psx_cpu_t* cpu) {
@@ -515,9 +739,11 @@ void psx_cpu_i_break(psx_cpu_t* cpu) {
 }
 
 void psx_cpu_i_mfhi(psx_cpu_t* cpu) {
-    log_error("%08x: mfhi (unimplemented)", cpu->pc - 8);
+    TRACE_MTF("mfhi");
 
-    exit(1);
+    DO_PENDING_LOAD;
+
+    cpu->r[D] = cpu->hi;
 }
 
 void psx_cpu_i_mthi(psx_cpu_t* cpu) {
@@ -527,9 +753,11 @@ void psx_cpu_i_mthi(psx_cpu_t* cpu) {
 }
 
 void psx_cpu_i_mflo(psx_cpu_t* cpu) {
-    log_error("%08x: mflo (unimplemented)", cpu->pc - 8);
+    TRACE_MTF("mflo");
 
-    exit(1);
+    DO_PENDING_LOAD;
+
+    cpu->r[D] = cpu->lo;
 }
 
 void psx_cpu_i_mtlo(psx_cpu_t* cpu) {
@@ -551,21 +779,58 @@ void psx_cpu_i_multu(psx_cpu_t* cpu) {
 }
 
 void psx_cpu_i_div(psx_cpu_t* cpu) {
-    log_error("%08x: div (unimplemented)", cpu->pc - 8);
+    TRACE_MD("div");
 
-    exit(1);
+    int32_t s = (int32_t)cpu->r[S];
+    int32_t t = (int32_t)cpu->r[T];
+
+    DO_PENDING_LOAD;
+
+    if (!t) {
+        cpu->hi = s;
+        cpu->lo = (s >= 0) ? 0xffffffff : 1;
+    } else if ((((uint32_t)s) == 0x80000000) && (t == -1)) {
+        cpu->hi = 0;
+        cpu->lo = 0x80000000;
+    } else {
+        cpu->hi = (uint32_t)(s % t);
+        cpu->lo = (uint32_t)(s / t);
+    }
 }
 
 void psx_cpu_i_divu(psx_cpu_t* cpu) {
-    log_error("%08x: divu (unimplemented)", cpu->pc - 8);
+    TRACE_MD("divu");
 
-    exit(1);
+    uint32_t s = cpu->r[S];
+    uint32_t t = cpu->r[T];
+
+    DO_PENDING_LOAD;
+
+    if (!t) {
+        cpu->hi = s;
+        cpu->lo = 0xffffffff;
+    } else {
+        cpu->hi = s % t;
+        cpu->lo = s / t;
+    }
 }
 
 void psx_cpu_i_add(psx_cpu_t* cpu) {
-    log_error("%08x: add (unimplemented)", cpu->pc - 8);
+    TRACE_RT("add");
 
-    exit(1);
+    uint32_t s = cpu->r[S];
+    uint32_t t = cpu->r[T];
+
+    DO_PENDING_LOAD;
+
+    uint32_t r = s + t;
+    uint32_t o = (s ^ r) & (t ^ r);
+
+    if (o & 0x80000000) {
+        log_warn("Overflow on add %08x + %08x = %08x (%08x)", s, t, r, o);
+    } else {
+        cpu->r[D] = r;
+    }
 }
 
 void psx_cpu_i_addu(psx_cpu_t* cpu) {
@@ -586,15 +851,25 @@ void psx_cpu_i_sub(psx_cpu_t* cpu) {
 }
 
 void psx_cpu_i_subu(psx_cpu_t* cpu) {
-    log_error("%08x: subu (unimplemented)", cpu->pc - 8);
+    TRACE_RT("subu");
 
-    exit(1);
+    uint32_t s = cpu->r[S];
+    uint32_t t = cpu->r[T];
+
+    DO_PENDING_LOAD;
+
+    cpu->r[D] = s - t;
 }
 
 void psx_cpu_i_and(psx_cpu_t* cpu) {
-    log_error("%08x: and (unimplemented)", cpu->pc - 8);
+    TRACE_RT("and");
 
-    exit(1);
+    uint32_t s = cpu->r[S];
+    uint32_t t = cpu->r[T];
+
+    DO_PENDING_LOAD;
+
+    cpu->r[D] = s & t;
 }
 
 void psx_cpu_i_or(psx_cpu_t* cpu) {
@@ -621,9 +896,14 @@ void psx_cpu_i_nor(psx_cpu_t* cpu) {
 }
 
 void psx_cpu_i_slt(psx_cpu_t* cpu) {
-    log_error("%08x: slt (unimplemented)", cpu->pc - 8);
+    TRACE_RT("slt");
 
-    exit(1);
+    int32_t s = (int32_t)cpu->r[S];
+    int32_t t = (int32_t)cpu->r[T];
+
+    DO_PENDING_LOAD;
+
+    cpu->r[D] = s < t;
 }
 
 void psx_cpu_i_sltu(psx_cpu_t* cpu) {
@@ -639,9 +919,25 @@ void psx_cpu_i_sltu(psx_cpu_t* cpu) {
 
 // COP0
 void psx_cpu_i_mfc0(psx_cpu_t* cpu) {
-    log_error("%08x: mfc0 (unimplemented)", cpu->pc - 8);
+    TRACE_C0M("mfc0");
 
-    exit(1);
+    DO_PENDING_LOAD;
+
+    switch (D) {
+        case 3: cpu->load_v = cpu->cop0_bpc; break;
+        case 5: cpu->load_v = cpu->cop0_bda; break;
+        case 6: cpu->load_v = cpu->cop0_jumpdest; break;
+        case 7: cpu->load_v = cpu->cop0_dcic; break;
+        case 8: cpu->load_v = cpu->cop0_badvaddr; break;
+        case 9: cpu->load_v = cpu->cop0_bdam; break;
+        case 11: cpu->load_v = cpu->cop0_bpcm; break;
+        case 12: cpu->load_v = cpu->cop0_sr; break;
+        case 13: cpu->load_v = cpu->cop0_cause; break;
+        case 14: cpu->load_v = cpu->cop0_epc; break;
+        case 15: cpu->load_v = cpu->cop0_prid; break;
+    }
+
+    cpu->load_d = T;
 }
 
 void psx_cpu_i_cfc0(psx_cpu_t* cpu) {
