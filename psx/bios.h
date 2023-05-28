@@ -14,6 +14,8 @@
 #define PSX_BIOS_END    0x1fc7ffff
 
 typedef struct {
+    uint32_t io_base, io_size;
+
     uint8_t* buf;
 } psx_bios_t;
 
@@ -23,6 +25,9 @@ void psx_bios_load(psx_bios_t*, const char*);
 uint32_t psx_bios_read32(psx_bios_t*, uint32_t);
 uint16_t psx_bios_read16(psx_bios_t*, uint32_t);
 uint8_t psx_bios_read8(psx_bios_t*, uint32_t);
+void psx_bios_write32(psx_bios_t*, uint32_t, uint32_t);
+void psx_bios_write16(psx_bios_t*, uint32_t, uint16_t);
+void psx_bios_write8(psx_bios_t*, uint32_t, uint8_t);
 void psx_bios_destroy(psx_bios_t*);
 
 #endif

@@ -9,7 +9,11 @@ psx_ram_t* psx_ram_create() {
     return (psx_ram_t*)malloc(sizeof(psx_ram_t));
 }
 
-void psx_ram_init(psx_ram_t* ram) {
+void psx_ram_init(psx_ram_t* ram, psx_mc2_t* mc2) {
+    ram->io_base = PSX_RAM_BEGIN;
+    ram->io_size = PSX_RAM_SIZE;
+
+    ram->mc2 = mc2;
     ram->buf = (uint8_t*)malloc(PSX_RAM_SIZE);
 
     memset(ram->buf, 0xca, PSX_RAM_SIZE);

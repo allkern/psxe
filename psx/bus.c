@@ -3,9 +3,8 @@
 
 #include "bus.h"
 #include "log.h"
-#include "cpu.h"
 
-#define RANGE(v, s, e) ((v >= s) && (v <= e))
+#define RANGE(v, s, e) ((v >= s) && (v < e))
 
 const uint32_t g_psx_bus_region_mask_table[] = {
     0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff,
@@ -16,14 +15,22 @@ psx_bus_t* psx_bus_create() {
     return (psx_bus_t*)malloc(sizeof(psx_bus_t));
 }
 
-void psx_bus_init(psx_bus_t* bus, psx_bios_t* bios, psx_ram_t* ram) {
-    bus->bios = bios;
-    bus->ram = ram;
-}
+// Does nothing for now
+void psx_bus_init(psx_bus_t* bus) {}
 
 void psx_bus_destroy(psx_bus_t* bus) {
     free(bus);
 }
+
+#define HANDLE_READ(dev, bits) \
+    if (RANGE(addr, bus->dev->io_base, bus->dev->io_base + bus->dev->io_size)) \
+        return psx_ ## dev ## _read ## bits (bus->dev, addr - bus->dev->io_base);
+
+#define HANDLE_WRITE(dev, bits) \
+    if (RANGE(addr, bus->dev->io_base, bus->dev->io_base + bus->dev->io_size)) { \
+        psx_ ## dev ## _write ## bits (bus->dev, addr - bus->dev->io_base, value); \
+        return; \
+    }
 
 uint32_t psx_bus_read32(psx_bus_t* bus, uint32_t addr) {
     uint32_t vaddr = addr;
@@ -34,15 +41,17 @@ uint32_t psx_bus_read32(psx_bus_t* bus, uint32_t addr) {
         log_warn("Unaligned 32-bit read from %08x:%08x", vaddr, addr);
     }
 
-    if (RANGE(addr, PSX_BIOS_BEGIN, PSX_BIOS_END))
-        return psx_bios_read32(bus->bios, addr - PSX_BIOS_BEGIN);
-    
-    if (RANGE(addr, PSX_IO_RAM_SIZE_BEGIN, PSX_IO_RAM_SIZE_END))
-        return bus->ram_size;
-    
-    if (RANGE(addr, PSX_RAM_BEGIN, PSX_RAM_END))
-        return psx_ram_read32(bus->ram, addr - PSX_RAM_BEGIN);
-    
+    HANDLE_READ(bios, 32);
+    HANDLE_READ(ram, 32);
+    HANDLE_READ(dma, 32);
+    HANDLE_READ(exp1, 32);
+    HANDLE_READ(mc1, 32);
+    HANDLE_READ(mc2, 32);
+    HANDLE_READ(mc3, 32);
+    HANDLE_READ(ic, 32);
+    HANDLE_READ(scratchpad, 32);
+
+    // Hack (break BIOS infinite loop)
     if (addr == PSX_GPUSTAT)
         return 0x10000000;
 
@@ -60,11 +69,15 @@ uint16_t psx_bus_read16(psx_bus_t* bus, uint32_t addr) {
         log_warn("Unaligned 16-bit read from %08x:%08x", vaddr, addr);
     }
 
-    if (RANGE(addr, PSX_BIOS_BEGIN, PSX_BIOS_END))
-        return psx_bios_read16(bus->bios, addr - PSX_BIOS_BEGIN);
-
-    if (RANGE(addr, PSX_RAM_BEGIN, PSX_RAM_END))
-        return psx_ram_read16(bus->ram, addr - PSX_RAM_BEGIN);
+    HANDLE_READ(bios, 16);
+    HANDLE_READ(ram, 16);
+    HANDLE_READ(dma, 16);
+    HANDLE_READ(exp1, 16);
+    HANDLE_READ(mc1, 16);
+    HANDLE_READ(mc2, 16);
+    HANDLE_READ(mc3, 16);
+    HANDLE_READ(ic, 16);
+    HANDLE_READ(scratchpad, 16);
 
     log_warn("Unhandled 16-bit read from %08x:%08x", vaddr, addr);
 
@@ -76,14 +89,15 @@ uint8_t psx_bus_read8(psx_bus_t* bus, uint32_t addr) {
 
     addr &= g_psx_bus_region_mask_table[addr >> 29];
 
-    if (RANGE(addr, PSX_BIOS_BEGIN, PSX_BIOS_END))
-        return psx_bios_read8(bus->bios, addr - PSX_BIOS_BEGIN);
-
-    if (RANGE(addr, PSX_RAM_BEGIN, PSX_RAM_END))
-        return psx_ram_read8(bus->ram, addr - PSX_RAM_BEGIN);
-    
-    if (RANGE(addr, PSX_EXP1_ROM_BEGIN, PSX_EXP1_ROM_END))
-        return 0xff;
+    HANDLE_READ(bios, 8);
+    HANDLE_READ(ram, 8);
+    HANDLE_READ(dma, 8);
+    HANDLE_READ(exp1, 8);
+    HANDLE_READ(mc1, 8);
+    HANDLE_READ(mc2, 8);
+    HANDLE_READ(mc3, 8);
+    HANDLE_READ(ic, 8);
+    HANDLE_READ(scratchpad, 8);
 
     log_warn("Unhandled 8-bit read from %08x:%08x", vaddr, addr);
 
@@ -99,17 +113,15 @@ void psx_bus_write32(psx_bus_t* bus, uint32_t addr, uint32_t value) {
         log_warn("Unaligned 32-bit write to %08x:%08x (%08x)", vaddr, addr, value);
     }
 
-    if (RANGE(addr, PSX_IO_RAM_SIZE_BEGIN, PSX_IO_RAM_SIZE_END)) {
-        bus->ram_size = value;
-
-        return;
-    }
-
-    if (RANGE(addr, PSX_RAM_BEGIN, PSX_RAM_END)) {
-        psx_ram_write32(bus->ram, addr - PSX_RAM_BEGIN, value);
-
-        return;
-    }
+    HANDLE_WRITE(bios, 32);
+    HANDLE_WRITE(ram, 32);
+    HANDLE_WRITE(dma, 32);
+    HANDLE_WRITE(exp1, 32);
+    HANDLE_WRITE(mc1, 32);
+    HANDLE_WRITE(mc2, 32);
+    HANDLE_WRITE(mc3, 32);
+    HANDLE_WRITE(ic, 32);
+    HANDLE_WRITE(scratchpad, 32);
 
     log_warn("Unhandled 32-bit write to %08x:%08x (%08x)", vaddr, addr, value);
 }
@@ -123,11 +135,15 @@ void psx_bus_write16(psx_bus_t* bus, uint32_t addr, uint16_t value) {
         log_warn("Unaligned 16-bit write to %08x:%08x (%04x)", vaddr, addr, value);
     }
 
-    if (RANGE(addr, PSX_RAM_BEGIN, PSX_RAM_END)) {
-        psx_ram_write16(bus->ram, addr - PSX_RAM_BEGIN, value);
-
-        return;
-    }
+    HANDLE_WRITE(bios, 16);
+    HANDLE_WRITE(ram, 16);
+    HANDLE_WRITE(dma, 16);
+    HANDLE_WRITE(exp1, 16);
+    HANDLE_WRITE(mc1, 16);
+    HANDLE_WRITE(mc2, 16);
+    HANDLE_WRITE(mc3, 16);
+    HANDLE_WRITE(ic, 16);
+    HANDLE_WRITE(scratchpad, 16);
 
     log_warn("Unhandled 16-bit write to %08x:%08x (%04x)", vaddr, addr, value);
 }
@@ -137,11 +153,53 @@ void psx_bus_write8(psx_bus_t* bus, uint32_t addr, uint8_t value) {
 
     addr &= g_psx_bus_region_mask_table[addr >> 29];
 
-    if (RANGE(addr, PSX_RAM_BEGIN, PSX_RAM_END)) {
-        psx_ram_write8(bus->ram, addr - PSX_RAM_BEGIN, value);
-
-        return;
-    }
+    HANDLE_WRITE(bios, 8);
+    HANDLE_WRITE(ram, 8);
+    HANDLE_WRITE(dma, 8);
+    HANDLE_WRITE(exp1, 8);
+    HANDLE_WRITE(mc1, 8);
+    HANDLE_WRITE(mc2, 8);
+    HANDLE_WRITE(mc3, 8);
+    HANDLE_WRITE(ic, 8);
+    HANDLE_WRITE(scratchpad, 8);
 
     log_warn("Unhandled 8-bit write to %08x:%08x (%02x)", vaddr, addr, value);
 }
+
+void psx_bus_set_bios(psx_bus_t* bus, psx_bios_t* bios) {
+    bus->bios = bios;
+}
+
+void psx_bus_set_ram(psx_bus_t* bus, psx_ram_t* ram) {
+    bus->ram = ram;
+}
+
+void psx_bus_set_dma(psx_bus_t* bus, psx_dma_t* dma) {
+    bus->dma = dma;
+}
+
+void psx_bus_set_exp1(psx_bus_t* bus, psx_exp1_t* exp1) {
+    bus->exp1 = exp1;
+}
+
+void psx_bus_set_mc1(psx_bus_t* bus, psx_mc1_t* mc1) {
+    bus->mc1 = mc1;
+}
+
+void psx_bus_set_mc2(psx_bus_t* bus, psx_mc2_t* mc2) {
+    bus->mc2 = mc2;
+}
+
+void psx_bus_set_mc3(psx_bus_t* bus, psx_mc3_t* mc3) {
+    bus->mc3 = mc3;
+}
+
+void psx_bus_set_ic(psx_bus_t* bus, psx_ic_t* ic) {
+    bus->ic = ic;
+}
+
+void psx_bus_set_scratchpad(psx_bus_t* bus, psx_scratchpad_t* scratchpad) {
+    bus->scratchpad = scratchpad;
+}
+
+#undef HANDLE_READ

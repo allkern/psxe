@@ -10,6 +10,9 @@ psx_bios_t* psx_bios_create() {
 }
 
 void psx_bios_init(psx_bios_t* bios) {
+    bios->io_base = PSX_BIOS_BEGIN;
+    bios->io_size = PSX_BIOS_SIZE;
+
     bios->buf = (uint8_t*)malloc(PSX_BIOS_SIZE);
 }
 
@@ -30,27 +33,27 @@ void psx_bios_load(psx_bios_t* bios, const char* path) {
 }
 
 uint32_t psx_bios_read32(psx_bios_t* bios, uint32_t offset) {
-#ifdef PSXE_DEBUG_BIOS
-    //log_debug("32-bit read at BIOS address %08x", offset);
-#endif
-
     return *((uint32_t*)(bios->buf + offset));
 }
 
 uint16_t psx_bios_read16(psx_bios_t* bios, uint32_t offset) {
-#ifdef PSXE_DEBUG_BIOS
-    //log_debug("16-bit read at BIOS address %08x", offset);
-#endif
-
     return *((uint16_t*)(bios->buf + offset));
 }
 
 uint8_t psx_bios_read8(psx_bios_t* bios, uint32_t offset) {
-#ifdef PSXE_DEBUG_BIOS
-    //log_debug("8-bit read at BIOS address %08x", offset);
-#endif
-
     return bios->buf[offset];
+}
+
+void psx_bios_write32(psx_bios_t* bios, uint32_t offset, uint32_t value) {
+    log_warn("Unhandled 32-bit BIOS write at offset %08x (%08x)", offset, value);
+}
+
+void psx_bios_write16(psx_bios_t* bios, uint32_t offset, uint16_t value) {
+    log_warn("Unhandled 16-bit BIOS write at offset %08x (%04x)", offset, value);
+}
+
+void psx_bios_write8(psx_bios_t* bios, uint32_t offset, uint8_t value) {
+    log_warn("Unhandled 8-bit BIOS write at offset %08x (%02x)", offset, value);
 }
 
 void psx_bios_destroy(psx_bios_t* bios) {
