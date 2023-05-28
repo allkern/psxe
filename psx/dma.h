@@ -30,7 +30,7 @@ typedef struct {
 
 psx_dma_t* psx_dma_create();
 void psx_dma_init(psx_dma_t*);
-void psx_dma_perform(psx_dma_t*);
+void psx_dma_perform(psx_dma_t*, int);
 uint32_t psx_dma_read32(psx_dma_t*, uint32_t);
 uint16_t psx_dma_read16(psx_dma_t*, uint32_t);
 uint8_t psx_dma_read8(psx_dma_t*, uint32_t);
