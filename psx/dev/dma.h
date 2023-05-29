@@ -84,7 +84,7 @@ typedef void (*psx_dma_do_fn_t)(psx_dma_t*);
 #define CHCR_BUSY_MASK 0x01000000
 #define CHCR_TRIG_MASK 0x10000000
 
-#define SYNC_SHIF 8
+#define SYNC_SHIF 9
 #define CDWS_SHIF 16
 #define CCWS_SHIF 19
 

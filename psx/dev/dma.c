@@ -86,11 +86,11 @@ void psx_dma_write32(psx_dma_t* dma, uint32_t offset, uint32_t value) {
 
         CR(channel, reg) = value;
 
+        log_error("DMA channel %u register %u write %08x", channel, reg, value);
+
         if (reg == 2) {
             g_psx_dma_do_table[channel](dma);
         }
-
-        log_error("DMA channel %u register %u write %08x", channel, reg, value);
     } else {
         switch (offset) {
             case 0x70: log_error("DMA control write %08x", value); dma->dpcr = value; break;
@@ -119,20 +119,93 @@ void psx_dma_write8(psx_dma_t* dma, uint32_t offset, uint8_t value) {
     }
 }
 
+const char* g_psx_dma_sync_type_name_table[] = {
+    "burst",
+    "request",
+    "linked",
+    "reserved"
+};
+
 void psx_dma_do_mdec_in(psx_dma_t* dma) { log_error("MDEC_IN DMA channel unimplemented"); }
 void psx_dma_do_mdec_out(psx_dma_t* dma) { log_error("MDEC_OUT DMA channel unimplemented"); }
-void psx_dma_do_gpu(psx_dma_t* dma) { log_error("GPU DMA channel unimplemented"); }
-void psx_dma_do_cdrom(psx_dma_t* dma) { log_error("CDROM DMA channel unimplemented"); }
-void psx_dma_do_spu(psx_dma_t* dma) { log_error("SPU DMA channel unimplemented"); }
-void psx_dma_do_pio(psx_dma_t* dma) { log_error("PIO DMA channel unimplemented"); }
+
+void psx_dma_do_gpu_linked(psx_dma_t* dma) {
+    uint32_t hdr = psx_bus_read32(dma->bus, dma->gpu.madr);
+    uint32_t size = hdr >> 24;
+    uint32_t addr = dma->gpu.madr;
+
+    log_error("GPU packet hdr=%08x, size=%02x", hdr, size);
+
+    while (true) {
+        while (size--) {
+            addr = (addr + 4) & 0x1ffffc;
+
+            // Get command from linked list
+            uint32_t cmd = psx_bus_read32(dma->bus, addr);
+
+            // Write to GP0
+            psx_bus_write32(dma->bus, 0x1f801810, cmd);
+        }
+
+        addr = hdr & 0xffffff;
+
+        if (addr == 0xffffff) break;
+
+        hdr = psx_bus_read32(dma->bus, addr);
+        size = hdr >> 24;
+
+        log_error("GPU packet hdr=%08x, size=%02x", hdr, size);
+    }
+}
+
+void psx_dma_do_gpu_request(psx_dma_t* dma) {
+    log_error("GPU DMA request sync mode unimplemented");
+
+    exit(1);
+}
+
+void psx_dma_do_gpu_burst(psx_dma_t* dma) {
+    log_error("GPU DMA burst sync mode unimplemented");
+
+    exit(1);
+}
+
+psx_dma_do_fn_t g_psx_dma_gpu_table[] = {
+    psx_dma_do_gpu_burst,
+    psx_dma_do_gpu_request,
+    psx_dma_do_gpu_linked
+};
+
+void psx_dma_do_gpu(psx_dma_t* dma) {
+    if (!CHCR_BUSY(gpu))
+        return;
+
+    log_error("GPU DMA transfer: madr=%08x, dir=%s, sync=%s (%u), step=%s, size=%x",
+        dma->gpu.madr,
+        CHCR_TDIR(gpu) ? "to device" : "to RAM",
+        g_psx_dma_sync_type_name_table[CHCR_SYNC(gpu)], CHCR_SYNC(gpu),
+        CHCR_STEP(gpu) ? "decrementing" : "incrementing",
+        BCR_SIZE(gpu)
+    );
+
+    g_psx_dma_gpu_table[CHCR_SYNC(gpu)](dma);
+
+    // Clear BCR and CHCR trigger and busy bits
+    dma->gpu.chcr &= ~(CHCR_BUSY_MASK | CHCR_TRIG_MASK);
+    dma->gpu.bcr = 0;
+}
+
+void psx_dma_do_cdrom(psx_dma_t* dma) { log_error("CDROM DMA channel unimplemented"); exit(1); }
+void psx_dma_do_spu(psx_dma_t* dma) { log_error("SPU DMA channel unimplemented"); exit(1); }
+void psx_dma_do_pio(psx_dma_t* dma) { log_error("PIO DMA channel unimplemented"); exit(1); }
 void psx_dma_do_otc(psx_dma_t* dma) {
     if (!CHCR_TRIG(otc))
         return;
 
-    assert(!CHCR_TDIR(otc)); // Always to RAM
-    assert(CHCR_SYNC(otc) == 0); // Always burst?
-    assert(CHCR_STEP(otc)); // Always decrementing?
-    assert(BCR_SIZE(otc)); // Nonzero block size
+    assert(!CHCR_TDIR(otc));
+    assert(CHCR_SYNC(otc) == 0);
+    assert(CHCR_STEP(otc));
+    assert(BCR_SIZE(otc));
 
     log_error("OTC DMA transfer: madr=%08x, dir=%s, sync=%s, step=%s, size=%x",
         dma->otc.madr,

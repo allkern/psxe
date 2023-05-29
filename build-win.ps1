@@ -1,7 +1,7 @@
 $SDL2_DIR = "sdl2\x86_64-w64-mingw32"
 $PSX_DIR = "."
 
-md -Force -Path bin > $null
+mkdir -Force -Path bin > $null
 
 gcc -I"`"$($PSX_DIR)`"" `
     -I"`"$($SDL2_DIR)\include`"" `
