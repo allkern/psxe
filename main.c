@@ -1,9 +1,5 @@
-#include "psx/bios.h"
-#include "psx/ram.h"
-#include "psx/dma.h"
-#include "psx/exp1.h"
-#include "psx/mc1.h"
-#include "psx/mc2.h"
+#include "psx/bus.h"
+#include "psx/bus_init.h"
 #include "psx/cpu.h"
 #include "psx/log.h"
 
@@ -19,32 +15,38 @@ int main() {
     psx_mc3_t* mc3 = psx_mc3_create();
     psx_ic_t* ic = psx_ic_create();
     psx_scratchpad_t* scratchpad = psx_scratchpad_create();
+    psx_gpu_t* gpu = psx_gpu_create();
+    psx_spu_t* spu = psx_spu_create();
 
     // Bus initialization
     psx_bus_t* bus = psx_bus_create();
 
     psx_bus_init(bus);
 
-    psx_bus_set_bios(bus, bios);
-    psx_bus_set_ram(bus, ram);
-    psx_bus_set_dma(bus, dma);
-    psx_bus_set_exp1(bus, exp1);
-    psx_bus_set_mc1(bus, mc1);
-    psx_bus_set_mc2(bus, mc2);
-    psx_bus_set_mc3(bus, mc3);
-    psx_bus_set_ic(bus, ic);
-    psx_bus_set_scratchpad(bus, scratchpad);
+    psx_bus_init_bios(bus, bios);
+    psx_bus_init_ram(bus, ram);
+    psx_bus_init_dma(bus, dma);
+    psx_bus_init_exp1(bus, exp1);
+    psx_bus_init_mc1(bus, mc1);
+    psx_bus_init_mc2(bus, mc2);
+    psx_bus_init_mc3(bus, mc3);
+    psx_bus_init_ic(bus, ic);
+    psx_bus_init_scratchpad(bus, scratchpad);
+    psx_bus_init_gpu(bus, gpu);
+    psx_bus_init_spu(bus, spu);
 
     // Init devices
     psx_bios_init(bios);
     psx_ram_init(ram, mc2);
-    psx_dma_init(dma);
+    psx_dma_init(dma, bus);
     psx_exp1_init(exp1, mc1);
     psx_mc1_init(mc1);
     psx_mc2_init(mc2);
     psx_mc3_init(mc3);
     psx_ic_init(ic);
     psx_scratchpad_init(scratchpad);
+    psx_gpu_init(gpu);
+    psx_spu_init(spu);
 
     psx_bios_load(bios, "scph1001.bin");
 
@@ -67,6 +69,8 @@ int main() {
     psx_mc3_destroy(mc3);
     psx_ic_destroy(ic);
     psx_scratchpad_destroy(scratchpad);
+    psx_gpu_destroy(gpu);
+    psx_spu_destroy(spu);
 
     return 0;
 }

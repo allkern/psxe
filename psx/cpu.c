@@ -1,5 +1,6 @@
 #include "cpu.h"
 #include "bus.h"
+#include "log.h"
 
 #include <stdlib.h>
 #include <string.h>

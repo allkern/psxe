@@ -2,6 +2,7 @@
 #include <stdlib.h>
 
 #include "bus.h"
+#include "bus_init.h"
 #include "log.h"
 
 #define RANGE(v, s, e) ((v >= s) && (v < e))
@@ -50,10 +51,8 @@ uint32_t psx_bus_read32(psx_bus_t* bus, uint32_t addr) {
     HANDLE_READ(mc3, 32);
     HANDLE_READ(ic, 32);
     HANDLE_READ(scratchpad, 32);
-
-    // Hack (break BIOS infinite loop)
-    if (addr == PSX_GPUSTAT)
-        return 0x10000000;
+    HANDLE_READ(gpu, 32);
+    HANDLE_READ(spu, 32);
 
     log_warn("Unhandled 32-bit read from %08x:%08x", vaddr, addr);
 
@@ -78,6 +77,8 @@ uint16_t psx_bus_read16(psx_bus_t* bus, uint32_t addr) {
     HANDLE_READ(mc3, 16);
     HANDLE_READ(ic, 16);
     HANDLE_READ(scratchpad, 16);
+    HANDLE_READ(gpu, 16);
+    HANDLE_READ(spu, 16);
 
     log_warn("Unhandled 16-bit read from %08x:%08x", vaddr, addr);
 
@@ -98,6 +99,8 @@ uint8_t psx_bus_read8(psx_bus_t* bus, uint32_t addr) {
     HANDLE_READ(mc3, 8);
     HANDLE_READ(ic, 8);
     HANDLE_READ(scratchpad, 8);
+    HANDLE_READ(gpu, 8);
+    HANDLE_READ(spu, 8);
 
     log_warn("Unhandled 8-bit read from %08x:%08x", vaddr, addr);
 
@@ -122,6 +125,8 @@ void psx_bus_write32(psx_bus_t* bus, uint32_t addr, uint32_t value) {
     HANDLE_WRITE(mc3, 32);
     HANDLE_WRITE(ic, 32);
     HANDLE_WRITE(scratchpad, 32);
+    HANDLE_WRITE(gpu, 32);
+    HANDLE_WRITE(spu, 32);
 
     log_warn("Unhandled 32-bit write to %08x:%08x (%08x)", vaddr, addr, value);
 }
@@ -144,6 +149,8 @@ void psx_bus_write16(psx_bus_t* bus, uint32_t addr, uint16_t value) {
     HANDLE_WRITE(mc3, 16);
     HANDLE_WRITE(ic, 16);
     HANDLE_WRITE(scratchpad, 16);
+    HANDLE_WRITE(gpu, 16);
+    HANDLE_WRITE(spu, 16);
 
     log_warn("Unhandled 16-bit write to %08x:%08x (%04x)", vaddr, addr, value);
 }
@@ -162,44 +169,55 @@ void psx_bus_write8(psx_bus_t* bus, uint32_t addr, uint8_t value) {
     HANDLE_WRITE(mc3, 8);
     HANDLE_WRITE(ic, 8);
     HANDLE_WRITE(scratchpad, 8);
+    HANDLE_WRITE(gpu, 8);
+    HANDLE_WRITE(spu, 8);
 
     log_warn("Unhandled 8-bit write to %08x:%08x (%02x)", vaddr, addr, value);
 }
 
-void psx_bus_set_bios(psx_bus_t* bus, psx_bios_t* bios) {
+void psx_bus_init_bios(psx_bus_t* bus, psx_bios_t* bios) {
     bus->bios = bios;
 }
 
-void psx_bus_set_ram(psx_bus_t* bus, psx_ram_t* ram) {
+void psx_bus_init_ram(psx_bus_t* bus, psx_ram_t* ram) {
     bus->ram = ram;
 }
 
-void psx_bus_set_dma(psx_bus_t* bus, psx_dma_t* dma) {
+void psx_bus_init_dma(psx_bus_t* bus, psx_dma_t* dma) {
     bus->dma = dma;
 }
 
-void psx_bus_set_exp1(psx_bus_t* bus, psx_exp1_t* exp1) {
+void psx_bus_init_exp1(psx_bus_t* bus, psx_exp1_t* exp1) {
     bus->exp1 = exp1;
 }
 
-void psx_bus_set_mc1(psx_bus_t* bus, psx_mc1_t* mc1) {
+void psx_bus_init_mc1(psx_bus_t* bus, psx_mc1_t* mc1) {
     bus->mc1 = mc1;
 }
 
-void psx_bus_set_mc2(psx_bus_t* bus, psx_mc2_t* mc2) {
+void psx_bus_init_mc2(psx_bus_t* bus, psx_mc2_t* mc2) {
     bus->mc2 = mc2;
 }
 
-void psx_bus_set_mc3(psx_bus_t* bus, psx_mc3_t* mc3) {
+void psx_bus_init_mc3(psx_bus_t* bus, psx_mc3_t* mc3) {
     bus->mc3 = mc3;
 }
 
-void psx_bus_set_ic(psx_bus_t* bus, psx_ic_t* ic) {
+void psx_bus_init_ic(psx_bus_t* bus, psx_ic_t* ic) {
     bus->ic = ic;
 }
 
-void psx_bus_set_scratchpad(psx_bus_t* bus, psx_scratchpad_t* scratchpad) {
+void psx_bus_init_scratchpad(psx_bus_t* bus, psx_scratchpad_t* scratchpad) {
     bus->scratchpad = scratchpad;
 }
+
+void psx_bus_init_gpu(psx_bus_t* bus, psx_gpu_t* gpu) {
+    bus->gpu = gpu;
+}
+
+void psx_bus_init_spu(psx_bus_t* bus, psx_spu_t* spu) {
+    bus->spu = spu;
+}
+
 
 #undef HANDLE_READ
