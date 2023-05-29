@@ -1,5 +1,5 @@
 #include "dma.h"
-#include "log.h"
+#include "../log.h"
 
 #include <stdint.h>
 #include <stdlib.h>

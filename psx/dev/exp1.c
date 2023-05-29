@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "log.h"
+#include "../log.h"
 #include "exp1.h"
 
 psx_exp1_t* psx_exp1_create() {

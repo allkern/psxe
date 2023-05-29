@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 #include "mc1.h"
-#include "log.h"
+#include "../log.h"
 
 psx_mc1_t* psx_mc1_create() {
     return (psx_mc1_t*)malloc(sizeof(psx_mc1_t));

@@ -3,11 +3,7 @@
 
 #include <stdint.h>
 
-#define PSXE_DEBUG_BIOS 1
-
-#ifdef PSXE_DEBUG_BIOS
-#include "log.h"
-#endif
+#include "../log.h"
 
 #define PSX_BIOS_SIZE   0x80000
 #define PSX_BIOS_BEGIN  0x1fc00000

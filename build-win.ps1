@@ -8,6 +8,7 @@ gcc -I"`"$($PSX_DIR)`"" `
     -I"`"$($SDL2_DIR)\include\SDL2`"" `
     "build-win32\*.o" `
     "psx\*.c" `
+    "psx\dev\*.c" `
     "main.c" `
     -o "bin\psxe.exe" `
     -L"`"$($SDL2_DIR)\lib`"" `

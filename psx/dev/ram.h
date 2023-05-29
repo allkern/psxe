@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-#include "log.h"
+#include "../log.h"
 #include "mc2.h"
 
 #define PSX_RAM_SIZE    0x200000

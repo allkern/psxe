@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 #include "spu.h"
-#include "log.h"
+#include "../log.h"
 
 psx_spu_t* psx_spu_create() {
     return (psx_spu_t*)malloc(sizeof(psx_spu_t));

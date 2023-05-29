@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 #include "gpu.h"
-#include "log.h"
+#include "../log.h"
 
 psx_gpu_t* psx_gpu_create() {
     return (psx_gpu_t*)malloc(sizeof(psx_gpu_t));

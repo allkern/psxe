@@ -1,5 +1,5 @@
 #include "bios.h"
-#include "log.h"
+#include "../log.h"
 
 #include <stdio.h>
 #include <string.h>

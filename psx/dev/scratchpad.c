@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "log.h"
+#include "../log.h"
 #include "scratchpad.h"
 
 psx_scratchpad_t* psx_scratchpad_create() {

@@ -1,17 +1,17 @@
 #ifndef BUS_INIT_H
 #define BUS_INIT_H
 
-#include "bios.h"
-#include "ram.h"
-#include "dma.h"
-#include "exp1.h"
-#include "mc1.h"
-#include "mc2.h"
-#include "mc3.h"
-#include "ic.h"
-#include "scratchpad.h"
-#include "gpu.h"
-#include "spu.h"
+#include "dev/bios.h"
+#include "dev/ram.h"
+#include "dev/dma.h"
+#include "dev/exp1.h"
+#include "dev/mc1.h"
+#include "dev/mc2.h"
+#include "dev/mc3.h"
+#include "dev/ic.h"
+#include "dev/scratchpad.h"
+#include "dev/gpu.h"
+#include "dev/spu.h"
 
 struct psx_bus_t {
     psx_bios_t* bios;
