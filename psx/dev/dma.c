@@ -195,17 +195,21 @@ void psx_dma_do_gpu(psx_dma_t* dma) {
     dma->gpu.bcr = 0;
 }
 
-void psx_dma_do_cdrom(psx_dma_t* dma) { log_error("CDROM DMA channel unimplemented"); exit(1); }
-void psx_dma_do_spu(psx_dma_t* dma) { log_error("SPU DMA channel unimplemented"); exit(1); }
-void psx_dma_do_pio(psx_dma_t* dma) { log_error("PIO DMA channel unimplemented"); exit(1); }
+void psx_dma_do_cdrom(psx_dma_t* dma) {
+    log_error("CDROM DMA channel unimplemented"); exit(1);
+}
+
+void psx_dma_do_spu(psx_dma_t* dma) {
+    log_error("SPU DMA channel unimplemented"); exit(1);
+}
+
+void psx_dma_do_pio(psx_dma_t* dma) {
+    log_error("PIO DMA channel unimplemented"); exit(1);
+}
+
 void psx_dma_do_otc(psx_dma_t* dma) {
     if (!CHCR_TRIG(otc))
         return;
-
-    assert(!CHCR_TDIR(otc));
-    assert(CHCR_SYNC(otc) == 0);
-    assert(CHCR_STEP(otc));
-    assert(BCR_SIZE(otc));
 
     log_error("OTC DMA transfer: madr=%08x, dir=%s, sync=%s, step=%s, size=%x",
         dma->otc.madr,
@@ -216,7 +220,9 @@ void psx_dma_do_otc(psx_dma_t* dma) {
     );
 
     for (int i = BCR_SIZE(otc); i > 0; i--) {
-        psx_bus_write32(dma->bus, dma->otc.madr, (i != 1) ? (dma->otc.madr - 4) : 0xffffff);
+        uint32_t addr = (i != 1) ? (dma->otc.madr - 4) : 0xffffff;
+
+        psx_bus_write32(dma->bus, dma->otc.madr, addr & 0xffffff);
 
         dma->otc.madr -= 4;
     }
@@ -224,18 +230,6 @@ void psx_dma_do_otc(psx_dma_t* dma) {
     // Clear BCR and CHCR trigger and busy bits
     dma->otc.chcr &= ~(CHCR_BUSY_MASK | CHCR_TRIG_MASK);
     dma->otc.bcr = 0;
-}
-
-void psx_dma_perform(psx_dma_t* dma, int channel) {
-    switch (channel) {
-        case 0: psx_dma_do_mdec_in(dma); break;
-        case 1: psx_dma_do_mdec_out(dma); break;
-        case 2: psx_dma_do_gpu(dma); break;
-        case 3: psx_dma_do_cdrom(dma); break;
-        case 4: psx_dma_do_spu(dma); break;
-        case 5: psx_dma_do_pio(dma); break;
-        case 6: psx_dma_do_otc(dma); break;
-    }
 }
 
 void psx_dma_destroy(psx_dma_t* dma) {
