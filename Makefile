@@ -5,6 +5,7 @@ COMMIT_HASH := $(shell git rev-parse --short HEAD)
 OS_INFO := $(shell uname -rmo)
 
 SOURCES := $(wildcard psx/*.c)
+SOURCES += $(wildcard psx/dev/*.c)
 SOURCES += main.c
 
 bin/psxe main.c:
