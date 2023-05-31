@@ -219,5 +219,5 @@ void psx_bus_init_spu(psx_bus_t* bus, psx_spu_t* spu) {
     bus->spu = spu;
 }
 
-
 #undef HANDLE_READ
+#undef HANDLE_WRITE

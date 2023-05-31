@@ -7,8 +7,6 @@ struct psx_bus_t;
 
 typedef struct psx_bus_t psx_bus_t;
 
-#define PSX_GPUSTAT 0x1f801814
-
 psx_bus_t* psx_bus_create();
 void psx_bus_init(psx_bus_t*);
 uint32_t psx_bus_read32(psx_bus_t*, uint32_t);

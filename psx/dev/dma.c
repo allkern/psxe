@@ -36,7 +36,7 @@ uint32_t psx_dma_read32(psx_dma_t* dma, uint32_t offset) {
         int channel = (offset >> 4) & 0x7;
         int reg = (offset >> 2) & 0x3;
 
-        log_error("DMA channel %u register %u read %08x", channel, reg, (CR(channel, reg)));
+        log_error("DMA channel %u register %u (%08x) read %08x", channel, reg, PSX_DMAR_BEGIN + offset, (CR(channel, reg)));
         
         return CR(channel, reg);
     } else {
@@ -86,7 +86,7 @@ void psx_dma_write32(psx_dma_t* dma, uint32_t offset, uint32_t value) {
 
         CR(channel, reg) = value;
 
-        log_error("DMA channel %u register %u write %08x", channel, reg, value);
+        log_error("DMA channel %u register %u write (%08x) %08x", channel, reg, PSX_DMAR_BEGIN + offset, value);
 
         if (reg == 2) {
             g_psx_dma_do_table[channel](dma);
@@ -228,7 +228,8 @@ void psx_dma_do_otc(psx_dma_t* dma) {
     }
 
     // Clear BCR and CHCR trigger and busy bits
-    dma->otc.chcr &= ~(CHCR_BUSY_MASK | CHCR_TRIG_MASK);
+    dma->otc.chcr = 0;
+    //dma->otc.chcr &= ~(CHCR_BUSY_MASK | CHCR_TRIG_MASK);
     dma->otc.bcr = 0;
 }
 
