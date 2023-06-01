@@ -20,7 +20,7 @@ void psx_bios_load(psx_bios_t* bios, const char* path) {
     FILE* file = fopen(path, "rb");
 
     if (!file) {
-        log_error("Couldn't open BIOS file \"%s\", path");
+        log_error("Couldn't open BIOS file \"%s\"", path);
 
         exit(1);
     }

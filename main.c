@@ -3,8 +3,46 @@
 #include "psx/cpu.h"
 #include "psx/log.h"
 
-int main() {
-    log_set_level(LOG_ERROR);
+#include "getopt.h"
+
+int main(int argc, const char* argv[]) {
+    int log_level = LOG_WARN;
+    const char* bios_path = "bios/scph1001.bin";
+
+    static struct option long_options[] = {
+        { "log-level"   , required_argument, 0, 'L' },
+        { "bios"        , required_argument, 0, 'B' },
+        { 0, 0, 0, 0 }
+    };
+
+    int option_index = 0;
+
+    int c = getopt_long(
+        argc, (char* const*)argv,
+        "L:B:", long_options,
+        &option_index
+    );
+
+    while (c != -1) {
+        switch (c) {
+            case 'L': {
+                log_level = atoi(optarg);
+            } break;
+
+            case 'B': {
+                bios_path = optarg;
+            } break;
+
+        }
+
+        c = getopt_long(
+            argc, (char* const*)argv,
+            "L:B:", long_options,
+            &option_index
+        );
+    }
+
+    log_set_level(log_level);
 
     psx_bios_t* bios = psx_bios_create();
     psx_ram_t* ram = psx_ram_create();
@@ -48,7 +86,7 @@ int main() {
     psx_gpu_init(gpu);
     psx_spu_init(spu);
 
-    psx_bios_load(bios, "scph1001.bin");
+    psx_bios_load(bios, bios_path);
 
     // CPU creation and init
     psx_cpu_t* cpu = psx_cpu_create();
