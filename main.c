@@ -3,46 +3,10 @@
 #include "psx/cpu.h"
 #include "psx/log.h"
 
-#include "getopt.h"
+#include "argparse.h"
 
 int main(int argc, const char* argv[]) {
-    int log_level = LOG_WARN;
-    const char* bios_path = "bios/scph1001.bin";
-
-    static struct option long_options[] = {
-        { "log-level"   , required_argument, 0, 'L' },
-        { "bios"        , required_argument, 0, 'B' },
-        { 0, 0, 0, 0 }
-    };
-
-    int option_index = 0;
-
-    int c = getopt_long(
-        argc, (char* const*)argv,
-        "L:B:", long_options,
-        &option_index
-    );
-
-    while (c != -1) {
-        switch (c) {
-            case 'L': {
-                log_level = atoi(optarg);
-            } break;
-
-            case 'B': {
-                bios_path = optarg;
-            } break;
-
-        }
-
-        c = getopt_long(
-            argc, (char* const*)argv,
-            "L:B:", long_options,
-            &option_index
-        );
-    }
-
-    log_set_level(log_level);
+    log_set_level(LOG_ERROR);
 
     psx_bios_t* bios = psx_bios_create();
     psx_ram_t* ram = psx_ram_create();
