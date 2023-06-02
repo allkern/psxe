@@ -2,12 +2,13 @@
 #include "psx/bus_init.h"
 #include "psx/cpu.h"
 #include "psx/log.h"
+#include "psx/exe.h"
 
 #include "argparse.h"
 
 int main(int argc, const char* argv[]) {
-    log_set_level(LOG_ERROR);
-
+    log_set_level(LOG_INFO);
+    
     psx_bios_t* bios = psx_bios_create();
     psx_ram_t* ram = psx_ram_create();
     psx_dma_t* dma = psx_dma_create();
@@ -50,12 +51,16 @@ int main(int argc, const char* argv[]) {
     psx_gpu_init(gpu);
     psx_spu_init(spu);
 
-    psx_bios_load(bios, bios_path);
+    psx_bios_load(bios, "SCPH1001.bin");
 
     // CPU creation and init
     psx_cpu_t* cpu = psx_cpu_create();
 
     psx_cpu_init(cpu, bus);
+
+    if (argv[1]) {
+        psx_exe_load(cpu, argv[1]);
+    }
 
     while (true) {
         psx_cpu_cycle(cpu);

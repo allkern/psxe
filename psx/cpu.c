@@ -808,12 +808,12 @@ void psx_cpu_i_srlv(psx_cpu_t* cpu) {
 void psx_cpu_i_srav(psx_cpu_t* cpu) {
     TRACE_RT("srav");
 
-    int32_t s = (int32_t)cpu->r[S];
+    uint32_t s = cpu->r[S];
     int32_t t = (int32_t)cpu->r[T];
 
     DO_PENDING_LOAD;
 
-    cpu->r[D] = t >> (int32_t)(s & 0x1f);
+    cpu->r[D] = t >> (s & 0x1f);
 }
 
 void psx_cpu_i_jr(psx_cpu_t* cpu) {
