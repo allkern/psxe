@@ -9,7 +9,7 @@ gcc -I"`"$($PSX_DIR)`"" `
     "build-win32\*.o" `
     "psx\*.c" `
     "psx\dev\*.c" `
-    "main.c" `
+    "frontend\*.c" `
     -o "bin\psxe.exe" `
     -L"`"$($SDL2_DIR)\lib`"" `
     -m64 -lSDL2main -lSDL2 -Wno-overflow `

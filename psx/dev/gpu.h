@@ -7,6 +7,9 @@
 #define PSX_GPU_SIZE  0x8
 #define PSX_GPU_END   0x1f801814
 
+#define PSX_GPU_FB_WIDTH 1024
+#define PSX_GPU_FB_HEIGHT 512
+
 #define PSX_GPU_VRAM_SIZE 0x100000
 
 struct psx_gpu_t;

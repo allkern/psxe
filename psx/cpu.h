@@ -5,6 +5,8 @@
 
 #include "bus.h"
 
+#define PSX_CPU_SPEED 33868800 // 33.868800 MHz
+
 typedef struct {
     // Pointer to bus structure
     psx_bus_t* bus;
