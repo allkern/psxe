@@ -138,7 +138,7 @@ void psx_dma_do_gpu_linked(psx_dma_t* dma) {
 
     while (true) {
         while (size--) {
-            addr = (addr + 4) & 0x1ffffc;
+            addr = (addr + (CHCR_STEP(gpu) ? -4 : 4)) & 0x1ffffc;
 
             // Get command from linked list
             uint32_t cmd = psx_bus_read32(dma->bus, addr);
@@ -154,18 +154,31 @@ void psx_dma_do_gpu_linked(psx_dma_t* dma) {
         hdr = psx_bus_read32(dma->bus, addr);
         size = hdr >> 24;
 
+        if (!size) break;
+
         log_error("GPU packet hdr=%08x, size=%02x", hdr, size);
     }
 }
 
 void psx_dma_do_gpu_request(psx_dma_t* dma) {
-    log_error("GPU DMA request sync mode unimplemented");
+    if (!CHCR_BUSY(gpu))
+        return;
 
-    exit(1);
+    log_fatal("GPU request mode DMA started");
+
+    uint32_t size = BCR_SIZE(gpu) * BCR_BCNT(gpu);
+
+    for (int i = 0; i < size; i++) {
+        uint32_t data = psx_bus_read32(dma->bus, dma->gpu.madr);
+
+        psx_bus_write32(dma->bus, 0x1f801810, data);
+
+        dma->gpu.madr += CHCR_STEP(gpu) ? -4 : 4;
+    }
 }
 
 void psx_dma_do_gpu_burst(psx_dma_t* dma) {
-    log_error("GPU DMA burst sync mode unimplemented");
+    log_fatal("GPU DMA burst sync mode unimplemented");
 
     exit(1);
 }

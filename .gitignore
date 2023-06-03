@@ -4,6 +4,7 @@ build-win32/
 imgui/
 res/
 sdl2/
+test/
 *.bin
 *.dll
 *.exe

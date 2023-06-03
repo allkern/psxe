@@ -563,8 +563,6 @@ void psx_cpu_i_lwl(psx_cpu_t* cpu) {
         case 3: cpu->load_v =                               aligned       ; break;
     }
 
-    log_fatal("load_v=%08x", cpu->load_v);
-
     cpu->load_d = T;
 }
 
@@ -614,8 +612,6 @@ void psx_cpu_i_lwr(psx_cpu_t* cpu) {
         case 2: cpu->load_v = (cpu->load_v & 0xffff0000) | (aligned >> 16); break;
         case 3: cpu->load_v = (cpu->load_v & 0xffffff00) | (aligned >> 24); break;
     }
-
-    log_fatal("load_v=%08x", cpu->load_v);
 
     cpu->load_d = T;
 }

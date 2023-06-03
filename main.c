@@ -5,9 +5,80 @@
 #include "psx/exe.h"
 
 #include "argparse.h"
+#include "SDL.h"
+
+#undef main
+
+uint32_t g_psx_gpu_display_mode_hres1_table[] = {
+    256, 320, 512, 640
+};
+
+uint32_t g_psx_gpu_display_mode_vres_table[] = {
+    240, 480
+};
+
+typedef struct {
+    int w, h, f, m, s;
+} frontend_window_t;
+
+void psx_dmode_event_cb(psx_gpu_t* gpu) {
+    SDL_Window* window = gpu->udata[0];
+    SDL_Renderer* renderer = gpu->udata[1];
+    SDL_Texture** texture = gpu->udata[2];
+    frontend_window_t* fe_data = gpu->udata[3];
+
+    fe_data->w = g_psx_gpu_display_mode_hres1_table[gpu->display_mode & 0x3];
+    fe_data->h = (gpu->display_mode & 0x4) ? 480 : 240;
+    fe_data->f = gpu->display_mode & 0x10 ? SDL_PIXELFORMAT_BGR888 : SDL_PIXELFORMAT_BGR555;
+    fe_data->m = gpu->display_mode & 0x8 ? 60 : 50;
+
+    if (fe_data->w >= 512)
+        fe_data->s = 1;
+
+    SDL_DestroyTexture(*texture);
+
+    *texture = SDL_CreateTexture(
+        renderer,
+        fe_data->f,
+        SDL_TEXTUREACCESS_STREAMING,
+        fe_data->w, fe_data->h
+    );
+
+    SDL_SetWindowSize(window, fe_data->w*fe_data->s, fe_data->h*fe_data->s);
+}
 
 int main(int argc, const char* argv[]) {
-    log_set_level(LOG_INFO);
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+
+    frontend_window_t fe_data;
+
+    fe_data.w = 320;
+    fe_data.h = 240;
+    fe_data.f = SDL_PIXELFORMAT_BGR555;
+    fe_data.m = 60;
+    fe_data.s = 2;
+
+    SDL_Window* window = SDL_CreateWindow(
+        "PSX",
+        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        fe_data.w*fe_data.s, fe_data.h*fe_data.s,
+        SDL_WINDOW_OPENGL
+    );
+
+    SDL_Renderer* renderer = SDL_CreateRenderer(
+        window,
+        -1,
+        SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC
+    );
+
+    SDL_Texture* texture = SDL_CreateTexture(
+        renderer,
+        fe_data.f,
+        SDL_TEXTUREACCESS_STREAMING,
+        fe_data.w, fe_data.h
+    );
+
+    log_set_level(LOG_FATAL);
     
     psx_bios_t* bios = psx_bios_create();
     psx_ram_t* ram = psx_ram_create();
@@ -51,9 +122,14 @@ int main(int argc, const char* argv[]) {
     psx_gpu_init(gpu);
     psx_spu_init(spu);
 
+    psx_gpu_set_dmode_event_callback(gpu, psx_dmode_event_cb);
+    psx_gpu_set_udata(gpu, 0, window);
+    psx_gpu_set_udata(gpu, 1, renderer);
+    psx_gpu_set_udata(gpu, 2, &texture);
+    psx_gpu_set_udata(gpu, 3, &fe_data);
+
     psx_bios_load(bios, "SCPH1001.bin");
 
-    // CPU creation and init
     psx_cpu_t* cpu = psx_cpu_create();
 
     psx_cpu_init(cpu, bus);
@@ -62,8 +138,32 @@ int main(int argc, const char* argv[]) {
         psx_exe_load(cpu, argv[1]);
     }
 
-    while (true) {
-        psx_cpu_cycle(cpu);
+    int open = 1;
+
+    
+    while (open) {
+        // PSX CPU runs at 33.8688 MHz
+        // Each instruction takes an average of 4 cycles
+        // Instruction freq is cpuspeed/cycles
+        // So the CPU runs cpuspeed/cycles/30 instructions
+        // each Vblank
+        unsigned int counter = (33868800 / 4) / fe_data.m;
+
+        while (counter--) {
+            psx_cpu_cycle(cpu);
+        }
+
+        SDL_UpdateTexture(texture, NULL, gpu->vram, 1024);
+        SDL_RenderCopy(renderer, texture, NULL, NULL);
+        SDL_RenderPresent(renderer);
+
+        SDL_Event event;
+
+        while (SDL_PollEvent(&event)) {
+            switch (event.type) {
+                case SDL_QUIT: { open = 0; } break;
+            }
+        }
     }
 
     psx_cpu_destroy(cpu);
@@ -78,6 +178,10 @@ int main(int argc, const char* argv[]) {
     psx_scratchpad_destroy(scratchpad);
     psx_gpu_destroy(gpu);
     psx_spu_destroy(spu);
+
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
 
     return 0;
 }

@@ -12,5 +12,5 @@ gcc -I"`"$($PSX_DIR)`"" `
     "main.c" `
     -o "bin\psxe.exe" `
     -L"`"$($SDL2_DIR)\lib`"" `
-    -m64 -lSDL2main -lSDL2 `
+    -m64 -lSDL2main -lSDL2 -Wno-overflow `
     -g -O3 -Wall -pedantic -DLOG_USE_COLOR
