@@ -10,6 +10,8 @@ psx_exp1_t* psx_exp1_create() {
 }
 
 void psx_exp1_init(psx_exp1_t* exp1, psx_mc1_t* mc1) {
+    memset(exp1, 0, sizeof(psx_exp1_t));
+
     exp1->io_base = PSX_EXP1_BEGIN;
     exp1->io_size = PSX_EXP1_SIZE;
 

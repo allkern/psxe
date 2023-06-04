@@ -53,6 +53,11 @@ void psx_cpu_init(psx_cpu_t* cpu, psx_bus_t* bus) {
     cpu->pc += 4;
 }
 
+void psx_cpu_fetch(psx_cpu_t* cpu) {
+    cpu->buf[0] = psx_bus_read32(cpu->bus, cpu->pc);
+    cpu->pc += 4;
+}
+
 void psx_cpu_destroy(psx_cpu_t* cpu) {
     free(cpu);
 }
@@ -221,11 +226,18 @@ const char* g_psx_cpu_syscall_function_symbol_table[] = {
     // DeliverEvent (invalid)
 };
 
+void psx_cpu_save_state(psx_cpu_t* cpu, FILE* file) {
+    fwrite((char*)cpu, sizeof(*cpu) - sizeof(psx_bus_t*), 1, file);
+}
+
+void psx_cpu_load_state(psx_cpu_t* cpu, FILE* file) {
+    fread((char*)cpu, sizeof(*cpu) - sizeof(psx_bus_t*), 1, file);
+}
+
 void psx_cpu_cycle(psx_cpu_t* cpu) {
     cpu->buf[1] = cpu->buf[0];
-    cpu->buf[0] = psx_bus_read32(cpu->bus, cpu->pc);
 
-    cpu->pc += 4;
+    psx_cpu_fetch(cpu);
 
     cpu->delay_slot = cpu->branch;
     cpu->branch = 0;
@@ -335,6 +347,7 @@ void psx_cpu_i_bgezal(psx_cpu_t* cpu) {
         cpu->pc += (IMM16S << 2);
     }
 }
+
 void psx_cpu_i_j(psx_cpu_t* cpu) {
     cpu->branch = 1;
 
@@ -992,7 +1005,9 @@ void psx_cpu_i_sub(psx_cpu_t* cpu) {
     DO_PENDING_LOAD;
 
     int32_t r = s - t;
-    uint32_t o = (s ^ r) & (t ^ r);
+
+    // To-do: Check SUB overflow check
+    uint32_t o = (s ^ t) & (t & r);
 
     if (o & 0x80000000) {
         psx_cpu_exception(cpu, CAUSE_OV);

@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "mc2.h"
 #include "../log.h"
@@ -12,6 +13,8 @@ psx_mc2_t* psx_mc2_create() {
   1F801060h 4/2  RAM_SIZE (usually 00000B88h; 2MB RAM mirrored in first 8MB)
 */
 void psx_mc2_init(psx_mc2_t* mc2) {
+    memset(mc2, 0, sizeof(psx_mc2_t));
+
     mc2->io_base = PSX_MC2_BEGIN;
     mc2->io_size = PSX_MC2_SIZE;
 

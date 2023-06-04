@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "mc3.h"
 #include "../log.h"
@@ -12,6 +13,8 @@ psx_mc3_t* psx_mc3_create() {
   FFFE0130h 4        Cache Control
 */
 void psx_mc3_init(psx_mc3_t* mc3) {
+    memset(mc3, 0, sizeof(psx_mc3_t));
+
     mc3->io_base = PSX_MC3_BEGIN;
     mc3->io_size = PSX_MC3_SIZE;
 }

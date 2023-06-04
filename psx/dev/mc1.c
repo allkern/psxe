@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "mc1.h"
 #include "../log.h"
@@ -20,6 +21,8 @@ psx_mc1_t* psx_mc1_create() {
   1F801020h 4    COM_DELAY / COMMON_DELAY (00031125h or 0000132Ch or 00001325h)
 */
 void psx_mc1_init(psx_mc1_t* mc1) {
+    memset(mc1, 0, sizeof(psx_mc1_t));
+
     mc1->io_base = PSX_MC1_BEGIN;
     mc1->io_size = PSX_MC1_SIZE;
 

@@ -1,27 +1,17 @@
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "gpu.h"
 #include "../log.h"
-
-typedef void (*psx_gpu_command_t)(psx_gpu_t*, uint32_t);
-
-void gpu_cmd_invalid(psx_gpu_t* gpu, uint32_t cmd) {
-    log_error("Invalid GPU command %02x (%08x)", cmd >> 24, cmd);
-
-    //exit(1);
-}
-
-void gpu_cmd_nop(psx_gpu_t* gpu, uint32_t cmd) {
-    log_error("GP0(%02xh) - NOP", cmd >> 24);
-    // Do nothing
-}
 
 psx_gpu_t* psx_gpu_create() {
     return (psx_gpu_t*)malloc(sizeof(psx_gpu_t));
 }
 
 void psx_gpu_init(psx_gpu_t* gpu) {
+    memset(gpu, 0, sizeof(psx_gpu_t));
+
     gpu->io_base = PSX_GPU_BEGIN;
     gpu->io_size = PSX_GPU_SIZE;
 
@@ -30,6 +20,8 @@ void psx_gpu_init(psx_gpu_t* gpu) {
     gpu->cmd_a0_receiving_pos = 0;
 
     gpu->vram = (uint8_t*)malloc(PSX_GPU_VRAM_SIZE);
+
+    gpu->state = GPU_STATE_RECV_CMD;
 }
 
 uint32_t psx_gpu_read32(psx_gpu_t* gpu, uint32_t offset) {
@@ -65,82 +57,121 @@ uint8_t psx_gpu_read8(psx_gpu_t* gpu, uint32_t offset) {
     return 0x0;
 }
 
-// GP0(02h)
-void gpu_cmd_fillrect(psx_gpu_t* gpu) {
-    uint32_t color = gpu->fifo[0] & 0xffffff;
-    uint32_t xpos = gpu->fifo[1] & 0xffff;
-    uint32_t ypos = gpu->fifo[1] >> 16;
-    uint32_t xsiz = gpu->fifo[2] & 0xffff;
-    uint32_t ysiz = gpu->fifo[2] >> 16;
+void gpu_cmd_a0(psx_gpu_t* gpu) {
+    switch (gpu->state) {
+        case GPU_STATE_RECV_CMD: {
+            gpu->state = GPU_STATE_RECV_ARGS;
+            gpu->cmd_args_remaining = 2;
+        } break;
 
-    log_error("GP0(02h) FillRect: [0]=%08x, [1]=%08x, [2]=%08x, color=%06x, xpos=%u (%u), ypos=%u, xsiz=%u (%u), ysiz=%u", gpu->fifo[0], gpu->fifo[1], gpu->fifo[2], color & 0xffffff, xpos, xpos << 4, ypos, xsiz, xsiz << 4, ysiz);
+        case GPU_STATE_RECV_ARGS: {
+            if (!gpu->cmd_args_remaining) {
+                gpu->state = GPU_STATE_RECV_DATA;
+
+                // Save static data
+                gpu->xpos = ((gpu->buf[1] & 0xffff) >> 1) & 0x3ff;
+                gpu->ypos = (gpu->buf[1] >> 16) & 0x1ff;
+                gpu->xsiz = (gpu->buf[2] & 0xffff) >> 1;
+                gpu->ysiz = gpu->buf[2] >> 16;
+                gpu->xsiz = ((gpu->xsiz - 1) & 0x3ff) + 1;
+                gpu->ysiz = ((gpu->ysiz - 1) & 0x1ff) + 1;
+                gpu->addr = (gpu->xpos << 2) + (gpu->ypos * 1024);
+            }
+        } break;
+
+        case GPU_STATE_RECV_DATA: {
+            uint32_t addr = gpu->addr;
+
+            addr += gpu->xcnt << 2;
+            addr += gpu->ycnt << 10;
+
+            *(uint32_t*)(gpu->vram + addr) = gpu->recv_data;
+
+            gpu->xcnt++;
+
+            if ((gpu->xcnt == gpu->xsiz) && (gpu->ycnt == (gpu->ysiz - 1))) {
+                gpu->xcnt = 0;
+                gpu->ycnt = 0;
+
+                gpu->state = GPU_STATE_RECV_CMD;
+            } else if (gpu->xcnt == gpu->xsiz) {
+                gpu->xcnt = 0;
+                gpu->ycnt++;
+            }
+        } break;
+    }
+}
+
+void gpu_cmd_02(psx_gpu_t* gpu) {
+    switch (gpu->state) {
+        case GPU_STATE_RECV_CMD: {
+            gpu->state = GPU_STATE_RECV_ARGS;
+            gpu->cmd_args_remaining = 2;
+        } break;
+
+        case GPU_STATE_RECV_ARGS: {
+            if (!gpu->cmd_args_remaining) {
+                gpu->state = GPU_STATE_RECV_DATA;
+
+                gpu->xpos = gpu->buf[1] & 0x3f0;
+                gpu->ypos = (gpu->buf[1] >> 16) & 0x1ff;
+                gpu->xsiz = gpu->buf[2] & 0xffff;
+                gpu->ysiz = gpu->buf[2] >> 16;
+                gpu->xsiz = ((gpu->xsiz & 0x3ff) + 0xf) & (~0xf);
+                gpu->ysiz = gpu->ysiz & 0x1ff;
+                gpu->color = gpu->buf[0] & 0xffffff;
+
+                log_fatal("GPU fill pos=(%u, %u), siz=(%u, %u), color=%08x",
+                    gpu->xpos, gpu->ypos,
+                    gpu->xsiz, gpu->ysiz,
+                    gpu->color
+                );
+
+                for (int y = gpu->ypos; y < gpu->ysiz; y++) {
+                    for (int x = gpu->xpos; x < gpu->xsiz; x++) {
+                        ((uint16_t*)gpu->vram)[x + (y * 512)] = 0x0000;
+                    }
+                }
+
+                gpu->state = GPU_STATE_RECV_CMD;
+            }
+        } break;
+    }
+}
+
+void psx_gpu_update_cmd(psx_gpu_t* gpu) {
+    switch (gpu->buf[0] >> 24) {
+        case 0x02: gpu_cmd_02(gpu); break;
+        case 0xa0: gpu_cmd_a0(gpu); break;
+    }
 }
 
 void psx_gpu_write32(psx_gpu_t* gpu, uint32_t offset, uint32_t value) {
     switch (offset) {
         // GP0
         case 0x00: {
-            if (gpu->cmd_a0_receiving_pos) {
-                gpu->cmd_a0_xpos = (value & 0xffff) >> 1;
-                gpu->cmd_a0_ypos = value >> 16;
+            switch (gpu->state) {
+                case GPU_STATE_RECV_CMD: {
+                    gpu->buf_index = 0;
+                    gpu->buf[gpu->buf_index++] = value;
 
-                gpu->cmd_a0_xpos = (gpu->cmd_a0_xpos & 0x3ff);
-                gpu->cmd_a0_ypos = (gpu->cmd_a0_ypos & 0x1ff);
+                    psx_gpu_update_cmd(gpu);
+                } break;
 
-                gpu->cmd_a0_receiving_pos = 0;
-                gpu->cmd_a0_receiving_size = 1;
+                case GPU_STATE_RECV_ARGS: {
+                    gpu->buf[gpu->buf_index++] = value;
+                    gpu->cmd_args_remaining--;
 
-                return;
+                    psx_gpu_update_cmd(gpu);
+                } break;
+
+                case GPU_STATE_RECV_DATA: {
+                    gpu->recv_data = value;
+
+                    psx_gpu_update_cmd(gpu);
+                } break;
             }
 
-            if (gpu->cmd_a0_receiving_size) {
-                gpu->cmd_a0_xsiz = (value & 0xffff) >> 1;
-                gpu->cmd_a0_ysiz = value >> 16;
-
-                gpu->cmd_a0_xsiz = ((gpu->cmd_a0_xsiz-1) & 0x3ff)+1;
-                gpu->cmd_a0_ysiz = ((gpu->cmd_a0_ysiz-1) & 0x1ff)+1;
-
-                gpu->xcnt = 0;
-                gpu->ycnt = 0;
-
-                gpu->cmd_a0_receiving_size = 0;
-                gpu->cmd_a0_receiving_data = 1;
-
-                return;
-            }
-
-            if (gpu->cmd_a0_receiving_data) {
-                uint32_t addr = (gpu->cmd_a0_xpos << 2) + (gpu->cmd_a0_ypos * 1024);
-
-                addr += gpu->xcnt * 4;
-                addr += gpu->ycnt * 1024;
-
-                if (addr < (1024 * 512))
-                    *(uint32_t*)(gpu->vram + addr) = value;
-
-                gpu->xcnt++;
-
-                if (gpu->xcnt == gpu->cmd_a0_xsiz) {
-                    gpu->xcnt = 0;
-                    gpu->ycnt++;
-                }
-
-                if ((gpu->xcnt == gpu->cmd_a0_xsiz) && (gpu->ycnt == gpu->cmd_a0_ysiz)) {
-                    gpu->xcnt = 0;
-                    gpu->ycnt = 0;
-
-                    gpu->cmd_a0_receiving_data = 0;
-                }
-            }
-
-            uint8_t cmd = value >> 24;
-
-            //log_fatal("GP0(%02Xh) args=%06x", value >> 24, value & 0xffffff);
-
-            if (cmd == 0xa0) {
-                gpu->cmd_a0_receiving_pos = 1;
-            }
-                
             return;
         } break;
 

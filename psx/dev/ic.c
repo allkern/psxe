@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "ic.h"
 #include "../log.h"
@@ -9,6 +10,8 @@ psx_ic_t* psx_ic_create() {
 }
 
 void psx_ic_init(psx_ic_t* ic) {
+    memset(ic, 0, sizeof(psx_ic_t));
+
     ic->io_base = PSX_IC_BEGIN;
     ic->io_size = PSX_IC_SIZE;
 

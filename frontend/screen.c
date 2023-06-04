@@ -12,13 +12,23 @@ psxe_screen_t* psxe_screen_create() {
 }
 
 void psxe_screen_init(psxe_screen_t* screen, psx_gpu_t* gpu) {
+    memset(screen, 0, sizeof(psxe_screen_t));
+
     screen->width = 320;
     screen->height = 240;
     screen->scale = 1;
     screen->format = SDL_PIXELFORMAT_BGR555;
     screen->mode = 60;
+    screen->buf = (uint32_t*)gpu->vram;
+    screen->open = 1;
 
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+}
+
+void psxe_screen_reload(psxe_screen_t* screen) {
+    if (screen->texture) SDL_DestroyTexture(screen->texture);
+    if (screen->renderer) SDL_DestroyRenderer(screen->renderer);
+    if (screen->window) SDL_DestroyWindow(screen->window);
 
     screen->window = SDL_CreateWindow(
         "PSX",
@@ -40,8 +50,6 @@ void psxe_screen_init(psxe_screen_t* screen, psx_gpu_t* gpu) {
         SDL_TEXTUREACCESS_STREAMING,
         PSX_GPU_FB_WIDTH, PSX_GPU_FB_HEIGHT
     );
-
-    screen->buf = (uint32_t*)gpu->vram;
 
     screen->open = 1;
 }

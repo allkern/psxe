@@ -31,6 +31,8 @@ void psx_exe_load(psx_cpu_t* cpu, const char* path) {
     cpu->r[29] = hdr.ispb + hdr.ispoff;
     cpu->r[30] = cpu->r[29];
 
+    psx_cpu_fetch(cpu);
+
     log_info("Loaded PS-X EXE file \"%s\"", path);
 
     fclose(file);

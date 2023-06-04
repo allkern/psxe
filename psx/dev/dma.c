@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <string.h>
 
 psx_dma_t* psx_dma_create() {
     return (psx_dma_t*)malloc(sizeof(psx_dma_t));
@@ -22,6 +23,8 @@ const psx_dma_do_fn_t g_psx_dma_do_table[] = {
 #define CR(c, r) *((&dma->mdec_in.madr) + (c * 3) + r)
 
 void psx_dma_init(psx_dma_t* dma, psx_bus_t* bus) {
+    memset(dma, 0, sizeof(psx_dma_t));
+
     dma->io_base = PSX_DMAR_BEGIN;
     dma->io_size = PSX_DMAR_SIZE;
 
@@ -163,8 +166,6 @@ void psx_dma_do_gpu_linked(psx_dma_t* dma) {
 void psx_dma_do_gpu_request(psx_dma_t* dma) {
     if (!CHCR_BUSY(gpu))
         return;
-
-    log_fatal("GPU request mode DMA started");
 
     uint32_t size = BCR_SIZE(gpu) * BCR_BCNT(gpu);
 

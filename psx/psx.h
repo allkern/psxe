@@ -24,7 +24,7 @@ typedef struct {
 } psx_t;
 
 psx_t* psx_create();
-void psx_init(psx_t*);
+void psx_init(psx_t*, const char*);
 void psx_load_bios(psx_t*, const char*);
 void psx_hard_reset(psx_t*);
 void psx_soft_reset(psx_t*);

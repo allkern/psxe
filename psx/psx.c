@@ -39,7 +39,9 @@ void psx_run_frame(psx_t* psx) {
     }
 }
 
-void psx_init(psx_t* psx) {
+void psx_init(psx_t* psx, const char* bios_path) {
+    memset(psx, 0, sizeof(psx_t));
+
     psx->bios = psx_bios_create();
     psx->ram = psx_ram_create();
     psx->dma = psx_dma_create();
@@ -81,6 +83,10 @@ void psx_init(psx_t* psx) {
     psx_gpu_init(psx->gpu);
     psx_spu_init(psx->spu);
     psx_cpu_init(psx->cpu, psx->bus);
+
+    psx_bios_load(psx->bios, bios_path);
+
+    psx_cpu_fetch(psx->cpu);
 }
 
 void psx_hard_reset(psx_t* psx) {

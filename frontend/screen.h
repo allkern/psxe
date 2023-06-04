@@ -3,6 +3,8 @@
 
 #include "psx/dev/gpu.h"
 
+#include <string.h>
+
 #include "SDL.h"
 
 typedef struct {
@@ -20,6 +22,7 @@ typedef struct {
 
 psxe_screen_t* psxe_screen_create();
 void psxe_screen_init(psxe_screen_t*, psx_gpu_t*);
+void psxe_screen_reload(psxe_screen_t*);
 int psxe_screen_is_open(psxe_screen_t*);
 void psxe_screen_update(psxe_screen_t*);
 void psxe_screen_destroy(psxe_screen_t*);

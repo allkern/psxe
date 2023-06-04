@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "spu.h"
 #include "../log.h"
@@ -9,6 +10,8 @@ psx_spu_t* psx_spu_create() {
 }
 
 void psx_spu_init(psx_spu_t* spu) {
+    memset(spu, 0, sizeof(psx_spu_t));
+
     spu->io_base = PSX_SPU_BEGIN;
     spu->io_size = PSX_SPU_SIZE;
 }

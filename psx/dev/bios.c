@@ -10,6 +10,8 @@ psx_bios_t* psx_bios_create() {
 }
 
 void psx_bios_init(psx_bios_t* bios) {
+    memset(bios, 0, sizeof(psx_bios_t));
+
     bios->io_base = PSX_BIOS_BEGIN;
     bios->io_size = PSX_BIOS_SIZE;
 

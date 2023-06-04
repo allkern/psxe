@@ -2,15 +2,13 @@
 #define CPU_H
 
 #include <stdint.h>
+#include <stdio.h>
 
 #include "bus.h"
 
 #define PSX_CPU_SPEED 33868800 // 33.868800 MHz
 
 typedef struct {
-    // Pointer to bus structure
-    psx_bus_t* bus;
-
     // Registers (including $zero and $ra)
     uint32_t r[32];
 
@@ -80,6 +78,9 @@ typedef struct {
 
     // r15 - PRID - Processor ID (R)
     uint32_t cop0_prid;
+
+    // Pointer to bus structure
+    psx_bus_t* bus;
 } psx_cpu_t;
 
 /*
@@ -155,6 +156,9 @@ void psx_cpu_init(psx_cpu_t*, psx_bus_t*);
 void psx_cpu_destroy(psx_cpu_t*);
 void psx_cpu_cycle(psx_cpu_t*);
 void psx_cpu_exception(psx_cpu_t*, uint32_t);
+void psx_cpu_load_state(psx_cpu_t*, FILE*);
+void psx_cpu_save_state(psx_cpu_t*, FILE*);
+void psx_cpu_fetch(psx_cpu_t*);
 
 /*
     00h INT     Interrupt

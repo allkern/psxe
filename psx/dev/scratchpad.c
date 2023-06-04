@@ -10,6 +10,8 @@ psx_scratchpad_t* psx_scratchpad_create() {
 }
 
 void psx_scratchpad_init(psx_scratchpad_t* scratchpad) {
+    memset(scratchpad, 0, sizeof(psx_scratchpad_t));
+
     scratchpad->io_base = PSX_SCRATCHPAD_BEGIN;
     scratchpad->io_size = PSX_SCRATCHPAD_SIZE;
 

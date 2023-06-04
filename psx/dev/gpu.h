@@ -2,6 +2,8 @@
 #define GPU_H
 
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
 #define PSX_GPU_BEGIN 0x1f801810
 #define PSX_GPU_SIZE  0x8
@@ -11,6 +13,12 @@
 #define PSX_GPU_FB_HEIGHT 512
 
 #define PSX_GPU_VRAM_SIZE 0x100000
+
+enum {
+    GPU_STATE_RECV_CMD,
+    GPU_STATE_RECV_ARGS,
+    GPU_STATE_RECV_DATA
+};
 
 struct psx_gpu_t;
 
@@ -26,13 +34,19 @@ struct psx_gpu_t {
 
     uint8_t* vram;
 
-    uint32_t fifo[16];
-    int fifo_index;
-
-    psx_gpu_cmd_t pending_cmd;
+    uint32_t buf[16];
+    uint32_t recv_data;
+    int buf_index;
+    int cmd_args_remaining;
+    int cmd_data_remaining;
 
     int words_remaining;
     int read_done;
+
+    uint32_t color;
+    uint32_t xpos, ypos;
+    uint32_t xsiz, ysiz;
+    uint32_t addr;
 
     int cmd_a0_receiving_pos;
     int cmd_a0_receiving_size;
@@ -42,6 +56,8 @@ struct psx_gpu_t {
     uint32_t cmd_a0_xsiz;
     uint32_t cmd_a0_ysiz;
     uint32_t xcnt, ycnt;
+
+    uint32_t state;
 
     uint32_t display_mode;
     uint32_t gpuread;
