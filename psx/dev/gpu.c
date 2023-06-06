@@ -15,12 +15,7 @@ void psx_gpu_init(psx_gpu_t* gpu) {
     gpu->io_base = PSX_GPU_BEGIN;
     gpu->io_size = PSX_GPU_SIZE;
 
-    gpu->cmd_a0_receiving_data = 0;
-    gpu->cmd_a0_receiving_size = 0;
-    gpu->cmd_a0_receiving_pos = 0;
-
     gpu->vram = (uint8_t*)malloc(PSX_GPU_VRAM_SIZE);
-
     gpu->state = GPU_STATE_RECV_CMD;
 }
 

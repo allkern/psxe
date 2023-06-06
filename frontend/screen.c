@@ -1,12 +1,5 @@
 #include "screen.h"
 
-/*
-    screen->width = 320;
-    screen->height = 240;
-    screen->format = SDL_PIXELFORMAT_BGR555;
-    fe_data.m = 60;
-    screen->scale = 2;
-*/
 psxe_screen_t* psxe_screen_create() {
     return (psxe_screen_t*)malloc(sizeof(psxe_screen_t));
 }

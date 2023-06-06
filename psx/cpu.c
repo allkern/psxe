@@ -42,8 +42,14 @@ psx_cpu_t* psx_cpu_create() {
     return (psx_cpu_t*)malloc(sizeof(psx_cpu_t));
 }
 
+void cpu_a_kcall_hook(psx_cpu_t*);
+void cpu_b_kcall_hook(psx_cpu_t*);
+
 void psx_cpu_init(psx_cpu_t* cpu, psx_bus_t* bus) {
     memset(cpu, 0, sizeof(psx_cpu_t));
+
+    psx_cpu_set_a_kcall_hook(cpu, cpu_a_kcall_hook);
+    psx_cpu_set_b_kcall_hook(cpu, cpu_b_kcall_hook);
 
     cpu->bus = bus;
     cpu->pc = 0xbfc00000;
@@ -175,6 +181,7 @@ psx_cpu_instruction_t g_psx_cpu_bxx_table[] = {
 #define DO_PENDING_LOAD \
     cpu->r[cpu->load_d] = cpu->load_v; \
     R_R0 = 0; \
+    cpu->load_v = 0xffffffff; \
     cpu->load_d = 0;
 
 #define DEBUG_ALL \
@@ -226,6 +233,50 @@ const char* g_psx_cpu_syscall_function_symbol_table[] = {
     // DeliverEvent (invalid)
 };
 
+void cpu_a_kcall_hook(psx_cpu_t* cpu) {
+    switch (cpu->r[9]) {
+        case 0x09: putc(R_A0, stdout); break;
+        case 0x3c: putchar(R_A0); break;
+        case 0x3e: {
+            uint32_t src = R_A0;
+
+            char c = psx_bus_read8(cpu->bus, src++);
+
+            while (c) {
+                putchar(c);
+
+                c = psx_bus_read8(cpu->bus, src++);
+            }
+        } break;
+    }
+}
+
+void cpu_b_kcall_hook(psx_cpu_t* cpu) {
+    switch (cpu->r[9]) {
+        case 0x3b: putc(R_A0, stdout); break;
+        case 0x3d: putchar(R_A0); break;
+        case 0x3f: {
+            uint32_t src = R_A0;
+
+            char c = psx_bus_read8(cpu->bus, src++);
+
+            while (c) {
+                putchar(c);
+
+                c = psx_bus_read8(cpu->bus, src++);
+            }
+        } break;
+    }
+}
+
+void psx_cpu_set_a_kcall_hook(psx_cpu_t* cpu, psx_cpu_kcall_hook_t hook) {
+    cpu->a_function_hook = hook;
+}
+
+void psx_cpu_set_b_kcall_hook(psx_cpu_t* cpu, psx_cpu_kcall_hook_t hook) {
+    cpu->b_function_hook = hook;
+}
+
 void psx_cpu_save_state(psx_cpu_t* cpu, FILE* file) {
     fwrite((char*)cpu, sizeof(*cpu) - sizeof(psx_bus_t*), 1, file);
 }
@@ -235,6 +286,11 @@ void psx_cpu_load_state(psx_cpu_t* cpu, FILE* file) {
 }
 
 void psx_cpu_cycle(psx_cpu_t* cpu) {
+    if ((cpu->pc & 0x3fffffff) == 0x000000a4)
+        if (cpu->a_function_hook) cpu->a_function_hook(cpu);
+    if ((cpu->pc & 0x3fffffff) == 0x000000b4)
+        if (cpu->a_function_hook) cpu->b_function_hook(cpu);
+
     cpu->buf[1] = cpu->buf[0];
 
     psx_cpu_fetch(cpu);

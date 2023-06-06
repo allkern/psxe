@@ -40,25 +40,12 @@ struct psx_gpu_t {
     int cmd_args_remaining;
     int cmd_data_remaining;
 
-    int words_remaining;
-    int read_done;
-
     uint32_t color;
     uint32_t xpos, ypos;
     uint32_t xsiz, ysiz;
     uint32_t addr;
-
-    int cmd_a0_receiving_pos;
-    int cmd_a0_receiving_size;
-    int cmd_a0_receiving_data;
-    uint32_t cmd_a0_xpos;
-    uint32_t cmd_a0_ypos;
-    uint32_t cmd_a0_xsiz;
-    uint32_t cmd_a0_ysiz;
     uint32_t xcnt, ycnt;
-
     uint32_t state;
-
     uint32_t display_mode;
     uint32_t gpuread;
 

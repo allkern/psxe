@@ -8,7 +8,13 @@
 
 #define PSX_CPU_SPEED 33868800 // 33.868800 MHz
 
-typedef struct {
+struct psx_cpu_t;
+
+typedef struct psx_cpu_t psx_cpu_t;
+
+typedef void (*psx_cpu_kcall_hook_t)(psx_cpu_t*);
+
+struct psx_cpu_t {
     // Registers (including $zero and $ra)
     uint32_t r[32];
 
@@ -81,7 +87,11 @@ typedef struct {
 
     // Pointer to bus structure
     psx_bus_t* bus;
-} psx_cpu_t;
+
+    // Optional hooks for kernel calls
+    psx_cpu_kcall_hook_t a_function_hook;
+    psx_cpu_kcall_hook_t b_function_hook;
+};
 
 /*
   0     IEc Current Interrupt Enable  (0=Disable, 1=Enable) ;rfe pops IUp here
@@ -159,6 +169,8 @@ void psx_cpu_exception(psx_cpu_t*, uint32_t);
 void psx_cpu_load_state(psx_cpu_t*, FILE*);
 void psx_cpu_save_state(psx_cpu_t*, FILE*);
 void psx_cpu_fetch(psx_cpu_t*);
+void psx_cpu_set_a_kcall_hook(psx_cpu_t*, psx_cpu_kcall_hook_t);
+void psx_cpu_set_b_kcall_hook(psx_cpu_t*, psx_cpu_kcall_hook_t);
 
 /*
     00h INT     Interrupt
