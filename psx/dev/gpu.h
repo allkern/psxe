@@ -12,7 +12,7 @@
 #define PSX_GPU_FB_WIDTH 1024
 #define PSX_GPU_FB_HEIGHT 512
 
-#define PSX_GPU_VRAM_SIZE 0x100000
+#define PSX_GPU_VRAM_SIZE (0x100000)
 
 enum {
     GPU_STATE_RECV_CMD,
@@ -32,25 +32,49 @@ struct psx_gpu_t {
 
     void* udata[4];
 
-    uint8_t* vram;
+    uint16_t* vram;
 
+    // State data
     uint32_t buf[16];
     uint32_t recv_data;
     int buf_index;
     int cmd_args_remaining;
     int cmd_data_remaining;
 
+    // Command counters
     uint32_t color;
     uint32_t xpos, ypos;
     uint32_t xsiz, ysiz;
     uint32_t addr;
     uint32_t xcnt, ycnt;
+
+    // GPU state
     uint32_t state;
+
     uint32_t display_mode;
     uint32_t gpuread;
+    uint32_t gpustat;
+
+    // Drawing area
+    uint32_t draw_x1, draw_y1;
+    uint32_t draw_x2, draw_y2;
+
+    // Drawing offset
+    uint32_t off_x, off_y;
+
+    // Texture Window
+    uint32_t texw_mx, texw_my;
+    uint32_t texw_ox, texw_oy;
+
+    uint32_t clut_x, clut_y;
 
     psx_gpu_event_callback_t dmode_event_cb;
 };
+
+typedef struct {
+    int32_t x, y;
+    uint32_t c, t;
+} vertex_t;
 
 psx_gpu_t* psx_gpu_create();
 void psx_gpu_init(psx_gpu_t*);

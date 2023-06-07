@@ -52,7 +52,7 @@ int psxe_screen_is_open(psxe_screen_t* screen) {
 }
 
 void psxe_screen_update(psxe_screen_t* screen) {
-    SDL_UpdateTexture(screen->texture, NULL, screen->buf, PSX_GPU_FB_WIDTH);
+    SDL_UpdateTexture(screen->texture, NULL, screen->buf, PSX_GPU_FB_WIDTH * sizeof(uint16_t));
     SDL_RenderCopy(screen->renderer, screen->texture, NULL, NULL);
     SDL_RenderPresent(screen->renderer);
 

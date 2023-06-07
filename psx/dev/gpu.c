@@ -5,6 +5,12 @@
 #include "gpu.h"
 #include "../log.h"
 
+uint16_t gpu_to_bgr555(uint32_t color) {
+    return ((color & 0x0000f8) >> 3) |
+           ((color & 0x00f800) >> 6) |
+           ((color & 0xf80000) >> 9);
+}
+
 psx_gpu_t* psx_gpu_create() {
     return (psx_gpu_t*)malloc(sizeof(psx_gpu_t));
 }
@@ -15,7 +21,7 @@ void psx_gpu_init(psx_gpu_t* gpu) {
     gpu->io_base = PSX_GPU_BEGIN;
     gpu->io_size = PSX_GPU_SIZE;
 
-    gpu->vram = (uint8_t*)malloc(PSX_GPU_VRAM_SIZE);
+    gpu->vram = (uint16_t*)malloc(PSX_GPU_VRAM_SIZE);
     gpu->state = GPU_STATE_RECV_CMD;
 }
 
@@ -52,6 +58,9 @@ uint8_t psx_gpu_read8(psx_gpu_t* gpu, uint32_t offset) {
     return 0x0;
 }
 
+void gpu_render_flat_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, uint32_t color) {
+}
+
 void gpu_cmd_a0(psx_gpu_t* gpu) {
     switch (gpu->state) {
         case GPU_STATE_RECV_CMD: {
@@ -64,25 +73,25 @@ void gpu_cmd_a0(psx_gpu_t* gpu) {
                 gpu->state = GPU_STATE_RECV_DATA;
 
                 // Save static data
-                gpu->xpos = ((gpu->buf[1] & 0xffff) >> 1) & 0x3ff;
+                gpu->xpos = gpu->buf[1] & 0x3ff;
                 gpu->ypos = (gpu->buf[1] >> 16) & 0x1ff;
-                gpu->xsiz = (gpu->buf[2] & 0xffff) >> 1;
+                gpu->xsiz = gpu->buf[2] & 0xffff;
                 gpu->ysiz = gpu->buf[2] >> 16;
                 gpu->xsiz = ((gpu->xsiz - 1) & 0x3ff) + 1;
                 gpu->ysiz = ((gpu->ysiz - 1) & 0x1ff) + 1;
-                gpu->addr = (gpu->xpos << 2) + (gpu->ypos * 1024);
+                gpu->addr = gpu->xpos + (gpu->ypos * 1024);
             }
         } break;
 
         case GPU_STATE_RECV_DATA: {
             uint32_t addr = gpu->addr;
 
-            addr += gpu->xcnt << 2;
-            addr += gpu->ycnt << 10;
+            addr += gpu->xcnt;
+            addr += gpu->ycnt * 1024;
 
-            *(uint32_t*)(gpu->vram + addr) = gpu->recv_data;
+            *(uint32_t*)(&gpu->vram[addr]) = gpu->recv_data;
 
-            gpu->xcnt++;
+            gpu->xcnt += 2;
 
             if ((gpu->xcnt == gpu->xsiz) && (gpu->ycnt == (gpu->ysiz - 1))) {
                 gpu->xcnt = 0;
@@ -97,6 +106,7 @@ void gpu_cmd_a0(psx_gpu_t* gpu) {
     }
 }
 
+// Fill rectangle
 void gpu_cmd_02(psx_gpu_t* gpu) {
     switch (gpu->state) {
         case GPU_STATE_RECV_CMD: {
