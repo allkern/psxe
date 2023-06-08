@@ -288,6 +288,7 @@ void psx_cpu_load_state(psx_cpu_t* cpu, FILE* file) {
 void psx_cpu_cycle(psx_cpu_t* cpu) {
     if ((cpu->pc & 0x3fffffff) == 0x000000a4)
         if (cpu->a_function_hook) cpu->a_function_hook(cpu);
+
     if ((cpu->pc & 0x3fffffff) == 0x000000b4)
         if (cpu->a_function_hook) cpu->b_function_hook(cpu);
 
@@ -299,6 +300,11 @@ void psx_cpu_cycle(psx_cpu_t* cpu) {
     cpu->branch = 0;
 
     g_psx_cpu_primary_table[OP](cpu);
+
+    // Interrupts not yet working
+    // if ((cpu->cop0_sr & SR_IEC) && (cpu->cop0_cause & cpu->cop0_sr & SR_IM)) {
+    //     psx_cpu_exception(cpu, CAUSE_INT);
+    // }
 
     cpu->r[0] = 0;
 }
@@ -325,9 +331,12 @@ void psx_cpu_exception(psx_cpu_t* cpu, uint32_t cause) {
     cpu->pc = (cpu->cop0_sr & SR_BEV) ? 0xbfc00180 : 0x80000080;
 
     // Simulate pipeline flush
-    cpu->buf[0] = psx_bus_read32(cpu->bus, cpu->pc);
+    psx_cpu_fetch(cpu);
+}
 
-    cpu->pc += 4;
+void psx_cpu_irq(psx_cpu_t* cpu, uint32_t irq) {
+    // Set interrupt pending field
+    cpu->cop0_cause |= irq << 10;
 }
 
 void psx_cpu_i_invalid(psx_cpu_t* cpu) {

@@ -26,6 +26,7 @@ void psx_load_exe(psx_t* psx, const char* path) {
 
 void psx_update(psx_t* psx) {
     psx_cpu_cycle(psx->cpu);
+    psx_gpu_update(psx->gpu);
 }
 
 void psx_run_frame(psx_t* psx) {
@@ -35,7 +36,7 @@ void psx_run_frame(psx_t* psx) {
     unsigned int counter = (float)PSX_CPU_SPEED / framerate;
 
     while (counter--) {
-        psx_cpu_cycle(psx->cpu);
+        psx_update(psx);
     }
 }
 
@@ -78,9 +79,9 @@ void psx_init(psx_t* psx, const char* bios_path) {
     psx_mc1_init(psx->mc1);
     psx_mc2_init(psx->mc2);
     psx_mc3_init(psx->mc3);
-    psx_ic_init(psx->ic);
+    psx_ic_init(psx->ic, psx->cpu);
     psx_scratchpad_init(psx->scratchpad);
-    psx_gpu_init(psx->gpu);
+    psx_gpu_init(psx->gpu, psx->ic);
     psx_spu_init(psx->spu);
     psx_cpu_init(psx->cpu, psx->bus);
 

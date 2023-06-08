@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "ic.h"
+
 #define PSX_GPU_BEGIN 0x1f801810
 #define PSX_GPU_SIZE  0x8
 #define PSX_GPU_END   0x1f801814
@@ -13,6 +15,11 @@
 #define PSX_GPU_FB_HEIGHT 512
 
 #define PSX_GPU_VRAM_SIZE (0x100000)
+
+enum {
+    GPU_EVENT_DMODE,
+    GPU_EVENT_VBLANK
+};
 
 enum {
     GPU_STATE_RECV_CMD,
@@ -26,6 +33,11 @@ typedef struct psx_gpu_t psx_gpu_t;
 
 typedef void (*psx_gpu_cmd_t)(psx_gpu_t*);
 typedef void (*psx_gpu_event_callback_t)(psx_gpu_t*);
+
+typedef struct {
+    int32_t x, y;
+    uint32_t c, t;
+} vertex_t;
 
 struct psx_gpu_t {
     uint32_t io_base, io_size;
@@ -47,6 +59,7 @@ struct psx_gpu_t {
     uint32_t xsiz, ysiz;
     uint32_t addr;
     uint32_t xcnt, ycnt;
+    vertex_t v0, v1, v2, v3;
 
     // GPU state
     uint32_t state;
@@ -66,18 +79,21 @@ struct psx_gpu_t {
     uint32_t texw_mx, texw_my;
     uint32_t texw_ox, texw_oy;
 
+    // CLUT offset
     uint32_t clut_x, clut_y;
 
-    psx_gpu_event_callback_t dmode_event_cb;
+    // Display area
+    uint32_t disp_x, disp_y;
+
+    uint32_t cycles;
+
+    psx_ic_t* ic;
+
+    psx_gpu_event_callback_t event_cb_table[8];
 };
 
-typedef struct {
-    int32_t x, y;
-    uint32_t c, t;
-} vertex_t;
-
 psx_gpu_t* psx_gpu_create();
-void psx_gpu_init(psx_gpu_t*);
+void psx_gpu_init(psx_gpu_t*, psx_ic_t*);
 uint32_t psx_gpu_read32(psx_gpu_t*, uint32_t);
 uint16_t psx_gpu_read16(psx_gpu_t*, uint32_t);
 uint8_t psx_gpu_read8(psx_gpu_t*, uint32_t);
@@ -86,6 +102,7 @@ void psx_gpu_write16(psx_gpu_t*, uint32_t, uint16_t);
 void psx_gpu_write8(psx_gpu_t*, uint32_t, uint8_t);
 void psx_gpu_destroy(psx_gpu_t*);
 void psx_gpu_set_udata(psx_gpu_t*, int, void*);
-void psx_gpu_set_dmode_event_callback(psx_gpu_t*, psx_gpu_event_callback_t);
+void psx_gpu_set_event_callback(psx_gpu_t*, int, psx_gpu_event_callback_t);
+void psx_gpu_update(psx_gpu_t*);
 
 #endif

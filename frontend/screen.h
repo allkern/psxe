@@ -12,12 +12,14 @@ typedef struct {
     SDL_Renderer* renderer;
     SDL_Texture* texture;
 
+    psx_gpu_t* gpu;
+
     unsigned int width, height, scale;
     unsigned int format;
     unsigned int mode;
     int open;
 
-    uint32_t* buf;
+    uint16_t* buf;
 } psxe_screen_t;
 
 psxe_screen_t* psxe_screen_create();

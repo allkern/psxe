@@ -7,13 +7,19 @@ psxe_screen_t* psxe_screen_create() {
 void psxe_screen_init(psxe_screen_t* screen, psx_gpu_t* gpu) {
     memset(screen, 0, sizeof(psxe_screen_t));
 
+#ifdef PSXE_SCREEN_DEBUG
+    screen->width = PSX_GPU_FB_WIDTH;
+    screen->height = PSX_GPU_FB_HEIGHT;
+#else
     screen->width = 320;
     screen->height = 240;
+#endif
     screen->scale = 1;
     screen->format = SDL_PIXELFORMAT_BGR555;
     screen->mode = 60;
-    screen->buf = (uint32_t*)gpu->vram;
+    screen->buf = gpu->vram;
     screen->open = 1;
+    screen->gpu = gpu;
 
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 }
@@ -52,7 +58,9 @@ int psxe_screen_is_open(psxe_screen_t* screen) {
 }
 
 void psxe_screen_update(psxe_screen_t* screen) {
-    SDL_UpdateTexture(screen->texture, NULL, screen->buf, PSX_GPU_FB_WIDTH * sizeof(uint16_t));
+    uint32_t disp_offset = screen->gpu->disp_x + (screen->gpu->disp_y * 1024);
+
+    SDL_UpdateTexture(screen->texture, NULL, screen->buf + disp_offset, PSX_GPU_FB_WIDTH * sizeof(uint16_t));
     SDL_RenderCopy(screen->renderer, screen->texture, NULL, NULL);
     SDL_RenderPresent(screen->renderer);
 
@@ -84,12 +92,18 @@ void psxe_screen_destroy(psxe_screen_t* screen) {
 void psxe_gpu_dmode_event_cb(psx_gpu_t* gpu) {
     psxe_screen_t* screen = gpu->udata[0];
 
+#ifdef PSXE_SCREEN_DEBUG
+    screen->width = PSX_GPU_FB_WIDTH; // dmode_hres_table[gpu->display_mode & 0x3];
+    screen->height = PSX_GPU_FB_HEIGHT; // (gpu->display_mode & 0x4) ? 480 : 240;
+#else
     static int dmode_hres_table[] = {
         256, 320, 512, 640
     };
 
     screen->width = dmode_hres_table[gpu->display_mode & 0x3];
     screen->height = (gpu->display_mode & 0x4) ? 480 : 240;
+#endif
+    
     screen->format = gpu->display_mode & 0x10 ? SDL_PIXELFORMAT_BGR888 : SDL_PIXELFORMAT_BGR555;
     screen->mode = gpu->display_mode & 0x8 ? 60 : 50;
 
