@@ -79,6 +79,34 @@ int max(int x0, int x1) {
 
 #define EDGE(a, b, c) ((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x))
 
+
+uint16_t gpu_fetch_texel(psx_gpu_t* gpu, uint16_t tx, uint16_t ty, uint32_t tpx, uint32_t tpy) {
+    switch (gpu->texp_d) {
+        // 4-bit
+        case 0: {
+            uint16_t texel = gpu->vram[(tpx + (tx >> 2)) + ((tpy + ty) * 1024)];
+
+            int index = (texel >> (tx & 0x3) * 4) & 0xf;
+
+            return gpu->vram[(gpu->clut_x + index) + (gpu->clut_y * 1024)];
+        } break;
+
+        // 8-bit
+        case 1: {
+            uint16_t texel = gpu->vram[(tpx + (tx >> 1)) + ((tpy + ty) * 1024)];
+
+            int index = (texel >> (tx & 0x1) * 8) & 0xff;
+
+            return gpu->vram[(gpu->clut_x + index) + (gpu->clut_y * 1024)];
+        } break;
+
+        // 15-bit
+        default: {
+            return gpu->vram[(tpx + tx) + ((tpy + ty) * 1024)];
+        } break;
+    }
+}
+
 void gpu_render_flat_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, uint32_t color) {
     vertex_t a, b, c;
 
@@ -168,6 +196,59 @@ void gpu_render_shaded_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex
     }
 }
 
+void gpu_render_textured_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, uint32_t tpx, uint32_t tpy) {
+    vertex_t a, b, c;
+
+    a = v0;
+
+    /* Ensure the winding order is correct */
+    if (EDGE(v0, v1, v2) < 0) {
+        b = v2;
+        c = v1;
+    } else {
+        b = v1;
+        c = v2;
+    }
+
+    a.x += gpu->off_x;
+    a.y += gpu->off_y;
+    b.x += gpu->off_x;
+    b.y += gpu->off_y;
+    c.x += gpu->off_x;
+    c.y += gpu->off_y;
+
+    int xmin = max(min(min(a.x, b.x), c.x), gpu->draw_x1);
+    int ymin = max(min(min(a.y, b.y), c.y), gpu->draw_y1);
+    int xmax = min(max(max(a.x, b.x), c.x), gpu->draw_x2); 
+    int ymax = min(max(max(a.y, b.y), c.y), gpu->draw_y2);
+
+    uint32_t area = EDGE(a, b, c);
+
+    for (int y = ymin; y < ymax; y++) {
+        for (int x = xmin; x < xmax; x++) {
+            vertex_t p;
+
+            p.x = x;
+            p.y = y;
+
+            float z0 = EDGE((float)b, (float)c, (float)p);
+            float z1 = EDGE((float)c, (float)a, (float)p);
+            float z2 = EDGE((float)a, (float)b, (float)p);
+
+            if ((z0 >= 0) && (z1 >= 0) && (z2 >= 0)) {
+                uint32_t tx = ((z0 * a.tx) + (z1 * b.tx) + (z2 * c.tx)) / area;
+                uint32_t ty = ((z0 * a.ty) + (z1 * b.ty) + (z2 * c.ty)) / area;
+
+                uint16_t color = gpu_fetch_texel(gpu, tx, ty, tpx, tpy);
+
+                if (!color) continue;
+
+                gpu->vram[x + (y * 1024)] = color;
+            }
+        }
+    }
+}
+
 void gpu_cmd_a0(psx_gpu_t* gpu) {
     switch (gpu->state) {
         case GPU_STATE_RECV_CMD: {
@@ -232,12 +313,6 @@ void gpu_cmd_02(psx_gpu_t* gpu) {
                 gpu->xsiz = ((gpu->xsiz & 0x3ff) + 0xf) & (~0xf);
                 gpu->ysiz = gpu->ysiz & 0x1ff;
                 gpu->color = gpu->buf[0] & 0xffffff;
-
-                log_fatal("GPU fill pos=(%u, %u), siz=(%u, %u), color=%08x",
-                    gpu->xpos, gpu->ypos,
-                    gpu->xsiz, gpu->ysiz,
-                    gpu->color
-                );
 
                 for (int y = 0; y < gpu->ysiz; y++) {
                     for (int x = 0; x < gpu->xsiz; x++) {
@@ -337,13 +412,6 @@ void gpu_cmd_38(psx_gpu_t* gpu) {
                 gpu->v3.x = gpu->buf[7] & 0xffff;
                 gpu->v3.y = gpu->buf[7] >> 16;
 
-                // log_fatal("v0=(%u, %u, %06x), v1=(%u, %u, %06x), v2=(%u, %u, %06x), v3=(%u, %u, %06x)",
-                //     gpu->v0.x, gpu->v0.y, gpu->v0.c,
-                //     gpu->v1.x, gpu->v1.y, gpu->v1.c,
-                //     gpu->v2.x, gpu->v2.y, gpu->v2.c,
-                //     gpu->v3.x, gpu->v3.y, gpu->v3.c
-                // );
-
                 gpu_render_shaded_triangle(gpu, gpu->v0, gpu->v1, gpu->v2);
                 gpu_render_shaded_triangle(gpu, gpu->v1, gpu->v2, gpu->v3);
 
@@ -385,9 +453,14 @@ void gpu_cmd_2c(psx_gpu_t* gpu) {
                 gpu->v3.x = gpu->buf[7] & 0xffff;
                 gpu->v3.y = gpu->buf[7] >> 16;
 
-                // fixme
-                gpu_render_flat_triangle(gpu, gpu->v0, gpu->v1, gpu->v2, 0x808080);
-                gpu_render_flat_triangle(gpu, gpu->v1, gpu->v2, gpu->v3, 0x808080);
+                gpu->clut_x = (gpu->pal & 0x3f) << 4;
+                gpu->clut_y = (gpu->pal >> 6) & 0x1ff;
+
+                uint32_t tpx = (gpu->texp & 0xf) << 6;
+                uint32_t tpy = (gpu->texp & 0x10) << 4;
+
+                gpu_render_textured_triangle(gpu, gpu->v0, gpu->v1, gpu->v2, tpx, tpy);
+                gpu_render_textured_triangle(gpu, gpu->v1, gpu->v2, gpu->v3, tpx, tpy);
 
                 gpu->state = GPU_STATE_RECV_CMD;
             }
@@ -405,7 +478,11 @@ void psx_gpu_update_cmd(psx_gpu_t* gpu) {
         case 0x38: gpu_cmd_38(gpu); break;
         case 0xa0: gpu_cmd_a0(gpu); break;
         case 0xe1: {
-            gpu->gpustat = (gpu->buf[0] & 0x7ff) | 0x1c000000;
+            gpu->gpustat &= 0x7ff;
+            gpu->gpustat |= gpu->buf[0] & 0x7ff;
+            gpu->texp_x = (gpu->gpustat & 0xf) << 6;
+            gpu->texp_y = (gpu->gpustat & 0x10) << 4;
+            gpu->texp_d = (gpu->gpustat >> 7) & 0x3;
         } break;
         case 0xe2: {
             gpu->texw_mx = (gpu->buf[0] >> 0 ) & 0x1f;
@@ -523,7 +600,6 @@ void psx_gpu_update(psx_gpu_t* gpu) {
     if (gpu->cycles >= (PSX_CPU_SPEED / 60)) {
         gpu->cycles -= (PSX_CPU_SPEED / 60);
 
-        // Don't fire IRQs for now
         // psx_ic_irq(gpu->ic, IC_VBLANK);
     }
 }

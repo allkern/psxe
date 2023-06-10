@@ -14,6 +14,7 @@ typedef struct {
 
     psx_gpu_t* gpu;
 
+    unsigned int saved_scale;
     unsigned int width, height, scale;
     unsigned int format;
     unsigned int mode;

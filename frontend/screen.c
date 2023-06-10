@@ -1,6 +1,6 @@
 #include "screen.h"
 
-#define PSXE_SCREEN_DEBUG 1
+// #define PSXE_SCREEN_DEBUG 1
 
 psxe_screen_t* psxe_screen_create() {
     return (psxe_screen_t*)malloc(sizeof(psxe_screen_t));
@@ -113,8 +113,12 @@ void psxe_gpu_dmode_event_cb(psx_gpu_t* gpu) {
     screen->format = gpu->display_mode & 0x10 ? SDL_PIXELFORMAT_BGR888 : SDL_PIXELFORMAT_BGR555;
     screen->mode = gpu->display_mode & 0x8 ? 60 : 50;
 
-    if (screen->width >= 512)
+    if (screen->width >= 512) {
+        screen->saved_scale = screen->scale;
         screen->scale = 1;
+    } else {
+        screen->scale = screen->saved_scale;
+    }
 
     SDL_DestroyTexture(screen->texture);
 

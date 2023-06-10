@@ -84,6 +84,10 @@ struct psx_gpu_t {
     // CLUT offset
     uint32_t clut_x, clut_y;
 
+    // Texture page
+    uint32_t texp_x, texp_y;
+    uint32_t texp_d;
+
     // Display area
     uint32_t disp_x, disp_y;
 
