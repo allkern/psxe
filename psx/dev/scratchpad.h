@@ -5,9 +5,9 @@
 
 #include "mc1.h"
 
-#define PSX_SCRATCHPAD_BEGIN 0x1f000000
-#define PSX_SCRATCHPAD_SIZE  0x80000
-#define PSX_SCRATCHPAD_END   0x1f080000
+#define PSX_SCRATCHPAD_BEGIN 0x1f800000
+#define PSX_SCRATCHPAD_SIZE  0x400
+#define PSX_SCRATCHPAD_END   0x1f8003ff
 
 typedef struct {
     uint32_t io_base, io_size;

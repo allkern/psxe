@@ -56,6 +56,7 @@ void psx_init(psx_t* psx, const char* bios_path) {
     psx->spu = psx_spu_create();
     psx->bus = psx_bus_create();
     psx->cpu = psx_cpu_create();
+    psx->timer = psx_timer_create();
 
     psx_bus_init(psx->bus);
 
@@ -70,6 +71,7 @@ void psx_init(psx_t* psx, const char* bios_path) {
     psx_bus_init_scratchpad(psx->bus, psx->scratchpad);
     psx_bus_init_gpu(psx->bus, psx->gpu);
     psx_bus_init_spu(psx->bus, psx->spu);
+    psx_bus_init_timer(psx->bus, psx->timer);
 
     // Init devices
     psx_bios_init(psx->bios);
@@ -84,6 +86,7 @@ void psx_init(psx_t* psx, const char* bios_path) {
     psx_gpu_init(psx->gpu, psx->ic);
     psx_spu_init(psx->spu);
     psx_cpu_init(psx->cpu, psx->bus);
+    psx_timer_init(psx->timer);
 
     psx_bios_load(psx->bios, bios_path);
 
@@ -121,6 +124,7 @@ void psx_destroy(psx_t* psx) {
     psx_scratchpad_destroy(psx->scratchpad);
     psx_gpu_destroy(psx->gpu);
     psx_spu_destroy(psx->spu);
+    psx_timer_destroy(psx->timer);
 
     free(psx);
 }

@@ -31,7 +31,15 @@ void psx_gpu_init(psx_gpu_t* gpu, psx_ic_t* ic) {
 uint32_t psx_gpu_read32(psx_gpu_t* gpu, uint32_t offset) {
     switch (offset) {
         case 0x00: return gpu->gpuread; // GPUREAD
-        case 0x04: return gpu->gpustat; // GPUSTAT
+        case 0x04: {
+            if (gpu->gpustat & 0x80000000) {
+                gpu->gpustat &= ~0x80000000;
+            } else {
+                gpu->gpustat |= 0x80000000;
+            }
+
+            return (gpu->gpustat & ~0x00080000) | 0x1c000000; // GPUSTAT
+        }
     }
 
     log_warn("Unhandled 32-bit GPU read at offset %08x", offset);
@@ -464,7 +472,13 @@ void psx_gpu_set_udata(psx_gpu_t* gpu, int index, void* udata) {
 }
 
 void psx_gpu_update(psx_gpu_t* gpu) {
-    // Do nothing for now
+    gpu->cycles += 2;
+
+    if (gpu->cycles >= (PSX_CPU_SPEED / 60)) {
+        gpu->cycles -= (PSX_CPU_SPEED / 60);
+
+        psx_ic_irq(gpu->ic, IC_VBLANK);
+    }
 }
 
 void psx_gpu_destroy(psx_gpu_t* gpu) {

@@ -12,6 +12,7 @@
 #include "dev/scratchpad.h"
 #include "dev/gpu.h"
 #include "dev/spu.h"
+#include "dev/timer.h"
 
 struct psx_bus_t {
     psx_bios_t* bios;
@@ -25,6 +26,7 @@ struct psx_bus_t {
     psx_scratchpad_t* scratchpad;
     psx_gpu_t* gpu;
     psx_spu_t* spu;
+    psx_timer_t* timer;
 };
 
 void psx_bus_init_bios(psx_bus_t*, psx_bios_t*);
@@ -38,5 +40,6 @@ void psx_bus_init_ic(psx_bus_t*, psx_ic_t*);
 void psx_bus_init_scratchpad(psx_bus_t*, psx_scratchpad_t*);
 void psx_bus_init_gpu(psx_bus_t*, psx_gpu_t*);
 void psx_bus_init_spu(psx_bus_t*, psx_spu_t*);
+void psx_bus_init_timer(psx_bus_t*, psx_timer_t*);
 
 #endif

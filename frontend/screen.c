@@ -1,5 +1,7 @@
 #include "screen.h"
 
+#define PSXE_SCREEN_DEBUG 1
+
 psxe_screen_t* psxe_screen_create() {
     return (psxe_screen_t*)malloc(sizeof(psxe_screen_t));
 }
@@ -76,7 +78,11 @@ void psxe_screen_update(psxe_screen_t* screen) {
 }
 
 void psxe_screen_set_scale(psxe_screen_t* screen, unsigned int scale) {
+#ifdef PSXE_SCREEN_DEBUG
+    screen->scale = 1;
+#else
     screen->scale = scale;
+#endif
 }
 
 void psxe_screen_destroy(psxe_screen_t* screen) {

@@ -85,7 +85,7 @@ struct psx_gpu_t {
     // Display area
     uint32_t disp_x, disp_y;
 
-    uint32_t cycles;
+    int cycles;
 
     psx_ic_t* ic;
 

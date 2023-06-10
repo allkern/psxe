@@ -97,7 +97,21 @@ void psx_dma_write32(psx_dma_t* dma, uint32_t offset, uint32_t value) {
     } else {
         switch (offset) {
             case 0x70: log_error("DMA control write %08x", value); dma->dpcr = value; break;
-            case 0x74: log_error("DMA irqc    write %08x", value); dma->dicr = value; break;
+            case 0x74: {
+                value &= 0x7fffffff;
+
+                uint32_t irqf = (dma->dicr >> 24) & 0x7f;
+                uint32_t irqfr = (value >> 24) & 0x7f;
+
+                dma->dicr &= ~0x7f000000;
+
+                irqf &= ~irqfr;
+                irqf &= 0x7f;
+
+                dma->dicr |= irqf << 24;
+                
+                log_error("DMA irqc    write %08x irqfr=%08x", value, irqfr);
+            } break;
 
             default: {
                 log_error("Unhandled 32-bit DMA write at offset %08x (%08x)", offset, value);
@@ -204,6 +218,8 @@ void psx_dma_do_gpu(psx_dma_t* dma) {
 
     g_psx_dma_gpu_table[CHCR_SYNC(gpu)](dma);
 
+    dma->dicr |= 0x04000000;
+
     // Clear BCR and CHCR trigger and busy bits
     dma->gpu.chcr &= ~(CHCR_BUSY_MASK | CHCR_TRIG_MASK);
     dma->gpu.bcr = 0;
@@ -245,6 +261,8 @@ void psx_dma_do_otc(psx_dma_t* dma) {
     dma->otc.chcr = 0;
     //dma->otc.chcr &= ~(CHCR_BUSY_MASK | CHCR_TRIG_MASK);
     dma->otc.bcr = 0;
+
+    dma->dicr |= 0x40000000;
 }
 
 void psx_dma_destroy(psx_dma_t* dma) {

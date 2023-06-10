@@ -21,6 +21,7 @@ typedef struct {
     psx_spu_t* spu;
     psx_bus_t* bus;
     psx_cpu_t* cpu;
+    psx_timer_t* timer;
 } psx_t;
 
 psx_t* psx_create();

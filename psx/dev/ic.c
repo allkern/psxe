@@ -52,7 +52,7 @@ uint8_t psx_ic_read8(psx_ic_t* ic, uint32_t offset) {
 
 void psx_ic_write32(psx_ic_t* ic, uint32_t offset, uint32_t value) {
     switch (offset) {
-        case 0x00: ic->stat = value; break;
+        case 0x00: ic->stat &= value; break;
         case 0x04: ic->mask = value; break;
 
         default: {

@@ -54,6 +54,8 @@ void psx_cpu_init(psx_cpu_t* cpu, psx_bus_t* bus) {
     cpu->bus = bus;
     cpu->pc = 0xbfc00000;
 
+    cpu->cop0_prid = 0x00000002;
+
     cpu->buf[0] = psx_bus_read32(cpu->bus, cpu->pc);
 
     cpu->pc += 4;
@@ -302,9 +304,12 @@ void psx_cpu_cycle(psx_cpu_t* cpu) {
     g_psx_cpu_primary_table[OP](cpu);
 
     // Interrupts not yet working
-    // if ((cpu->cop0_sr & SR_IEC) && (cpu->cop0_cause & cpu->cop0_sr & SR_IM)) {
-    //     psx_cpu_exception(cpu, CAUSE_INT);
-    // }
+    if ((cpu->cop0_sr & SR_IEC) && (cpu->cop0_cause & cpu->cop0_sr & SR_IM2)) {
+        // log_fatal("IRQ pc=%08x, epc=%08x", cpu->pc, cpu->cop0_epc);
+        // log_set_level(LOG_TRACE);
+        psx_cpu_exception(cpu, CAUSE_INT);
+        // log_fatal("IRQ pc=%08x, epc=%08x", cpu->pc, cpu->cop0_epc);
+    }
 
     cpu->r[0] = 0;
 }
@@ -318,7 +323,8 @@ void psx_cpu_exception(psx_cpu_t* cpu, uint32_t cause) {
         cpu->cop0_epc = cpu->pc - 4;
         cpu->cop0_cause |= 0x80000000;
     } else {
-        cpu->cop0_epc = cpu->pc;
+        cpu->cop0_epc = cpu->pc - 8;
+        cpu->cop0_cause &= ~0x80000000;
     }
 
     // Do exception stack push
@@ -336,7 +342,7 @@ void psx_cpu_exception(psx_cpu_t* cpu, uint32_t cause) {
 
 void psx_cpu_irq(psx_cpu_t* cpu, uint32_t irq) {
     // Set interrupt pending field
-    cpu->cop0_cause |= irq << 10;
+    cpu->cop0_cause |= SR_IM2;
 }
 
 void psx_cpu_i_invalid(psx_cpu_t* cpu) {
@@ -634,6 +640,8 @@ void psx_cpu_i_lwl(psx_cpu_t* cpu) {
 
     uint32_t aligned = psx_bus_read32(cpu->bus, addr & ~0x3);
 
+    cpu->load_v = cpu->r[T];
+
     switch (addr & 0x3) {
         case 0: cpu->load_v = (cpu->load_v & 0x00ffffff) | (aligned << 24); break;
         case 1: cpu->load_v = (cpu->load_v & 0x0000ffff) | (aligned << 16); break;
@@ -920,7 +928,7 @@ void psx_cpu_i_jalr(psx_cpu_t* cpu) {
 void psx_cpu_i_syscall(psx_cpu_t* cpu) {
     TRACE_I20("syscall");
 
-    log_info("SYS(%02xh): %s()", cpu->r[4], g_psx_cpu_syscall_function_symbol_table[cpu->r[4]]);
+    //log_info("SYS(%02xh): %s()", cpu->r[4], g_psx_cpu_syscall_function_symbol_table[cpu->r[4]]);
     
     DO_PENDING_LOAD;
 
