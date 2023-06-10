@@ -151,8 +151,6 @@ void psx_dma_do_gpu_linked(psx_dma_t* dma) {
     uint32_t size = hdr >> 24;
     uint32_t addr = dma->gpu.madr;
 
-    log_error("GPU packet hdr=%08x, size=%02x", hdr, size);
-
     while (true) {
         while (size--) {
             addr = (addr + (CHCR_STEP(gpu) ? -4 : 4)) & 0x1ffffc;
@@ -170,10 +168,6 @@ void psx_dma_do_gpu_linked(psx_dma_t* dma) {
 
         hdr = psx_bus_read32(dma->bus, addr);
         size = hdr >> 24;
-
-        if (!size) break;
-
-        log_error("GPU packet hdr=%08x, size=%02x", hdr, size);
     }
 }
 

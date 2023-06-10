@@ -36,7 +36,8 @@ typedef void (*psx_gpu_event_callback_t)(psx_gpu_t*);
 
 typedef struct {
     int32_t x, y;
-    uint32_t c, t;
+    uint32_t c;
+    uint8_t tx, ty;
 } vertex_t;
 
 struct psx_gpu_t {
@@ -60,6 +61,7 @@ struct psx_gpu_t {
     uint32_t addr;
     uint32_t xcnt, ycnt;
     vertex_t v0, v1, v2, v3;
+    uint32_t pal, texp;
 
     // GPU state
     uint32_t state;
