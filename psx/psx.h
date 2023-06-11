@@ -22,6 +22,7 @@ typedef struct {
     psx_bus_t* bus;
     psx_cpu_t* cpu;
     psx_timer_t* timer;
+    psx_cdrom_t* cdrom;
 } psx_t;
 
 psx_t* psx_create();
@@ -47,6 +48,8 @@ psx_scratchpad_t* psx_get_scratchpad(psx_t*);
 psx_gpu_t* psx_get_gpu(psx_t*);
 psx_spu_t* psx_get_spu(psx_t*);
 psx_bus_t* psx_get_bus(psx_t*);
+psx_timer_t* psx_get_timer(psx_t*);
+psx_cdrom_t* psx_get_cdrom(psx_t*);
 psx_cpu_t* psx_get_cpu(psx_t*);
 void psx_destroy(psx_t*);
 
