@@ -82,7 +82,7 @@ void psx_ic_irq(psx_ic_t* ic, int id) {
 
     ic->stat = id;
 
-    psx_cpu_irq(ic->cpu, true);
+    psx_cpu_irq(ic->cpu, ic->mask & ic->stat);
 }
 
 void psx_ic_destroy(psx_ic_t* ic) {

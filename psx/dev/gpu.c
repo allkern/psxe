@@ -505,7 +505,7 @@ void psx_gpu_update_cmd(psx_gpu_t* gpu) {
         case 0xe6: {
             /* To-do: Implement mask bit thing */
         } break;
-        default: log_fatal("Unhandled GP0(%02Xh)", gpu->buf[0] >> 24); break;
+        //default: log_fatal("Unhandled GP0(%02Xh)", gpu->buf[0] >> 24); break;
     }
 }
 
@@ -600,7 +600,7 @@ void psx_gpu_update(psx_gpu_t* gpu) {
     if (gpu->cycles >= (PSX_CPU_SPEED / 60)) {
         gpu->cycles -= (PSX_CPU_SPEED / 60);
 
-        // psx_ic_irq(gpu->ic, IC_VBLANK);
+        //psx_ic_irq(gpu->ic, IC_VBLANK);
     }
 }
 

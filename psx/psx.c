@@ -26,6 +26,7 @@ void psx_load_exe(psx_t* psx, const char* path) {
 
 void psx_update(psx_t* psx) {
     psx_cpu_cycle(psx->cpu);
+    psx_cdrom_update(psx->cdrom);
     psx_gpu_update(psx->gpu);
 }
 
@@ -89,7 +90,7 @@ void psx_init(psx_t* psx, const char* bios_path) {
     psx_spu_init(psx->spu);
     psx_cpu_init(psx->cpu, psx->bus);
     psx_timer_init(psx->timer);
-    psx_cdrom_init(psx->cdrom);
+    psx_cdrom_init(psx->cdrom, psx->ic);
 
     psx_bios_load(psx->bios, bios_path);
 

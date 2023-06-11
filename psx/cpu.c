@@ -342,7 +342,8 @@ void psx_cpu_exception(psx_cpu_t* cpu, uint32_t cause) {
 
 void psx_cpu_irq(psx_cpu_t* cpu, uint32_t irq) {
     // Set interrupt pending field
-    cpu->cop0_cause |= SR_IM2;
+    cpu->cop0_cause &= ~SR_IM2;
+    cpu->cop0_cause |= irq ? SR_IM2 : 0;
 }
 
 void psx_cpu_i_invalid(psx_cpu_t* cpu) {
@@ -600,9 +601,9 @@ void psx_cpu_i_cop1(psx_cpu_t* cpu) {
 }
 
 void psx_cpu_i_cop2(psx_cpu_t* cpu) {
-    log_error("%08x: GTE instruction (GTE unimplemented)", cpu->pc - 8);
+    log_fatal("%08x: GTE instruction (GTE unimplemented)", cpu->pc - 8);
 
-    exit(1);
+    DO_PENDING_LOAD;
 }
 
 void psx_cpu_i_cop3(psx_cpu_t* cpu) {
@@ -809,7 +810,7 @@ void psx_cpu_i_lwc1(psx_cpu_t* cpu) {
 void psx_cpu_i_lwc2(psx_cpu_t* cpu) {
     log_error("%08x: GTE LWC2 (GTE unimplemented)", cpu->pc - 8);
 
-    exit(1);
+    DO_PENDING_LOAD;
 }
 
 void psx_cpu_i_lwc3(psx_cpu_t* cpu) {
@@ -827,7 +828,7 @@ void psx_cpu_i_swc1(psx_cpu_t* cpu) {
 void psx_cpu_i_swc2(psx_cpu_t* cpu) {
     log_error("%08x: GTE SWC2 (GTE unimplemented)", cpu->pc - 8);
 
-    exit(1);
+    DO_PENDING_LOAD;
 }
 
 void psx_cpu_i_swc3(psx_cpu_t* cpu) {
