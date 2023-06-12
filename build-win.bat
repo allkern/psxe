@@ -3,7 +3,7 @@
 set PSX_DIR=.
 set SDL2_DIR=SDL2-2.26.5\x86_64-w64-mingw32
 
-if not exist "bin" (
+if not exist bin/ (
     mkdir bin
 )
 
