@@ -1,4 +1,4 @@
-$SDL2_DIR = "sdl2\x86_64-w64-mingw32"
+$SDL2_DIR = "SDL2-2.26.5\x86_64-w64-mingw32"
 $PSX_DIR = "."
 
 mkdir -Force -Path bin > $null

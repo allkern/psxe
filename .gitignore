@@ -4,6 +4,7 @@ build-win32/
 imgui/
 res/
 sdl2/
+SDL2-2.26.5/
 test/
 *.bin
 *.dll
