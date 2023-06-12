@@ -2,7 +2,7 @@
 A simple and portable Sony PlayStation emulator and emulation library written in C
 
 ## Running
-To run the emulator, you will need a BIOS file, `SCPH1001.bin` specifically, you can either get it from the internet or [dump it from your own console](https://www.youtube.com/watch?v=u8eHp0COcBo). Just put it in the same directory where the executable is located in. I will write a CLI parser really soon though, you will be able to just specify the location of the BIOS or a search folder.
+In order to run the emulator, you will need a BIOS file, `SCPH1001.bin` specifically, you can either get it from the internet or [dump it from your own console](https://www.youtube.com/watch?v=u8eHp0COcBo). Just put it in the same directory where the executable is located in. I will write a CLI parser really soon though, you will be able to just specify the location of the BIOS or a search folder.
 
 Other BIOSes aren't currently supported, though I've only tested `SCPH1000.bin` so far.
 
