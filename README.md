@@ -46,7 +46,7 @@ cd psx
 
 If the `build-win.ps1` script fails for whatever reason (*cough* Microsoft *cough*), you can try using the `build-win.bat` (notice the extension) script instead. If this also doesn't work for you, please open an issue on the Issues tab
 ### Ubuntu
-```c
+```
 git clone https://github.com/allkern/psx
 cd psx
 make clean && make
