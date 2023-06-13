@@ -6,6 +6,13 @@
 #include "gpu.h"
 #include "../log.h"
 
+int g_psx_gpu_dither_kernel[] = {
+    -4, +0, -3, +1,
+    +2, -2, +3, -1,
+    -3, +1, -4, +0,
+    +3, -1, +2, -2,
+};
+
 uint16_t gpu_to_bgr555(uint32_t color) {
     return ((color & 0x0000f8) >> 3) |
            ((color & 0x00f800) >> 6) |
@@ -184,9 +191,32 @@ void gpu_render_shaded_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex
             float z2 = EDGE((float)a, (float)b, (float)p);
 
             if ((z0 >= 0) && (z1 >= 0) && (z2 >= 0)) {
-                uint32_t cr = (z0 * ((a.c >>  0) & 0xff) + z1 * ((b.c >>  0) & 0xff) + z2 * ((c.c >>  0) & 0xff)) / area;
-                uint32_t cg = (z0 * ((a.c >>  8) & 0xff) + z1 * ((b.c >>  8) & 0xff) + z2 * ((c.c >>  8) & 0xff)) / area;
-                uint32_t cb = (z0 * ((a.c >> 16) & 0xff) + z1 * ((b.c >> 16) & 0xff) + z2 * ((c.c >> 16) & 0xff)) / area;
+                int cr = (z0 * ((a.c >>  0) & 0xff) + z1 * ((b.c >>  0) & 0xff) + z2 * ((c.c >>  0) & 0xff)) / area;
+                int cg = (z0 * ((a.c >>  8) & 0xff) + z1 * ((b.c >>  8) & 0xff) + z2 * ((c.c >>  8) & 0xff)) / area;
+                int cb = (z0 * ((a.c >> 16) & 0xff) + z1 * ((b.c >> 16) & 0xff) + z2 * ((c.c >> 16) & 0xff)) / area;
+
+                // Calculate positions within our 4x4 dither
+                // kernel
+                int dy = (y - ymin) % 4;
+                int dx = (x - xmin) % 4;
+
+                // Shift two pixels horizontally on the last
+                // two scanlines?
+                // if (dy > 1) {
+                //     dx = ((x + 2) - xmin) % 4;
+                // }
+
+                int dither = g_psx_gpu_dither_kernel[dx + (dy * 4)];
+
+                // Add to the original 8-bit color values
+                cr += dither;
+                cg += dither;
+                cb += dither;
+
+                // Saturate (clamp) to 00-ff
+                cr = (cr >= 0xff) ? 0xff : ((cr <= 0) ? 0 : cr);
+                cg = (cg >= 0xff) ? 0xff : ((cg <= 0) ? 0 : cg);
+                cb = (cb >= 0xff) ? 0xff : ((cb <= 0) ? 0 : cb);
 
                 uint32_t color = (cb << 16) | (cg << 8) | cr;
 
