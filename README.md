@@ -1,6 +1,11 @@
 # psx
 A simple and portable Sony PlayStation emulator and emulation library written in C
 
+## Screenshots
+| Windows  | Ubuntu |
+| ------------- | ------------- |
+| ![windows](https://github.com/allkern/psx/assets/15825466/7aea1203-33cf-4b26-aedb-4d9bead44d67)  | ![screenshotfrom2023-06-1023-59-51](https://github.com/allkern/psx/assets/15825466/27ac5d8d-7945-4c92-b950-19a35fcbdc81)  |
+
 ## Running
 In order to run the emulator, you will need a BIOS file, `SCPH1001.bin` specifically, you can either get it from the internet or [dump it from your own console](https://www.youtube.com/watch?v=u8eHp0COcBo). Just put it in the same directory where the executable is located in. I will write a CLI parser really soon though, you will be able to just specify the location of the BIOS or a search folder.
 
@@ -15,11 +20,6 @@ Here's a list of what's currently implemented:
 - Several GPU registers
 - GPU commands used by the BIOS
 - Some CDROM commands (`Test`, `Getstat`)
-
-## Screenshots
-| Windows  | Ubuntu |
-| ------------- | ------------- |
-| ![windows](https://github.com/allkern/psx/assets/15825466/7aea1203-33cf-4b26-aedb-4d9bead44d67)  | ![screenshotfrom2023-06-1023-59-51](https://github.com/allkern/psx/assets/15825466/27ac5d8d-7945-4c92-b950-19a35fcbdc81)  |
 
 ## Building
 Building the emulator should be easy, just use the scripts provided in this repo.
