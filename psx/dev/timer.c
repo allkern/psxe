@@ -9,9 +9,6 @@ psx_timer_t* psx_timer_create() {
     return (psx_timer_t*)malloc(sizeof(psx_timer_t));
 }
 
-/*
-  FFFE0130h 4        Cache Control
-*/
 void psx_timer_init(psx_timer_t* timer) {
     memset(timer, 0, sizeof(psx_timer_t));
 
@@ -20,6 +17,8 @@ void psx_timer_init(psx_timer_t* timer) {
 }
 
 uint32_t psx_timer_read32(psx_timer_t* timer, uint32_t offset) {
+    if (offset == 0x20) return 0x000016b0;
+
     log_warn("Unhandled 32-bit TIMER read at offset %08x", offset);
 
     return 0x0;

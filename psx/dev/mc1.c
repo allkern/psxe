@@ -5,6 +5,42 @@
 #include "mc1.h"
 #include "../log.h"
 
+/*
+  0-3   Write Delay        (00h..0Fh=01h..10h Cycles)
+  4-7   Read Delay         (00h..0Fh=01h..10h Cycles)
+  8     Recovery Period    (0=No, 1=Yes, uses COM0 timings)
+  9     Hold Period        (0=No, 1=Yes, uses COM1 timings)
+  10    Floating Period    (0=No, 1=Yes, uses COM2 timings)
+  11    Pre-strobe Period  (0=No, 1=Yes, uses COM3 timings)
+  12    Data Bus-width     (0=8bits, 1=16bits)
+  13    Auto Increment     (0=No, 1=Yes)
+  14-15 Unknown (R/W)
+  16-20 Memory Window Size (1 SHL N bytes) (0..1Fh = 1 byte ... 2 gigabytes)
+  21-23 Unknown (always zero)
+  24-27 DMA timing override
+  28    Address error flag. Write 1 to it to clear it.
+  29    DMA timing select  (0=use normal timings, 1=use bits 24-27)
+  30    Wide DMA           (0=use bit 12, 1=override to full 32 bits)
+  31    Wait               (1=wait on external device before being ready)
+*/
+
+#define DEFAULT_DLY 2
+
+// #define WRITE_DLY(dev) ((mc1-> ## dev ## _delay & 0xf) + 1)
+// #define READ_DLY(dev) (((mc1-> ## dev ## _delay >> 4) & 0xf) + 1)
+// #define USE_COM0(dev) (mc1-> ## dev ## _delay >> 8)
+// #define USE_COM1(dev) (mc1-> ## dev ## _delay >> 9)
+// #define USE_COM2(dev) (mc1-> ## dev ## _delay >> 10)
+// #define USE_COM3(dev) (mc1-> ## dev ## _delay >> 11)
+
+// #define COM0_DLY (mc1->com_delay )
+
+// psx_access_delay_t mc1_get_com_delay(int uc0, int uc1, int uc2, int uc3) {
+//     int fst = 0, seq = 0, min = 0;
+// }
+
+// #define COM_DLY(dev)
+
 psx_mc1_t* psx_mc1_create() {
     return (psx_mc1_t*)malloc(sizeof(psx_mc1_t));
 }
@@ -91,6 +127,110 @@ void psx_mc1_write16(psx_mc1_t* mc1, uint32_t offset, uint16_t value) {
 
 void psx_mc1_write8(psx_mc1_t* mc1, uint32_t offset, uint8_t value) {
     log_warn("Unhandled 8-bit MC1 write at offset %08x (%02x)", offset, value);
+}
+
+uint32_t psx_mc1_get_bios_read_delay(psx_mc1_t* mc1) {
+    return DEFAULT_DLY;
+}
+
+uint32_t psx_mc1_get_ram_read_delay(psx_mc1_t* mc1) {
+    return DEFAULT_DLY;
+}
+
+uint32_t psx_mc1_get_dma_read_delay(psx_mc1_t* mc1) {
+    return DEFAULT_DLY;
+}
+
+uint32_t psx_mc1_get_exp1_read_delay(psx_mc1_t* mc1) {
+    return DEFAULT_DLY;
+}
+
+uint32_t psx_mc1_get_mc1_read_delay(psx_mc1_t* mc1) {
+    return DEFAULT_DLY;
+}
+
+uint32_t psx_mc1_get_mc2_read_delay(psx_mc1_t* mc1) {
+    return DEFAULT_DLY;
+}
+
+uint32_t psx_mc1_get_mc3_read_delay(psx_mc1_t* mc1) {
+    return DEFAULT_DLY;
+}
+
+uint32_t psx_mc1_get_ic_read_delay(psx_mc1_t* mc1) {
+    return DEFAULT_DLY;
+}
+
+uint32_t psx_mc1_get_scratchpad_read_delay(psx_mc1_t* mc1) {
+    return 1;
+}
+
+uint32_t psx_mc1_get_gpu_read_delay(psx_mc1_t* mc1) {
+    return DEFAULT_DLY;
+}
+
+uint32_t psx_mc1_get_spu_read_delay(psx_mc1_t* mc1) {
+    return DEFAULT_DLY;
+}
+
+uint32_t psx_mc1_get_timer_read_delay(psx_mc1_t* mc1) {
+    return DEFAULT_DLY;
+}
+
+uint32_t psx_mc1_get_cdrom_read_delay(psx_mc1_t* mc1) {
+    return DEFAULT_DLY;
+}
+
+uint32_t psx_mc1_get_bios_write_delay(psx_mc1_t* mc1) {
+    return DEFAULT_DLY;
+}
+
+uint32_t psx_mc1_get_ram_write_delay(psx_mc1_t* mc1) {
+    return DEFAULT_DLY;
+}
+
+uint32_t psx_mc1_get_dma_write_delay(psx_mc1_t* mc1) {
+    return DEFAULT_DLY;
+}
+
+uint32_t psx_mc1_get_exp1_write_delay(psx_mc1_t* mc1) {
+    return DEFAULT_DLY;
+}
+
+uint32_t psx_mc1_get_mc1_write_delay(psx_mc1_t* mc1) {
+    return DEFAULT_DLY;
+}
+
+uint32_t psx_mc1_get_mc2_write_delay(psx_mc1_t* mc1) {
+    return DEFAULT_DLY;
+}
+
+uint32_t psx_mc1_get_mc3_write_delay(psx_mc1_t* mc1) {
+    return DEFAULT_DLY;
+}
+
+uint32_t psx_mc1_get_ic_write_delay(psx_mc1_t* mc1) {
+    return DEFAULT_DLY;
+}
+
+uint32_t psx_mc1_get_scratchpad_write_delay(psx_mc1_t* mc1) {
+    return 1;
+}
+
+uint32_t psx_mc1_get_gpu_write_delay(psx_mc1_t* mc1) {
+    return DEFAULT_DLY;
+}
+
+uint32_t psx_mc1_get_spu_write_delay(psx_mc1_t* mc1) {
+    return DEFAULT_DLY;
+}
+
+uint32_t psx_mc1_get_timer_write_delay(psx_mc1_t* mc1) {
+    return DEFAULT_DLY;
+}
+
+uint32_t psx_mc1_get_cdrom_write_delay(psx_mc1_t* mc1) {
+    return DEFAULT_DLY;
 }
 
 void psx_mc1_destroy(psx_mc1_t* mc1) {

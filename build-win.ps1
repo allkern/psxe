@@ -6,7 +6,6 @@ mkdir -Force -Path bin > $null
 gcc -I"`"$($PSX_DIR)`"" `
     -I"`"$($SDL2_DIR)\include`"" `
     -I"`"$($SDL2_DIR)\include\SDL2`"" `
-    "build-win32\*.o" `
     "psx\*.c" `
     "psx\dev\*.c" `
     "frontend\*.c" `

@@ -45,6 +45,14 @@ psx_cpu_t* psx_cpu_create() {
 void cpu_a_kcall_hook(psx_cpu_t*);
 void cpu_b_kcall_hook(psx_cpu_t*);
 
+void psx_cpu_fetch(psx_cpu_t* cpu) {
+    cpu->buf[0] = psx_bus_read32(cpu->bus, cpu->pc);
+    cpu->pc += 4;
+
+    // Discard fetch cycles
+    psx_bus_get_access_cycles(cpu->bus);
+}
+
 void psx_cpu_init(psx_cpu_t* cpu, psx_bus_t* bus) {
     memset(cpu, 0, sizeof(psx_cpu_t));
 
@@ -56,14 +64,7 @@ void psx_cpu_init(psx_cpu_t* cpu, psx_bus_t* bus) {
 
     cpu->cop0_prid = 0x00000002;
 
-    cpu->buf[0] = psx_bus_read32(cpu->bus, cpu->pc);
-
-    cpu->pc += 4;
-}
-
-void psx_cpu_fetch(psx_cpu_t* cpu) {
-    cpu->buf[0] = psx_bus_read32(cpu->bus, cpu->pc);
-    cpu->pc += 4;
+    psx_cpu_fetch(cpu);
 }
 
 void psx_cpu_destroy(psx_cpu_t* cpu) {
@@ -305,11 +306,10 @@ void psx_cpu_cycle(psx_cpu_t* cpu) {
 
     // Interrupts not yet working
     if ((cpu->cop0_sr & SR_IEC) && (cpu->cop0_cause & cpu->cop0_sr & SR_IM2)) {
-        // log_fatal("IRQ pc=%08x, epc=%08x", cpu->pc, cpu->cop0_epc);
-        // log_set_level(LOG_TRACE);
         psx_cpu_exception(cpu, CAUSE_INT);
-        // log_fatal("IRQ pc=%08x, epc=%08x", cpu->pc, cpu->cop0_epc);
     }
+
+    cpu->last_cycles = 2 + psx_bus_get_access_cycles(cpu->bus);
 
     cpu->r[0] = 0;
 }

@@ -93,7 +93,7 @@ void cdrom_write_cmd(psx_cdrom_t* cdrom, uint8_t value) {
             SET_BITS(status, STAT_RSLRRDY_MASK, STAT_RSLRRDY_MASK);
             SET_BITS(ifr, IFR_INT, IFR_INT3);
 
-            cdrom->irq_delay = 64;
+            cdrom->irq_delay = 0xc4e0;
         } break;
 
         // test
@@ -108,7 +108,7 @@ void cdrom_write_cmd(psx_cdrom_t* cdrom, uint8_t value) {
                     SET_BITS(status, STAT_RSLRRDY_MASK, STAT_RSLRRDY_MASK);
                     SET_BITS(ifr, IFR_INT, IFR_INT3);
 
-                    cdrom->irq_delay = 64;
+                    cdrom->irq_delay = 0xc4e0;
                 } break;
             }
         } break;
@@ -237,7 +237,7 @@ void psx_cdrom_write8(psx_cdrom_t* cdrom, uint32_t offset, uint8_t value) {
 
 void psx_cdrom_update(psx_cdrom_t* cdrom) {
     if (cdrom->irq_delay) {
-        cdrom->irq_delay--;
+        cdrom->irq_delay -= 2;
 
         if (!cdrom->irq_delay)
             psx_ic_irq(cdrom->ic, IC_CDROM);

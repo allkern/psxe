@@ -16,6 +16,10 @@
 
 #define PSX_GPU_VRAM_SIZE (0x100000)
 
+#define PSX_GPU_CLOCK_NTSC 53693175 // 53.693175 MHz
+#define PSX_GPU_CLOCK_FREQ_NTSC 53.693175f // 53.693175 MHz
+#define PSX_GPU_CLOCK_FREQ_PAL 53.203425f // 53.203425 MHz
+
 enum {
     GPU_EVENT_DMODE,
     GPU_EVENT_VBLANK
@@ -91,7 +95,9 @@ struct psx_gpu_t {
     // Display area
     uint32_t disp_x, disp_y;
 
-    int cycles;
+    // Timing and IRQs
+    float cycles;
+    int line;
 
     psx_ic_t* ic;
 
@@ -109,6 +115,6 @@ void psx_gpu_write8(psx_gpu_t*, uint32_t, uint8_t);
 void psx_gpu_destroy(psx_gpu_t*);
 void psx_gpu_set_udata(psx_gpu_t*, int, void*);
 void psx_gpu_set_event_callback(psx_gpu_t*, int, psx_gpu_event_callback_t);
-void psx_gpu_update(psx_gpu_t*);
+void psx_gpu_update(psx_gpu_t*, int);
 
 #endif

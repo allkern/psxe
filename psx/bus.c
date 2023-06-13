@@ -34,6 +34,8 @@ void psx_bus_destroy(psx_bus_t* bus) {
     }
 
 uint32_t psx_bus_read32(psx_bus_t* bus, uint32_t addr) {
+    bus->access_cycles = 2;
+
     uint32_t vaddr = addr;
 
     addr &= g_psx_bus_region_mask_table[addr >> 29];
@@ -62,6 +64,8 @@ uint32_t psx_bus_read32(psx_bus_t* bus, uint32_t addr) {
 }
 
 uint16_t psx_bus_read16(psx_bus_t* bus, uint32_t addr) {
+    bus->access_cycles = 2;
+
     uint32_t vaddr = addr;
 
     addr &= g_psx_bus_region_mask_table[addr >> 29];
@@ -90,6 +94,8 @@ uint16_t psx_bus_read16(psx_bus_t* bus, uint32_t addr) {
 }
 
 uint8_t psx_bus_read8(psx_bus_t* bus, uint32_t addr) {
+    bus->access_cycles = 2;
+
     uint32_t vaddr = addr;
 
     addr &= g_psx_bus_region_mask_table[addr >> 29];
@@ -114,6 +120,8 @@ uint8_t psx_bus_read8(psx_bus_t* bus, uint32_t addr) {
 }
 
 void psx_bus_write32(psx_bus_t* bus, uint32_t addr, uint32_t value) {
+    bus->access_cycles = 0;
+
     uint32_t vaddr = addr;
 
     addr &= g_psx_bus_region_mask_table[addr >> 29];
@@ -140,6 +148,8 @@ void psx_bus_write32(psx_bus_t* bus, uint32_t addr, uint32_t value) {
 }
 
 void psx_bus_write16(psx_bus_t* bus, uint32_t addr, uint16_t value) {
+    bus->access_cycles = 0;
+
     uint32_t vaddr = addr;
 
     addr &= g_psx_bus_region_mask_table[addr >> 29];
@@ -166,6 +176,8 @@ void psx_bus_write16(psx_bus_t* bus, uint32_t addr, uint16_t value) {
 }
 
 void psx_bus_write8(psx_bus_t* bus, uint32_t addr, uint8_t value) {
+    bus->access_cycles = 0;
+
     uint32_t vaddr = addr;
 
     addr &= g_psx_bus_region_mask_table[addr >> 29];
@@ -237,6 +249,14 @@ void psx_bus_init_timer(psx_bus_t* bus, psx_timer_t* timer) {
 
 void psx_bus_init_cdrom(psx_bus_t* bus, psx_cdrom_t* cdrom) {
     bus->cdrom = cdrom;
+}
+
+uint32_t psx_bus_get_access_cycles(psx_bus_t* bus) {
+    uint32_t cycles = bus->access_cycles;
+
+    bus->access_cycles = 0;
+
+    return cycles;
 }
 
 #undef HANDLE_READ

@@ -27,14 +27,14 @@ void psx_load_exe(psx_t* psx, const char* path) {
 void psx_update(psx_t* psx) {
     psx_cpu_cycle(psx->cpu);
     psx_cdrom_update(psx->cdrom);
-    psx_gpu_update(psx->gpu);
+    psx_gpu_update(psx->gpu, psx->cpu->last_cycles);
 }
 
 void psx_run_frame(psx_t* psx) {
     // NTSC: 59.29 Hz, PAL: 49.76 Hz
     float framerate = (psx->gpu->display_mode & 0x8) ? 59.29 : 49.76;
 
-    unsigned int counter = (float)PSX_CPU_SPEED / framerate;
+    unsigned int counter = (float)PSX_CPU_CLOCK / framerate;
 
     while (counter--) {
         psx_update(psx);

@@ -29,6 +29,8 @@ struct psx_bus_t {
     psx_spu_t* spu;
     psx_timer_t* timer;
     psx_cdrom_t* cdrom;
+
+    uint32_t access_cycles;
 };
 
 void psx_bus_init_bios(psx_bus_t*, psx_bios_t*);
