@@ -13,4 +13,4 @@ gcc -I"`"$($PSX_DIR)`"" `
     -L"`"$($SDL2_DIR)\lib`"" `
     -m64 -lSDL2main -lSDL2 -Wno-overflow `
     -Wall -pedantic -DLOG_USE_COLOR `
-    -ffast-math
+    -ffast-math -Ofast

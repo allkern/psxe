@@ -9,3 +9,4 @@ test/
 *.bin
 *.dll
 *.exe
+*.out
