@@ -139,6 +139,7 @@ psx_cpu_instruction_t g_psx_cpu_bxx_table[] = {
 #define IMM16 (cpu->buf[1] & 0xffff)
 #define IMM16S ((int32_t)((int16_t)IMM16))
 
+#ifdef CPU_TRACE
 #define TRACE_M(m) \
     log_trace("%08x: %-7s $%s, %+i($%s)", cpu->pc-8, m, g_mips_cc_register_names[T], IMM16S, g_mips_cc_register_names[S])
 
@@ -180,6 +181,22 @@ psx_cpu_instruction_t g_psx_cpu_bxx_table[] = {
 
 #define TRACE_N(m) \
     log_trace("%08x: %-7s", cpu->pc-8, m);
+#else
+#define TRACE_M(m)
+#define TRACE_I16S(m)
+#define TRACE_I16D(m)
+#define TRACE_I5D(m)
+#define TRACE_I26(m)
+#define TRACE_RT(m)
+#define TRACE_C0M(m)
+#define TRACE_B(m)
+#define TRACE_RS(m)
+#define TRACE_MTF(m)
+#define TRACE_RD(m)
+#define TRACE_MD(m)
+#define TRACE_I20(m)
+#define TRACE_N(m)
+#endif
 
 #define DO_PENDING_LOAD \
     cpu->r[cpu->load_d] = cpu->load_v; \
