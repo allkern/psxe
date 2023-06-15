@@ -114,6 +114,36 @@ uint16_t gpu_fetch_texel(psx_gpu_t* gpu, uint16_t tx, uint16_t ty, uint32_t tpx,
     }
 }
 
+void gpu_render_textured_rectangle(psx_gpu_t* gpu, vertex_t v, uint32_t w, uint32_t h, uint32_t tpx, uint32_t tpy) {
+    vertex_t a = v;
+
+    a.x += gpu->off_x;
+    a.y += gpu->off_y;
+
+    int xmin = max(a.x, gpu->draw_x1);
+    int ymin = max(a.y, gpu->draw_y1);
+    int xmax = min(xmin + w, gpu->draw_x2);
+    int ymax = min(ymin + h, gpu->draw_y2);
+
+    uint32_t xc = 0, yc = 0;
+
+    for (int y = ymin; y < ymax; y++) {
+        for (int x = xmin; x < xmax; x++) {
+            uint16_t color = gpu_fetch_texel(gpu, a.tx + xc, a.ty + yc, tpx, tpy);
+
+            ++xc;
+
+            if (!color) continue;
+
+            gpu->vram[x + (y * 1024)] = color;
+        }
+
+        xc = 0;
+
+        ++yc;
+    }
+}
+
 void gpu_render_flat_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, uint32_t color) {
     vertex_t a, b, c;
 
@@ -498,6 +528,49 @@ void gpu_cmd_2c(psx_gpu_t* gpu) {
     }
 }
 
+void gpu_cmd_64(psx_gpu_t* gpu) {
+    switch (gpu->state) {
+        case GPU_STATE_RECV_CMD: {
+            gpu->state = GPU_STATE_RECV_ARGS;
+            gpu->cmd_args_remaining = 3;
+        } break;
+
+        case GPU_STATE_RECV_ARGS: {
+            if (!gpu->cmd_args_remaining) {
+                gpu->state = GPU_STATE_RECV_DATA;
+
+                gpu->color = gpu->buf[0] & 0xffffff;
+                gpu->v0.x  = gpu->buf[1] & 0xffff;
+                gpu->v0.y  = gpu->buf[1] >> 16;
+                gpu->v0.tx = gpu->buf[2] & 0xff;
+                gpu->v0.ty = (gpu->buf[2] >> 8) & 0xff;
+                gpu->pal   = gpu->buf[2] >> 16;
+
+                uint32_t w = gpu->buf[3] & 0xffff;
+                uint32_t h = gpu->buf[3] >> 16;
+
+                gpu->clut_x = (gpu->pal & 0x3f) << 4;
+                gpu->clut_y = (gpu->pal >> 6) & 0x1ff;
+
+                uint32_t tpx = gpu->texp_x;
+                uint32_t tpy = gpu->texp_y;
+
+                log_fatal("v0={%u, %u},{%u, %u},{%u, %u},{%u, %u},%06x",
+                    gpu->v0.x, gpu->v0.y,
+                    gpu->v0.tx, gpu->v0.ty,
+                    tpx, tpy,
+                    w, h,
+                    gpu->color
+                );
+
+                gpu_render_textured_rectangle(gpu, gpu->v0, w, h, tpx, tpy);
+
+                gpu->state = GPU_STATE_RECV_CMD;
+            }
+        } break;
+    }
+}
+
 void psx_gpu_update_cmd(psx_gpu_t* gpu) {
     switch (gpu->buf[0] >> 24) {
         case 0x00: /* nop */ break;
@@ -506,6 +579,7 @@ void psx_gpu_update_cmd(psx_gpu_t* gpu) {
         case 0x2c: gpu_cmd_2c(gpu); break;
         case 0x30: gpu_cmd_30(gpu); break;
         case 0x38: gpu_cmd_38(gpu); break;
+        case 0x64: gpu_cmd_64(gpu); break;
         case 0xa0: gpu_cmd_a0(gpu); break;
         case 0xe1: {
             gpu->gpustat &= 0x7ff;
@@ -535,7 +609,7 @@ void psx_gpu_update_cmd(psx_gpu_t* gpu) {
         case 0xe6: {
             /* To-do: Implement mask bit thing */
         } break;
-        //default: log_fatal("Unhandled GP0(%02Xh)", gpu->buf[0] >> 24); break;
+        default: log_fatal("Unhandled GP0(%02Xh)", gpu->buf[0] >> 24); break;
     }
 }
 

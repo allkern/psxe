@@ -48,6 +48,8 @@ uint32_t psx_mc1_get_gpu_read_delay(psx_mc1_t*);
 uint32_t psx_mc1_get_spu_read_delay(psx_mc1_t*);
 uint32_t psx_mc1_get_timer_read_delay(psx_mc1_t*);
 uint32_t psx_mc1_get_cdrom_read_delay(psx_mc1_t*);
+uint32_t psx_mc1_get_pad_read_delay(psx_mc1_t*);
+
 uint32_t psx_mc1_get_bios_write_delay(psx_mc1_t*);
 uint32_t psx_mc1_get_ram_write_delay(psx_mc1_t*);
 uint32_t psx_mc1_get_dma_write_delay(psx_mc1_t*);
@@ -61,5 +63,6 @@ uint32_t psx_mc1_get_gpu_write_delay(psx_mc1_t*);
 uint32_t psx_mc1_get_spu_write_delay(psx_mc1_t*);
 uint32_t psx_mc1_get_timer_write_delay(psx_mc1_t*);
 uint32_t psx_mc1_get_cdrom_write_delay(psx_mc1_t*);
+uint32_t psx_mc1_get_pad_write_delay(psx_mc1_t*);
 
 #endif

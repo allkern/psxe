@@ -14,6 +14,7 @@
 #include "dev/spu.h"
 #include "dev/timer.h"
 #include "dev/cdrom.h"
+#include "dev/pad.h"
 
 struct psx_bus_t {
     psx_bios_t* bios;
@@ -29,6 +30,7 @@ struct psx_bus_t {
     psx_spu_t* spu;
     psx_timer_t* timer;
     psx_cdrom_t* cdrom;
+    psx_pad_t* pad;
 
     uint32_t access_cycles;
 };
@@ -46,5 +48,6 @@ void psx_bus_init_gpu(psx_bus_t*, psx_gpu_t*);
 void psx_bus_init_spu(psx_bus_t*, psx_spu_t*);
 void psx_bus_init_timer(psx_bus_t*, psx_timer_t*);
 void psx_bus_init_cdrom(psx_bus_t*, psx_cdrom_t*);
+void psx_bus_init_pad(psx_bus_t*, psx_pad_t*);
 
 #endif

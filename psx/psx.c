@@ -59,6 +59,7 @@ void psx_init(psx_t* psx, const char* bios_path) {
     psx->cpu = psx_cpu_create();
     psx->timer = psx_timer_create();
     psx->cdrom = psx_cdrom_create();
+    psx->pad = psx_pad_create();
 
     psx_bus_init(psx->bus);
 
@@ -75,6 +76,7 @@ void psx_init(psx_t* psx, const char* bios_path) {
     psx_bus_init_spu(psx->bus, psx->spu);
     psx_bus_init_timer(psx->bus, psx->timer);
     psx_bus_init_cdrom(psx->bus, psx->cdrom);
+    psx_bus_init_pad(psx->bus, psx->pad);
 
     // Init devices
     psx_bios_init(psx->bios);
@@ -91,6 +93,7 @@ void psx_init(psx_t* psx, const char* bios_path) {
     psx_cpu_init(psx->cpu, psx->bus);
     psx_timer_init(psx->timer);
     psx_cdrom_init(psx->cdrom, psx->ic);
+    psx_pad_init(psx->pad);
 
     psx_bios_load(psx->bios, bios_path);
 
@@ -130,6 +133,7 @@ void psx_destroy(psx_t* psx) {
     psx_spu_destroy(psx->spu);
     psx_timer_destroy(psx->timer);
     psx_cdrom_destroy(psx->cdrom);
+    psx_pad_destroy(psx->pad);
 
     free(psx);
 }
@@ -188,6 +192,10 @@ psx_timer_t* psx_get_timer(psx_t* psx) {
 
 psx_cdrom_t* psx_get_cdrom(psx_t* psx) {
     return psx->cdrom;
+}
+
+psx_pad_t* psx_get_pad(psx_t* psx) {
+    return psx->pad;
 }
 
 psx_cpu_t* psx_get_cpu(psx_t* psx) {

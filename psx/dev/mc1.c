@@ -181,6 +181,10 @@ uint32_t psx_mc1_get_cdrom_read_delay(psx_mc1_t* mc1) {
     return DEFAULT_DLY;
 }
 
+uint32_t psx_mc1_get_pad_read_delay(psx_mc1_t* mc1) {
+    return DEFAULT_DLY;
+}
+
 uint32_t psx_mc1_get_bios_write_delay(psx_mc1_t* mc1) {
     return DEFAULT_DLY;
 }
@@ -230,6 +234,10 @@ uint32_t psx_mc1_get_timer_write_delay(psx_mc1_t* mc1) {
 }
 
 uint32_t psx_mc1_get_cdrom_write_delay(psx_mc1_t* mc1) {
+    return DEFAULT_DLY;
+}
+
+uint32_t psx_mc1_get_pad_write_delay(psx_mc1_t* mc1) {
     return DEFAULT_DLY;
 }
 

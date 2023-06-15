@@ -29,7 +29,7 @@ int main(int argc, const char* argv[]) {
     signal(SIGINT, sigint_handler);
 
     psx_t* psx = psx_create();
-    psx_init(psx, "SCPH1001.bin");
+    psx_init(psx, "SCPH1001.BIN");
 
     psx_gpu_t* gpu = psx_get_gpu(psx);
 
