@@ -9,6 +9,8 @@
 
 typedef struct {
     uint32_t io_base, io_size;
+
+    uint16_t mode, ctrl, baud;
 } psx_pad_t;
 
 psx_pad_t* psx_pad_create();
