@@ -177,12 +177,22 @@ void psx_dma_do_gpu_request(psx_dma_t* dma) {
 
     uint32_t size = BCR_SIZE(gpu) * BCR_BCNT(gpu);
 
-    for (int i = 0; i < size; i++) {
-        uint32_t data = psx_bus_read32(dma->bus, dma->gpu.madr);
+    if (CHCR_TDIR(gpu)) {
+        for (int i = 0; i < size; i++) {
+            uint32_t data = psx_bus_read32(dma->bus, dma->gpu.madr);
 
-        psx_bus_write32(dma->bus, 0x1f801810, data);
+            psx_bus_write32(dma->bus, 0x1f801810, data);
 
-        dma->gpu.madr += CHCR_STEP(gpu) ? -4 : 4;
+            dma->gpu.madr += CHCR_STEP(gpu) ? -4 : 4;
+        }
+    } else {
+        for (int i = 0; i < size; i++) {
+            uint32_t data = psx_bus_read32(dma->bus, 0x1f801810);
+
+            psx_bus_write32(dma->bus, dma->gpu.madr, data);
+
+            dma->gpu.madr += CHCR_STEP(gpu) ? -4 : 4;
+        }
     }
 }
 
