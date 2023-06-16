@@ -7,7 +7,7 @@ A simple and portable Sony PlayStation emulator and emulation library written in
 | ![windows](https://github.com/allkern/psx/assets/15825466/7aea1203-33cf-4b26-aedb-4d9bead44d67)  | ![screenshotfrom2023-06-1023-59-51](https://github.com/allkern/psx/assets/15825466/27ac5d8d-7945-4c92-b950-19a35fcbdc81)  |
 
 ## Running
-In order to run the emulator, you will need a BIOS file, `SCPH1001.bin` specifically, you can either get it from the internet or [dump it from your own console](https://www.youtube.com/watch?v=u8eHp0COcBo). Just put it in the same directory where the executable is located in. I will write a CLI parser really soon though, you will be able to just specify the location of the BIOS or a search folder.
+In order to run the emulator, you will need a BIOS file, `SCPH1001.bin` specifically, you can either get it from the internet or [dump it from your own console](https://www.youtube.com/watch?v=u8eHp0COcBo). Just put it in the same directory where the executable is located. I will write a CLI parser really soon though, you will be able to just specify the location of the BIOS or a search folder.
 
 Other BIOSes aren't currently supported, though I've only tested `SCPH1000.bin` so far.
 
@@ -26,9 +26,9 @@ Building the emulator should be easy, just use the scripts provided in this repo
 
 On Windows, the `build-deps.ps1` script downloads SDL2, unzips it, and copies `SDL2.dll` to the root folder, if you want to run the emulator standalone, you'll have to move the SDL2 DLL to the same folder where the executable is located.
 
-**If you already have SDL2 on your system**, you can skip running the `build-deps.ps1` script. Though you will have to edit the `build-win.ps1` script to point the `SDL2_DIR` variable to your installation path.
+**If you already have SDL2 on your system**, you can skip running `build-deps.ps1`. Though you will have to edit `build-win.ps1` to point the `SDL2_DIR` variable to your installation path.
 
-On Ubuntu, you'll also need to install SDL2 development package, you can get it from `apt` like so:
+On Ubuntu, you'll also need to install `libsdl2-dev`, you can get it from `apt` like so:
 ```
 sudo apt update
 sudo apt upgrade
@@ -44,7 +44,7 @@ cd psx
 ./build-win.ps1
 ```
 
-If the `build-win.ps1` script fails for whatever reason (*cough* Microsoft *cough*), you can try using the `build-win.bat` (notice the extension) script instead. If this also doesn't work for you, please open an issue on the Issues tab
+If `build-win.ps1` fails for whatever reason (*cough* Microsoft *cough*), you can try using the `build-win.bat` (notice the extension) script instead. If this also doesn't work for you, please open an issue on the Issues tab
 ### Ubuntu
 ```
 git clone https://github.com/allkern/psx
