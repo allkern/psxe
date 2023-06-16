@@ -24,7 +24,7 @@ void sigint_handler(int sig) {
 }
 
 int main(int argc, const char* argv[]) {
-    log_set_level(LOG_FATAL);
+    log_set_level(LOG_WARN);
 
     signal(SIGINT, sigint_handler);
 

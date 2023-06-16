@@ -14,6 +14,9 @@
 #define PSX_GPU_FB_WIDTH 1024
 #define PSX_GPU_FB_HEIGHT 512
 
+// Use this when updating your texture
+#define PSX_GPU_FB_STRIDE 2048
+
 #define PSX_GPU_VRAM_SIZE (0x100000)
 
 #define PSX_GPU_CLOCK_NTSC 53693175 // 53.693175 MHz
@@ -115,6 +118,7 @@ void psx_gpu_write8(psx_gpu_t*, uint32_t, uint8_t);
 void psx_gpu_destroy(psx_gpu_t*);
 void psx_gpu_set_udata(psx_gpu_t*, int, void*);
 void psx_gpu_set_event_callback(psx_gpu_t*, int, psx_gpu_event_callback_t);
+void* psx_gpu_get_display_buffer(psx_gpu_t*);
 void psx_gpu_update(psx_gpu_t*, int);
 
 #endif

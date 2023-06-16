@@ -41,6 +41,22 @@ void psx_run_frame(psx_t* psx) {
     }
 }
 
+void* psx_get_display_buffer(psx_t* psx) {
+    psx_gpu_get_display_buffer(psx->gpu);
+}
+
+uint32_t psx_get_display_width(psx_t* psx) {
+    static int dmode_hres_table[] = {
+        256, 320, 512, 640
+    };
+
+    return dmode_hres_table[psx->gpu->display_mode & 0x3];
+}
+
+uint32_t psx_get_display_height(psx_t* psx) {
+    return (psx->gpu->display_mode & 0x4) ? 480 : 240;
+}
+
 void psx_init(psx_t* psx, const char* bios_path) {
     memset(psx, 0, sizeof(psx_t));
 

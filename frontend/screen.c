@@ -6,7 +6,7 @@ psxe_screen_t* psxe_screen_create() {
     return (psxe_screen_t*)malloc(sizeof(psxe_screen_t));
 }
 
-void psxe_screen_init(psxe_screen_t* screen, psx_gpu_t* gpu) {
+void psxe_screen_init(psxe_screen_t* screen, psx_t* psx) {
     memset(screen, 0, sizeof(psxe_screen_t));
 
 #ifdef PSXE_SCREEN_DEBUG
@@ -17,11 +17,8 @@ void psxe_screen_init(psxe_screen_t* screen, psx_gpu_t* gpu) {
     screen->height = 240;
 #endif
     screen->scale = 1;
-    screen->format = SDL_PIXELFORMAT_BGR555;
-    screen->mode = 60;
-    screen->buf = gpu->vram;
     screen->open = 1;
-    screen->gpu = gpu;
+    screen->psx = psx;
 
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 }
@@ -47,7 +44,7 @@ void psxe_screen_reload(psxe_screen_t* screen) {
 
     screen->texture = SDL_CreateTexture(
         screen->renderer,
-        screen->format,
+        SDL_PIXELFORMAT_BGR555,
         SDL_TEXTUREACCESS_STREAMING,
         PSX_GPU_FB_WIDTH, PSX_GPU_FB_HEIGHT
     );
@@ -60,9 +57,9 @@ int psxe_screen_is_open(psxe_screen_t* screen) {
 }
 
 void psxe_screen_update(psxe_screen_t* screen) {
-    uint32_t disp_offset = screen->gpu->disp_x + (screen->gpu->disp_y * 1024);
+    void* display_buf = psx_get_display_buffer(screen->psx);
 
-    SDL_UpdateTexture(screen->texture, NULL, screen->buf + disp_offset, PSX_GPU_FB_WIDTH * sizeof(uint16_t));
+    SDL_UpdateTexture(screen->texture, NULL, display_buf, PSX_GPU_FB_STRIDE);
     SDL_RenderCopy(screen->renderer, screen->texture, NULL, NULL);
     SDL_RenderPresent(screen->renderer);
 
@@ -102,17 +99,10 @@ void psxe_gpu_dmode_event_cb(psx_gpu_t* gpu) {
     screen->width = PSX_GPU_FB_WIDTH; // dmode_hres_table[gpu->display_mode & 0x3];
     screen->height = PSX_GPU_FB_HEIGHT; // (gpu->display_mode & 0x4) ? 480 : 240;
 #else
-    static int dmode_hres_table[] = {
-        256, 320, 512, 640
-    };
-
-    screen->width = dmode_hres_table[gpu->display_mode & 0x3];
-    screen->height = (gpu->display_mode & 0x4) ? 480 : 240;
+    screen->width = psx_get_display_width(screen->psx);
+    screen->height = psx_get_display_height(screen->psx);
 #endif
     
-    screen->format = gpu->display_mode & 0x10 ? SDL_PIXELFORMAT_BGR888 : SDL_PIXELFORMAT_BGR555;
-    screen->mode = gpu->display_mode & 0x8 ? 60 : 50;
-
     if (screen->width >= 512) {
         screen->saved_scale = screen->scale;
         screen->scale = 1;
@@ -124,7 +114,7 @@ void psxe_gpu_dmode_event_cb(psx_gpu_t* gpu) {
 
     screen->texture = SDL_CreateTexture(
         screen->renderer,
-        screen->format,
+        SDL_PIXELFORMAT_BGR555,
         SDL_TEXTUREACCESS_STREAMING,
         screen->width, screen->height
     );

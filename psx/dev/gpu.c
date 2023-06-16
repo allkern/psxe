@@ -721,6 +721,10 @@ void psx_gpu_update(psx_gpu_t* gpu, int cyc) {
     }
 }
 
+void* psx_gpu_get_display_buffer(psx_gpu_t* gpu) {
+    return gpu->vram + (gpu->disp_x + (gpu->disp_y * 1024));
+}
+
 void psx_gpu_destroy(psx_gpu_t* gpu) {
     free(gpu->vram);
     free(gpu);
