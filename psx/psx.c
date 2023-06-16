@@ -42,7 +42,7 @@ void psx_run_frame(psx_t* psx) {
 }
 
 void* psx_get_display_buffer(psx_t* psx) {
-    psx_gpu_get_display_buffer(psx->gpu);
+    return psx_gpu_get_display_buffer(psx->gpu);
 }
 
 uint32_t psx_get_display_width(psx_t* psx) {
