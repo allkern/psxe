@@ -96,8 +96,8 @@ void psxe_gpu_dmode_event_cb(psx_gpu_t* gpu) {
     psxe_screen_t* screen = gpu->udata[0];
 
 #ifdef PSXE_SCREEN_DEBUG
-    screen->width = PSX_GPU_FB_WIDTH; // dmode_hres_table[gpu->display_mode & 0x3];
-    screen->height = PSX_GPU_FB_HEIGHT; // (gpu->display_mode & 0x4) ? 480 : 240;
+    screen->width = PSX_GPU_FB_WIDTH;
+    screen->height = PSX_GPU_FB_HEIGHT;
 #else
     screen->width = psx_get_display_width(screen->psx);
     screen->height = psx_get_display_height(screen->psx);
