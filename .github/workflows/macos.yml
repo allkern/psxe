@@ -21,8 +21,9 @@ jobs:
            mv bin/psxe psxe.app/Contents/MacOS
            mv .github/workflows/macOS/Libraries psxe.app/Contents/
            mv .github/workflows/macOS/Info.plist psxe.app/Contents/Info.plist
-           zip -r psxe.zip psxe.app
+           mkdir -p psxe
+           mv psxe.app psxe
     - uses: actions/upload-artifact@v3
       with:
         name: psxe
-        path: psxe.app
+        path: psxe/
