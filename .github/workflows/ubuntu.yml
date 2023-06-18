@@ -10,7 +10,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: install-deps
+    - name: Install SDL2
       run: |
            sudo apt update
            sudo apt install libsdl2-dev
