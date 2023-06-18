@@ -18,9 +18,8 @@ jobs:
       run: |
            chmod 755 bin/psxe
            mkdir -p psxe.app/Contents/MacOS
-           mkdir -p psxe.app/Contents/Libraries
            mv bin/psxe psxe.app/Contents/MacOS
-           mv .github/workflows/macOS/Libraries psxe.app/Contents/Libraries
+           mv .github/workflows/macOS/Libraries psxe.app/Contents/
            mv .github/workflows/macOS/Info.plist psxe.app/Contents/Info.plist
            zip -r psxe.zip psxe.app
     - uses: actions/upload-artifact@v3
