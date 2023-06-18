@@ -24,7 +24,7 @@ jobs:
            chmod 755 bin/psxe
            mkdir -p psxe.app/Contents/MacOS
            mv bin/psxe psxe.app/Contents/MacOS
-           install_name_tool -change libSDL2-2.0.0.dylib psxe.app/Content/MacOS/libSDL2-2.0.0.dylib psxe.app/Contents/MacOS/psxe
+           install_name_tool -change libSDL2-2.0.0.dylib @executable_path/libSDL2-2.0.0.dylib psxe.app/Contents/MacOS/psxe
            mv libSDL2-2.0.0.dylib psxe.app/Contents/MacOS
            mv .github/workflows/macOS/Info.plist psxe.app/Contents/Info.plist
            mkdir -p psxe
