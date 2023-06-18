@@ -16,7 +16,7 @@ bin/psxe frontend/main.c:
 		-DOS_INFO="$(OS_INFO)" \
 		-DREP_VERSION="$(VERSION_TAG)" \
 		-DREP_COMMIT_HASH="$(COMMIT_HASH)" \
-		-g -DLOG_USE_COLOR `sdl-config --cflags --libs` \
+		-g -DLOG_USE_COLOR -lSDL2 -lSDL2main \
 		-Ofast -Wno-overflow -Wall -pedantic
 
 clean:
