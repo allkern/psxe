@@ -5,7 +5,7 @@ on:
     branches: [ "actions" ]
 
 jobs:
-  Build PSXE:
+  build:
     runs-on: macos-latest
 
     steps:
