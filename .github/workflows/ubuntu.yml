@@ -10,5 +10,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: install-deps
+      run: sudo apt update
+      run: sudo apt install libsdl2-dev
     - name: make
       run: make
