@@ -16,3 +16,7 @@ jobs:
            sudo apt install libsdl2-dev
     - name: make
       run: make
+    - uses: actions/upload-artifact@v3
+      with:
+        name: binary
+        path: bin/psxe
