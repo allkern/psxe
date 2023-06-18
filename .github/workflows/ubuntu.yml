@@ -1,0 +1,14 @@
+name: Ubuntu CI
+
+on:
+  push:
+    branches: [ "actions" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: make
+      run: make
