@@ -14,11 +14,15 @@ jobs:
       run: brew install sdl2
     - name: make
       run: make
-    - name: Make executable
-      run: chmod 755 bin/psxe
-    - name: Test
-      run: ls ~/Library/Frameworks
+    - name: Pack executable
+      run: |
+           chmod 755 bin/psxe
+           mkdir -p psxe.app/Contents/MacOS
+           mkdir -p psxe.app/Contents/Libraries
+           mv bin/psxe psxe.app/Contents/MacOS
+           mv .github/workflows/macOS/ psxe.app/Contents/MacOS/
+           zip -r psxe.zip psxe.app
     - uses: actions/upload-artifact@v3
       with:
         name: binary
-        path: bin/psxe
+        path: psxe.zip
