@@ -14,12 +14,18 @@ jobs:
       run: brew install sdl2
     - name: Build PSXE
       run: make
+    - name: Prepare libraries
+      run: lipo -create
+           .github/workflows/macOS/Libraries/arm64/libSDL2-2.0.0.dylib
+           .github/workflows/macOS/Libraries/x86_64/libSDL2-2.0.0.dylib
+           -o libSDL2-2.0.0.dylib
     - name: Pack executable
       run: |
+           mv libSDL2-2.0.0.dylib psxe.app/Content/MacOS
            chmod 755 bin/psxe
            mkdir -p psxe.app/Contents/MacOS
            mv bin/psxe psxe.app/Contents/MacOS
-           mv .github/workflows/macOS/Libraries psxe.app/Contents/
+           install_name_tool -change libSDL2-2.0.0.dylib psxe.app/Content/MacOS/libSDL2-2.0.0.dylib psxe.app/Content/MacOS/psxe
            mv .github/workflows/macOS/Info.plist psxe.app/Contents/Info.plist
            mkdir -p psxe
            mv psxe.app psxe
