@@ -22,15 +22,3 @@ jobs:
     - name: Pack executable
       run: |
            brew install dylibbundler
-           mkdir -p psxe.app/Contents/MacOS/libs
-           mv bin/psxe psxe.app/Contents/MacOS
-           chmod 755 psxe.app/Contents/MacOS/psxe
-           dylibbundler -b -x ./psxe.app/Contents/MacOS/psxe -d ./psxe.app/Contents/libs/
-           mv .github/workflows/macOS/Info.plist psxe.app/Contents/Info.plist
-           mkdir -p psxe
-           mv psxe.app psxe
-           open psxe.app
-    - uses: actions/upload-artifact@v3
-      with:
-        name: psxe
-        path: psxe/
