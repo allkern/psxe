@@ -10,8 +10,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Get version
-      uses: battila7/get-version-action@v2.2.1
     - name: Run build-deps
       run: ./build-deps.ps1
     - name: 64-bit build
