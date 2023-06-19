@@ -17,7 +17,8 @@ bin/psxe frontend/main.c:
 		-DREP_VERSION="$(VERSION_TAG)" \
 		-DREP_COMMIT_HASH="$(COMMIT_HASH)" \
 		-g -DLOG_USE_COLOR -lSDL2 -lSDL2main \
-		-Ofast -Wno-overflow -Wall -pedantic
+		-Ofast -Wno-overflow -Wall -pedantic \
+		-Wno-newline-eof
 
 clean:
 	rm -rf "bin"

@@ -27,6 +27,7 @@ jobs:
       run: ./build-clean
     - name: 32-bit build
       run: |
+           Remove-Item -Path psxe -Recurse
            ./build-win32.ps1
            New-Item -Path "psxe" -ItemType Directory
            Copy-Item -Recurse "bin" -Destination "psxe"
