@@ -18,9 +18,7 @@ jobs:
       run: |
            ./build-win64.ps1
            New-Item -Path "psxe" -ItemType Directory
-           Copy-Item "SDL2.dll" -Destination "psxe"
-           Copy-Item "bin/psxe.exe" -Destination "psxe"
-           Rename-Item psxe
+           Copy-Item -Recurse "bin" -Destination "psxe"
     - uses: actions/upload-artifact@v3
       with:
         name: psxe-win64-latest
