@@ -22,10 +22,8 @@ jobs:
     - name: Pack executable
       run: |
            brew install dylibbundler
-           mkdir -p psxe.app/Contents/MacOS
            mkdir -p psxe.app/Contents/MacOS/libs
            mv bin/psxe psxe.app/Contents/MacOS
-           mv libSDL2-2.0.0.dylib psxe.app/Contents/MacOS/libs
            chmod 755 psxe.app/Contents/MacOS/psxe
            dylibbundler -b -x ./psxe.app/Contents/MacOS/psxe -d ./psxe.app/Contents/libs/
            mv .github/workflows/macOS/Info.plist psxe.app/Contents/Info.plist
