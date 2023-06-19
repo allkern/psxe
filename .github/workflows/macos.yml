@@ -29,7 +29,6 @@ jobs:
            mv .github/workflows/macOS/Info.plist psxe.app/Contents/Info.plist
            mkdir -p psxe
            mv psxe.app psxe
-           open psxe.app
     - uses: actions/upload-artifact@v3
       with:
         name: psxe
