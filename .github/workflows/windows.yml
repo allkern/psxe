@@ -10,13 +10,18 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: Get version
+      uses: battila7/get-version-action@v2.2.1
     - name: Run build-deps
       run: ./build-deps.ps1
     - name: Build
       run: |
            ./build-win.ps1
-           dir
+           New-Item -Path "psxe" -ItemType Directory
+           Copy-Item "SDL2.dll" -Destination "psxe"
+           Copy-Item "bin/psxe.exe" -Destination "psxe"
+           Rename-Item psxe psxe-${{ steps.get_version.outputs.version-without-v }}
     - uses: actions/upload-artifact@v3
       with:
-        name: binary
-        path: bin/psxe.exe
+        name: psxe
+        path: psxe/
