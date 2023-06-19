@@ -29,7 +29,6 @@ int main(int argc, const char* argv[]) {
     psxe_cfg_init(cfg);
     psxe_cfg_load_defaults(cfg);
     psxe_cfg_load(cfg, argc, argv);
-    
 
     log_set_level(LOG_FATAL);
 

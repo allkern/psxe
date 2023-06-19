@@ -100,7 +100,7 @@ void psxe_cfg_load_defaults(psxe_config_t* cfg) {
     cfg->version = 0;
 }
 
-void psxe_cfg_load(psxe_config_t* cfg, int argc, const char* argv) {
+void psxe_cfg_load(psxe_config_t* cfg, int argc, const char* argv[]) {
     log_set_level(LOG_INFO);
 
     int use_args = 0;
@@ -170,6 +170,14 @@ void psxe_cfg_load(psxe_config_t* cfg, int argc, const char* argv) {
 
         if (!settings) {
             settings = fopen("settings.toml", "w+b");
+
+            if (!settings) {
+                log_error("Couldn't create settings file, loading default settings");
+
+                psxe_cfg_load_defaults(cfg);
+
+                return;
+            }
 
             fwrite(g_default_settings, 1, sizeof(g_default_settings) - 1, settings);
 
