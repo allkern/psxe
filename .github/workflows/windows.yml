@@ -13,7 +13,9 @@ jobs:
     - name: Run build-deps
       run: ./build-deps.ps1
     - name: Build
-      run: ./build-win.ps1
+      run: |
+           ./build-win.ps1
+           dir
     - uses: actions/upload-artifact@v3
       with:
         name: binary
