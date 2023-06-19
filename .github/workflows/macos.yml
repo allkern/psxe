@@ -21,14 +21,17 @@ jobs:
            -o libSDL2-2.0.0.dylib
     - name: Pack executable
       run: |
-           chmod 755 bin/psxe
+           brew install dylibbundler
            mkdir -p psxe.app/Contents/MacOS
+           mkdir -p psxe.app/Contents/MacOS/libs
            mv bin/psxe psxe.app/Contents/MacOS
-           install_name_tool -change libSDL2-2.0.0.dylib @executable_path/libSDL2-2.0.0.dylib psxe.app/Contents/MacOS/psxe
-           mv libSDL2-2.0.0.dylib psxe.app/Contents/MacOS
+           mv libSDL2-2.0.0.dylib psxe.app/Contents/MacOS/libs
+           chmod 755 psxe.app/Contents/MacOS/psxe
+           dylibbundler -b -x ./psxe.app/Contents/MacOS/psxe -d ./psxe.app/Contents/libs/
            mv .github/workflows/macOS/Info.plist psxe.app/Contents/Info.plist
            mkdir -p psxe
            mv psxe.app psxe
+           open psxe.app
     - uses: actions/upload-artifact@v3
       with:
         name: psxe
