@@ -16,7 +16,6 @@ jobs:
            brew install dylibbundler
     - name: Build and pack PSXE
       run: |
-           git update-index --chmod=+x ./build.sh
            ./build.sh
            mkdir -p psxe
            mv psxe.app psxe
