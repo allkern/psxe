@@ -14,14 +14,25 @@ jobs:
       uses: battila7/get-version-action@v2.2.1
     - name: Run build-deps
       run: ./build-deps.ps1
-    - name: Build
+    - name: 64-bit build
       run: |
-           ./build-win.ps1
+           ./build-win64.ps1
            New-Item -Path "psxe" -ItemType Directory
            Copy-Item "SDL2.dll" -Destination "psxe"
            Copy-Item "bin/psxe.exe" -Destination "psxe"
-           Rename-Item psxe psxe-${{ steps.get_version.outputs.version-without-v }}
+           Rename-Item psxe
     - uses: actions/upload-artifact@v3
       with:
-        name: psxe
+        name: psxe-win64-latest
+        path: psxe/
+    - name: Cleanup
+      run: ./build-clean
+    - name: 32-bit build
+      run: |
+           ./build-win32.ps1
+           New-Item -Path "psxe" -ItemType Directory
+           Copy-Item -Recurse "bin" -Destination "psxe"
+    - uses: actions/upload-artifact@v3
+      with:
+        name: psxe-win32-latest
         path: psxe/

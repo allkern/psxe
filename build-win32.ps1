@@ -18,6 +18,8 @@ gcc -I"`"$($PSX_DIR)`"" `
     -DREP_COMMIT_HASH="`"$($COMMIT_HASH)`"" `
     -DOS_INFO="`"$($OS_INFO)`"" `
     -L"`"$($SDL2_DIR)\lib`"" `
-    -m64 -lSDL2main -lSDL2 -Wno-overflow `
+    -m32 -lSDL2main -lSDL2 -Wno-overflow `
     -Wall -pedantic -DLOG_USE_COLOR `
     -ffast-math -Ofast
+
+Copy-Item -Path "sdl2-win32/SDL2.dll" -Destination "bin"

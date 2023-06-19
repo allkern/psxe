@@ -10,26 +10,16 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Install SDL2
-      run: brew install sdl2
-    - name: Build PSXE
-      run: make
-    - name: Prepare libraries
-      run: lipo -create
-           .github/workflows/macOS/Libraries/arm64/libSDL2-2.0.0.dylib
-           .github/workflows/macOS/Libraries/x86_64/libSDL2-2.0.0.dylib
-           -o libSDL2-2.0.0.dylib
-    - name: Pack executable
+    - name: Install SDL2 and dylibbundler
       run: |
+           brew install sdl2
            brew install dylibbundler
-           mkdir -p psxe.app/Contents/MacOS/libs
-           mv bin/psxe psxe.app/Contents/MacOS
-           chmod 755 psxe.app/Contents/MacOS/psxe
-           dylibbundler -b -x ./psxe.app/Contents/MacOS/psxe -d ./psxe.app/Contents/libs/ -cd
-           mv .github/workflows/macOS/Info.plist psxe.app/Contents/Info.plist
+    - name: Build and pack PSXE
+      run: |
+           ./build.sh
            mkdir -p psxe
            mv psxe.app psxe
     - uses: actions/upload-artifact@v3
       with:
-        name: psxe
+        name: psxe-macos-latest
         path: psxe/

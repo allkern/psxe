@@ -18,5 +18,5 @@ jobs:
       run: make
     - uses: actions/upload-artifact@v3
       with:
-        name: binary
+        name: psxe-ubuntu-latest
         path: bin/psxe
