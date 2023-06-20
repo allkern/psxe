@@ -1,0 +1,35 @@
+name: Windows CI
+
+on:
+  push:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Run build-deps
+      run: ./build-deps.ps1
+    - name: 64-bit build
+      run: |
+           ./build-win64.ps1
+           New-Item -Path "psxe" -ItemType Directory
+           Copy-Item -Recurse "bin" -Destination "psxe"
+    - uses: actions/upload-artifact@v3
+      with:
+        name: psxe-win64-latest
+        path: psxe/
+    - name: Cleanup
+      run: ./build-clean
+    - name: 32-bit build
+      run: |
+           Remove-Item -Path psxe -Recurse
+           ./build-win32.ps1
+           New-Item -Path "psxe" -ItemType Directory
+           Copy-Item -Recurse "bin" -Destination "psxe"
+    - uses: actions/upload-artifact@v3
+      with:
+        name: psxe-win32-latest
+        path: psxe/

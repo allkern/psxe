@@ -1,0 +1,22 @@
+name: Ubuntu CI
+
+on:
+  push:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install SDL2
+      run: |
+           sudo apt update
+           sudo apt install libsdl2-dev
+    - name: make
+      run: make
+    - uses: actions/upload-artifact@v3
+      with:
+        name: psxe-ubuntu-latest
+        path: bin/psxe

@@ -1,0 +1,25 @@
+name: macOS CI
+
+on:
+  push:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install SDL2 and dylibbundler
+      run: |
+           brew install sdl2
+           brew install dylibbundler
+    - name: Build and pack PSXE
+      run: |
+           ./build.sh
+           mkdir -p psxe
+           mv psxe.app psxe
+    - uses: actions/upload-artifact@v3
+      with:
+        name: psxe-macos-latest
+        path: psxe/

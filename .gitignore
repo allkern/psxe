@@ -5,9 +5,12 @@ imgui/
 res/
 sdl2/
 SDL2-2.26.5/
+sdl2-win32/
+sdl2-win64/
 test/
 *.bin
 *.dll
 *.exe
 *.out
 *.toml
+*.zip

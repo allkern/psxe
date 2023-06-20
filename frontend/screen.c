@@ -21,9 +21,13 @@ void psxe_screen_init(psxe_screen_t* screen, psx_t* psx) {
     screen->psx = psx;
 
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+
+    SDL_SetHint("SDL_HINT_RENDER_SCALE_QUALITY", "2");
 }
 
 void psxe_screen_reload(psxe_screen_t* screen) {
+    SDL_SetHint("SDL_HINT_RENDER_SCALE_QUALITY", "2");
+
     if (screen->texture) SDL_DestroyTexture(screen->texture);
     if (screen->renderer) SDL_DestroyRenderer(screen->renderer);
     if (screen->window) SDL_DestroyWindow(screen->window);
@@ -33,7 +37,7 @@ void psxe_screen_reload(psxe_screen_t* screen) {
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         screen->width * screen->scale,
         screen->height * screen->scale,
-        SDL_WINDOW_OPENGL
+        SDL_WINDOW_OPENGL | SDL_WINDOW_ALLOW_HIGHDPI
     );
 
     screen->renderer = SDL_CreateRenderer(
@@ -48,6 +52,18 @@ void psxe_screen_reload(psxe_screen_t* screen) {
         SDL_TEXTUREACCESS_STREAMING,
         PSX_GPU_FB_WIDTH, PSX_GPU_FB_HEIGHT
     );
+
+    // Check for retina displays
+    int width = 0, height = 0;
+
+    SDL_GetRendererOutputSize(screen->renderer, &width, &height);
+
+    if (width != (screen->width * screen->scale)) {
+        float width_scale = (float)width / (float)(screen->width * screen->scale);
+        float height_scale = (float)height / (float)(screen->height * screen->scale);
+
+        SDL_RenderSetScale(screen->renderer, width_scale, height_scale);
+    }
 
     screen->open = 1;
 }

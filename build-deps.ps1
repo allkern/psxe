@@ -2,11 +2,19 @@ if (Test-Path "SDL2-2.26.5") {
     Remove-Item -Recurse "SDL2-2.26.5"
 }
 
-$URL = "https://github.com/libsdl-org/SDL/releases/download/release-2.26.5/SDL2-devel-2.26.5-mingw.zip"
+$SDL2_URL = "https://github.com/libsdl-org/SDL/releases/download/release-2.26.5/SDL2-devel-2.26.5-mingw.zip"
+$WIN32_URL = "https://github.com/libsdl-org/SDL/releases/download/release-2.26.5/SDL2-2.26.5-win32-x86.zip"
+$WIN64_URL = "https://github.com/libsdl-org/SDL/releases/download/release-2.26.5/SDL2-2.26.5-win32-x64.zip"
 
-Invoke-WebRequest -URI $URL -OutFile "sdl2.zip"
-Expand-Archive "sdl2.zip" -DestinationPath "."
+Invoke-WebRequest -URI $SDL2_URL -OutFile "sdl2.zip"
+Expand-Archive "sdl2.zip" -DestinationPath "." -Force
+
+Invoke-WebRequest -URI $WIN32_URL -OutFile "sdl2-win32.zip"
+Expand-Archive "sdl2-win32.zip" -DestinationPath "sdl2-win32" -Force
+
+Invoke-WebRequest -URI $WIN64_URL -OutFile "sdl2-win64.zip"
+Expand-Archive "sdl2-win64.zip" -DestinationPath "sdl2-win64" -Force
 
 Remove-Item "sdl2.zip"
-
-Copy-Item -Path "SDL2-2.26.5\x86_64-w64-mingw32\bin\SDL2.dll" -Destination .
+Remove-Item "sdl2-win32.zip"
+Remove-Item "sdl2-win64.zip"
