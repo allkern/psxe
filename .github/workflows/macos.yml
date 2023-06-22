@@ -17,9 +17,7 @@ jobs:
     - name: Build and pack PSXE
       run: |
            ./build.sh
-           mkdir -p psxe
-           mv psxe.app psxe
-           tar -czf psxe-macos-latest.tar.gz psxe
+           tar -czf psxe-macos-latest.tar.gz psxe.app
     - uses: actions/upload-artifact@v3
       with:
         name: psxe-macos-latest
