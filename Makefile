@@ -2,7 +2,6 @@
 
 CFLAGS += -g -DLOG_USE_COLOR -lSDL2 -lSDL2main
 CFLAGS += -Ofast -Wno-overflow -Wall -pedantic
-CFLAGS += -Wno-newline-eof
 
 PLATFORM := $(shell uname -s)
 
@@ -22,6 +21,7 @@ bin/psxe frontend/main.c:
 	mkdir -p bin
 
 	gcc $(SOURCES) -o bin/psxe \
+		-I"." \
 		-DOS_INFO="$(OS_INFO)" \
 		-DREP_VERSION="$(VERSION_TAG)" \
 		-DREP_COMMIT_HASH="$(COMMIT_HASH)" \
