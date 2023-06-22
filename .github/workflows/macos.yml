@@ -19,7 +19,8 @@ jobs:
            ./build.sh
            mkdir -p psxe
            mv psxe.app psxe
+           tar -czf psxe-macos-latest.tar.gz psxe
     - uses: actions/upload-artifact@v3
       with:
         name: psxe-macos-latest
-        path: psxe/
+        path: ./psxe-macos-latest.tar.gz
