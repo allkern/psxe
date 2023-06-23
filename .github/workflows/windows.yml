@@ -9,7 +9,10 @@ jobs:
     runs-on: windows-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - name: Clone repository
+      run: |
+           git clone https://github.com/allkern/psx
+           cd psx
     - name: Run build-deps
       run: ./build-deps.ps1
     - name: 64-bit build

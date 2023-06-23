@@ -9,11 +9,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
     - name: Install SDL2
       run: |
-           sudo apt update &&
            sudo apt install libsdl2-dev
+    - name: Clone repository
+      run: |
+           git clone https://github.com/allkern/psx
+           cd psx
     - name: Build PSXE
       run: |
            git fetch --all --tags
