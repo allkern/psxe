@@ -16,6 +16,7 @@ jobs:
            brew install dylibbundler
     - name: Build and pack PSXE
       run: |
+           git fetch --all --tags
            ./build.sh
            tar -czf psxe-macos-latest.tar.gz psxe.app
     - uses: actions/upload-artifact@v3

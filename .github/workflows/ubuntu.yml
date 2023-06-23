@@ -16,11 +16,12 @@ jobs:
            sudo apt install libsdl2-dev
     - name: Build PSXE
       run: |
+           git fetch --all --tags
            make
     - name: Pack executable
-      run:
-           chmod +x ./bin/psxe &&
-           mv ./bin/psxe ./ &&
+      run: |
+           chmod +x ./bin/psxe
+           mv ./bin/psxe ./
            tar -czf psxe-ubuntu-latest.tar.gz ./psxe
     - uses: actions/upload-artifact@v3
       with:
