@@ -14,9 +14,14 @@ jobs:
       run: |
            sudo apt update
            sudo apt install libsdl2-dev
-    - name: make
-      run: make
+    - name: Build PSXE
+      run: |
+           make
+    - name: Pack executable
+      run:
+           chmod 777 ./bin/psxe
+           tar -czf psxe-ubuntu-latest.tar.gz ./bin/psxe
     - uses: actions/upload-artifact@v3
       with:
         name: psxe-ubuntu-latest
-        path: bin/psxe
+        path: ./psxe-ubuntu-latest.tar.gz
