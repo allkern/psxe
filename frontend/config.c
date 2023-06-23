@@ -125,6 +125,7 @@ void psxe_cfg_load(psxe_config_t* cfg, int argc, const char* argv[]) {
         OPT_BOOLEAN (0  , "help-model"   , &help_model   , "Display available console models", NULL, 0, 0),
         OPT_BOOLEAN (0  , "help-region"  , &help_region  , "Display available region options", NULL, 0, 0),
         OPT_BOOLEAN ('v', "version"      , &version      , "Display version and build information", NULL, 0, 0),
+        OPT_GROUP("Basic options"),
         OPT_BOOLEAN ('a', "use-args"     , &use_args     , "Ignore settings file, use CLI args instead", NULL, 0, 0),
         OPT_STRING  ('S', "settings-file", &settings_path, "Specify settings file path", NULL, 0, 0),
         OPT_BOOLEAN ('b', "bios"         , &bios         , "Use this BIOS file (ignores -B, -M)", NULL, 0, 0),
