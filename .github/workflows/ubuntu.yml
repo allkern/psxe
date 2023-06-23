@@ -20,8 +20,7 @@ jobs:
     - name: Pack executable
       run:
            chmod +x ./bin/psxe &&
-           mkdir -p psxe &&
-           mv ./bin/psxe ./psxe &&
+           mv ./bin/psxe ./ &&
            tar -czf psxe-ubuntu-latest.tar.gz ./psxe
     - uses: actions/upload-artifact@v3
       with:
