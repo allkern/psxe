@@ -9,14 +9,13 @@ jobs:
     runs-on: macos-latest
 
     steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
     - name: Install SDL2 and dylibbundler
       run: |
            brew install sdl2
            brew install dylibbundler
-    - name: Clone repository
-      run: |
-           git clone https://github.com/allkern/psx
-           cd psx
     - name: Build and pack PSXE
       run: |
            git fetch --all --tags
