@@ -1,6 +1,3 @@
-![Windows](https://github.com/allkern/psx/actions/workflows/windows.yml/badge.svg)
-![macOS](https://github.com/allkern/psx/actions/workflows/macos.yml/badge.svg)
-![Ubuntu](https://github.com/allkern/psx/actions/workflows/ubuntu.yml/badge.svg)
 
 # psxe
 A simple and portable Sony PlayStation emulator and emulation library written in C
@@ -10,8 +7,13 @@ A simple and portable Sony PlayStation emulator and emulation library written in
 | ------------- | ------------- |
 | ![windows](https://github.com/allkern/psx/assets/15825466/7aea1203-33cf-4b26-aedb-4d9bead44d67)  | ![screenshotfrom2023-06-1023-59-51](https://github.com/allkern/psx/assets/15825466/27ac5d8d-7945-4c92-b950-19a35fcbdc81)  |
 
+### CI status
+![Windows](https://github.com/allkern/psx/actions/workflows/windows.yml/badge.svg)
+![macOS](https://github.com/allkern/psx/actions/workflows/macos.yml/badge.svg)
+![Ubuntu](https://github.com/allkern/psx/actions/workflows/ubuntu.yml/badge.svg)
+
 ## Running
-You can head to the latest release and download the automated build for your platform. If your system isn't supported, you can easily build the emulator from source, instructions on "Building".
+You can just download the latest automated build for your platform on Releases. If your system isn't supported, you can easily build the emulator from source, instructions on "Building" below.
 
 In order to run the emulator, you will need a BIOS file, `SCPH1001.bin` specifically, you can either get it from the internet or [dump it from your own console](https://www.youtube.com/watch?v=u8eHp0COcBo). Just put it in the same directory where the executable is located. I will write a CLI parser really soon though, you will be able to just specify the location of the BIOS or a search folder.
 
@@ -47,7 +49,7 @@ brew install sdl2
 brew install dylibbundler
 ```
 
-Assuming you did everything described above, you should be able to build the emulator running the following commands.
+Assuming you did everything described above, you should be able to build the emulator by using the following commands.
 
 ### Windows
 ```
