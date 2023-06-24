@@ -33,7 +33,7 @@ void psxe_screen_reload(psxe_screen_t* screen) {
     if (screen->window) SDL_DestroyWindow(screen->window);
 
     screen->window = SDL_CreateWindow(
-        "PSX",
+        "PSXE",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         screen->width * screen->scale,
         screen->height * screen->scale,
