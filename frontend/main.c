@@ -18,7 +18,7 @@ void sigint_handler(int sig) {
     log_fatal("s4=%08x s5=%08x s6=%08x s7=%08x", g_cpu->r[20], g_cpu->r[21], g_cpu->r[22], g_cpu->r[23]);
     log_fatal("t8=%08x t9=%08x k0=%08x k1=%08x", g_cpu->r[24], g_cpu->r[25], g_cpu->r[26], g_cpu->r[27]);
     log_fatal("gp=%08x sp=%08x fp=%08x ra=%08x", g_cpu->r[28], g_cpu->r[29], g_cpu->r[30], g_cpu->r[31]);
-    log_fatal("pc=%08x hi=%08x lo=%08x", g_cpu->pc, g_cpu->hi, g_cpu->lo);
+    log_fatal("pc=%08x hi=%08x lo=%08x epc=%08x", g_cpu->pc, g_cpu->hi, g_cpu->lo, g_cpu->cop0_epc);
 
     exit(1);
 }
@@ -30,12 +30,12 @@ int main(int argc, const char* argv[]) {
     psxe_cfg_load_defaults(cfg);
     psxe_cfg_load(cfg, argc, argv);
 
-    log_set_level(LOG_FATAL);
+    log_set_level(LOG_ERROR);
 
     signal(SIGINT, sigint_handler);
 
     psx_t* psx = psx_create();
-    psx_init(psx, "SCPH1001.BIN");
+    psx_init(psx, cfg->bios);
 
     psx_gpu_t* gpu = psx_get_gpu(psx);
 
@@ -49,12 +49,12 @@ int main(int argc, const char* argv[]) {
     psx_gpu_set_event_callback(gpu, GPU_EVENT_DMODE, psxe_gpu_dmode_event_cb);
     psx_gpu_set_udata(gpu, 0, screen);
 
-    if (argv[1]) {
+    if (cfg->exe) {
         while (psx->cpu->pc != 0x80030008) {
             psx_update(psx);
         }
 
-        psx_load_exe(psx, argv[1]);
+        psx_load_exe(psx, cfg->exe);
     }
 
     while (psxe_screen_is_open(screen)) {
@@ -73,7 +73,7 @@ int main(int argc, const char* argv[]) {
     log_fatal("s4=%08x s5=%08x s6=%08x s7=%08x", cpu->r[20], cpu->r[21], cpu->r[22], cpu->r[23]);
     log_fatal("t8=%08x t9=%08x k0=%08x k1=%08x", cpu->r[24], cpu->r[25], cpu->r[26], cpu->r[27]);
     log_fatal("gp=%08x sp=%08x fp=%08x ra=%08x", cpu->r[28], cpu->r[29], cpu->r[30], cpu->r[31]);
-    log_fatal("pc=%08x hi=%08x lo=%08x", cpu->pc, cpu->hi, cpu->lo);
+    log_fatal("pc=%08x hi=%08x lo=%08x ep=%08x", cpu->pc, cpu->hi, cpu->lo, cpu->cop0_epc);
 
     psx_destroy(psx);
     psxe_screen_destroy(screen);

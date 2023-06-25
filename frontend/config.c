@@ -98,6 +98,8 @@ void psxe_cfg_load_defaults(psxe_config_t* cfg) {
     cfg->settings_path = NULL;
     cfg->use_args = 0;
     cfg->version = 0;
+    cfg->log_level = LOG_FATAL;
+    cfg->quiet = 0;
 }
 
 void psxe_cfg_load(psxe_config_t* cfg, int argc, const char* argv[]) {
@@ -107,6 +109,8 @@ void psxe_cfg_load(psxe_config_t* cfg, int argc, const char* argv[]) {
     int version = 0;
     int help_model = 0;
     int help_region = 0;
+    int log_level = 0;
+    int quiet = 0;
     const char* settings_path = NULL;
     const char* bios = NULL;
     const char* bios_search = NULL;
@@ -128,11 +132,13 @@ void psxe_cfg_load(psxe_config_t* cfg, int argc, const char* argv[]) {
         OPT_GROUP("Basic options"),
         OPT_BOOLEAN ('a', "use-args"     , &use_args     , "Ignore settings file, use CLI args instead", NULL, 0, 0),
         OPT_STRING  ('S', "settings-file", &settings_path, "Specify settings file path", NULL, 0, 0),
-        OPT_BOOLEAN ('b', "bios"         , &bios         , "Use this BIOS file (ignores -B, -M)", NULL, 0, 0),
+        OPT_STRING  ('b', "bios"         , &bios         , "Use this BIOS file (ignores -B, -M)", NULL, 0, 0),
         OPT_BOOLEAN ('B', "bios-folder"  , &bios_search  , "Specify a BIOS search folder", NULL, 0, 0),
         OPT_STRING  ('M', "model"        , &model        , "Specify console model (SPCH-XXXX)", NULL, 0, 0),
         OPT_STRING  ('r', "region"       , &region       , "Specify console region"),
         OPT_STRING  ('x', "exe"          , &exe          , "Boot this PS-X EXE file (ignores CDROM image)"),
+        OPT_INTEGER ('L', "log-level"    , &log_level    , "Set log level"),
+        OPT_BOOLEAN ('q', "quiet"        , &quiet        , "Silence all logs (ignores -L)"),
         OPT_END()
     };
 
@@ -160,6 +166,8 @@ void psxe_cfg_load(psxe_config_t* cfg, int argc, const char* argv[]) {
 
         exit(0);
     }
+
+    log_set_quiet(quiet);
 
     if (!use_args) {
         if (!settings_path)
@@ -237,6 +245,9 @@ void psxe_cfg_load(psxe_config_t* cfg, int argc, const char* argv[]) {
 
         fclose(settings);
     }
+
+    if (log_level)
+        cfg->log_level = log_level - 1;
 
     if (bios)
         cfg->bios = bios;

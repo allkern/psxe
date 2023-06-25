@@ -62,6 +62,7 @@ void psx_cpu_init(psx_cpu_t* cpu, psx_bus_t* bus) {
     cpu->bus = bus;
     cpu->pc = 0xbfc00000;
 
+    cpu->cop0_sr = 0x10900000;
     cpu->cop0_prid = 0x00000002;
 
     psx_cpu_fetch(cpu);
@@ -138,6 +139,8 @@ psx_cpu_instruction_t g_psx_cpu_bxx_table[] = {
 #define IMM26 (cpu->buf[1] & 0x3ffffff)
 #define IMM16 (cpu->buf[1] & 0xffff)
 #define IMM16S ((int32_t)((int16_t)IMM16))
+
+// #define CPU_TRACE
 
 #ifdef CPU_TRACE
 #define TRACE_M(m) \
@@ -337,17 +340,17 @@ void psx_cpu_exception(psx_cpu_t* cpu, uint32_t cause) {
     // If we're in a delay slot, set delay slot bit
     // on CAUSE
     if (cpu->delay_slot) {
-        cpu->cop0_epc = cpu->pc - 4;
+        cpu->cop0_epc = cpu->pc - 12;
         cpu->cop0_cause |= 0x80000000;
     } else {
         cpu->cop0_epc = cpu->pc - 8;
-        cpu->cop0_cause &= ~0x80000000;
+        cpu->cop0_cause &= 0x7fffffff;
     }
 
     // Do exception stack push
     uint32_t mode = cpu->cop0_sr & 0x3f;
 
-    cpu->cop0_sr &= ~0x3ful;
+    cpu->cop0_sr &= 0xffffffc0;
     cpu->cop0_sr |= (mode << 2) & 0x3f;
 
     // Set PC to the vector selected on BEV

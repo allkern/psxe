@@ -15,84 +15,66 @@ typedef struct psx_cpu_t psx_cpu_t;
 
 typedef void (*psx_cpu_kcall_hook_t)(psx_cpu_t*);
 
+/*
+  Name       Alias    Common Usage
+  R0         zero     Constant (always 0)
+  R1         at       Assembler temporary (destroyed by some assembler pseudoinstructions!)
+  R2-R3      v0-v1    Subroutine return values, may be changed by subroutines
+  R4-R7      a0-a3    Subroutine arguments, may be changed by subroutines
+  R8-R15     t0-t7    Temporaries, may be changed by subroutines
+  R16-R23    s0-s7    Static variables, must be saved by subs
+  R24-R25    t8-t9    Temporaries, may be changed by subroutines
+  R26-R27    k0-k1    Reserved for kernel (destroyed by some IRQ handlers!)
+  R28        gp       Global pointer (rarely used)
+  R29        sp       Stack pointer
+  R30        fp(s8)   Frame Pointer, or 9th Static variable, must be saved
+  R31        ra       Return address (used so by JAL,BLTZAL,BGEZAL opcodes)
+  -          pc       Program counter
+  -          hi,lo    Multiply/divide results, may be changed by subroutines
+*/
+
+/*
+    cop0r0      - N/A
+    cop0r1      - N/A
+    cop0r2      - N/A
+    cop0r3      - BPC - Breakpoint on execute (R/W)
+    cop0r4      - N/A
+    cop0r5      - BDA - Breakpoint on data access (R/W)
+    cop0r6      - JUMPDEST - Randomly memorized jump address (R)
+    cop0r7      - DCIC - Breakpoint control (R/W)
+    cop0r8      - BadVaddr - Bad Virtual Address (R)
+    cop0r9      - BDAM - Data Access breakpoint mask (R/W)
+    cop0r10     - N/A
+    cop0r11     - BPCM - Execute breakpoint mask (R/W)
+    cop0r12     - SR - System status register (R/W)
+    cop0r13     - CAUSE - Describes the most recently recognised exception (R)
+    cop0r14     - EPC - Return Address from Trap (R)
+    cop0r15     - PRID - Processor ID (R)
+*/
+
 struct psx_cpu_t {
-    // Registers (including $zero and $ra)
     uint32_t r[32];
-
-    // Pipeline simulation (for branch delay slots)
     uint32_t buf[2];
-
-    // Program Counter
     uint32_t pc;
-
-    // Result registers for mult and div
     uint32_t hi, lo;
-
-    // Pending load data
     uint32_t load_d, load_v;
-
-    // Are we in a delay slot?
+    uint32_t last_cycles;
     int branch, delay_slot;
 
-    // How many cycles the last instruction took
-    uint32_t last_cycles;
-
-    /*
-        cop0r0      - N/A
-        cop0r1      - N/A
-        cop0r2      - N/A
-        cop0r3      - BPC - Breakpoint on execute (R/W)
-        cop0r4      - N/A
-        cop0r5      - BDA - Breakpoint on data access (R/W)
-        cop0r6      - JUMPDEST - Randomly memorized jump address (R)
-        cop0r7      - DCIC - Breakpoint control (R/W)
-        cop0r8      - BadVaddr - Bad Virtual Address (R)
-        cop0r9      - BDAM - Data Access breakpoint mask (R/W)
-        cop0r10     - N/A
-        cop0r11     - BPCM - Execute breakpoint mask (R/W)
-        cop0r12     - SR - System status register (R/W)
-        cop0r13     - CAUSE - Describes the most recently recognised exception (R)
-        cop0r14     - EPC - Return Address from Trap (R)
-        cop0r15     - PRID - Processor ID (R)
-    */
-
-    // r3 - BPC - Breakpoint on execute (R/W)
     uint32_t cop0_bpc;
-
-    // r5 - BDA - Breakpoint on data access (R/W)
     uint32_t cop0_bda;
-
-    // r6 - JUMPDEST - Randomly memorized jump address (R)
     uint32_t cop0_jumpdest;
-
-    // r7 - DCIC - Breakpoint control (R/W)
     uint32_t cop0_dcic;
-
-    // r8 - BadVaddr - Bad Virtual Address (R)
     uint32_t cop0_badvaddr;
-
-    // r9 - BDAM - Data Access breakpoint mask (R/W)
     uint32_t cop0_bdam;
-
-    // r11 - BPCM - Execute breakpoint mask (R/W)
     uint32_t cop0_bpcm;
-
-    // r12 - SR - System status register (R/W)
     uint32_t cop0_sr;
-
-    // r13 - CAUSE - Describes the most recently recognised exception (R)
     uint32_t cop0_cause;
-
-    // r14 - EPC - Return Address from Trap (R)
     uint32_t cop0_epc;
-
-    // r15 - PRID - Processor ID (R)
     uint32_t cop0_prid;
 
-    // Pointer to bus structure
     psx_bus_t* bus;
 
-    // Optional hooks for kernel calls
     psx_cpu_kcall_hook_t a_function_hook;
     psx_cpu_kcall_hook_t b_function_hook;
 };
