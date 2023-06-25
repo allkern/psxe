@@ -3,9 +3,9 @@
 A simple and portable Sony PlayStation emulator and emulation library written in C
 
 ## Screenshots
-| Windows  | Ubuntu |
-| ------------- | ------------- |
-| ![windows](https://github.com/allkern/psx/assets/15825466/7aea1203-33cf-4b26-aedb-4d9bead44d67)  | ![screenshotfrom2023-06-1023-59-51](https://github.com/allkern/psx/assets/15825466/27ac5d8d-7945-4c92-b950-19a35fcbdc81)  |
+| Windows  | Ubuntu | macOS |
+| ------------- | ------------- | ------------- 
+| ![Windows](https://github.com/allkern/psx/assets/15825466/7aea1203-33cf-4b26-aedb-4d9bead44d67) | ![Ubuntu](https://github.com/allkern/psx/assets/15825466/27ac5d8d-7945-4c92-b950-19a35fcbdc81) | ![macOS](https://github.com/allkern/psx/assets/15825466/12378267-15a8-4a18-b170-eeaf5a8d153f) |
 
 ### CI status
 ![Windows](https://github.com/allkern/psx/actions/workflows/windows.yml/badge.svg)
