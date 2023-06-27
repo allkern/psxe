@@ -129,7 +129,7 @@ psx_cpu_instruction_t g_psx_cpu_bxx_table[] = {
     psx_cpu_i_bltzal , psx_cpu_i_bgezal , psx_cpu_i_invalid, psx_cpu_i_invalid
 };
 
-#define OP ((cpu->buf[1] >> 26) & 0x3f) 
+#define OP ((cpu->buf[1] >> 26) & 0x3f)
 #define S ((cpu->buf[1] >> 21) & 0x1f)
 #define T ((cpu->buf[1] >> 16) & 0x1f)
 #define D ((cpu->buf[1] >> 11) & 0x1f)
@@ -208,15 +208,15 @@ psx_cpu_instruction_t g_psx_cpu_bxx_table[] = {
     cpu->load_d = 0;
 
 #define DEBUG_ALL \
-    log_debug("r0=%08x at=%08x v0=%08x v1=%08x", R_R0, R_AT, R_V0, R_V1); \
-    log_debug("a0=%08x a1=%08x a2=%08x a3=%08x", R_A0, R_A1, R_A2, R_A3); \
-    log_debug("t0=%08x t1=%08x t2=%08x t3=%08x", R_T0, R_T1, R_T2, R_T3); \
-    log_debug("t4=%08x t5=%08x t6=%08x t7=%08x", R_T4, R_T5, R_T6, R_T7); \
-    log_debug("s0=%08x s1=%08x s2=%08x s3=%08x", R_S0, R_S1, R_S2, R_S3); \
-    log_debug("s4=%08x s5=%08x s6=%08x s7=%08x", R_S4, R_S5, R_S6, R_S7); \
-    log_debug("t8=%08x t9=%08x k0=%08x k1=%08x", R_T8, R_T9, R_K0, R_K1); \
-    log_debug("gp=%08x sp=%08x fp=%08x ra=%08x", R_GP, R_SP, R_FP, R_RA); \
-    log_debug("pc=%08x hi=%08x lo=%08x l:%s=%08x", cpu->pc, cpu->hi, cpu->lo, g_mips_cc_register_names[cpu->load_d], cpu->load_v); \
+    log_fatal("r0=%08x at=%08x v0=%08x v1=%08x", R_R0, R_AT, R_V0, R_V1); \
+    log_fatal("a0=%08x a1=%08x a2=%08x a3=%08x", R_A0, R_A1, R_A2, R_A3); \
+    log_fatal("t0=%08x t1=%08x t2=%08x t3=%08x", R_T0, R_T1, R_T2, R_T3); \
+    log_fatal("t4=%08x t5=%08x t6=%08x t7=%08x", R_T4, R_T5, R_T6, R_T7); \
+    log_fatal("s0=%08x s1=%08x s2=%08x s3=%08x", R_S0, R_S1, R_S2, R_S3); \
+    log_fatal("s4=%08x s5=%08x s6=%08x s7=%08x", R_S4, R_S5, R_S6, R_S7); \
+    log_fatal("t8=%08x t9=%08x k0=%08x k1=%08x", R_T8, R_T9, R_K0, R_K1); \
+    log_fatal("gp=%08x sp=%08x fp=%08x ra=%08x", R_GP, R_SP, R_FP, R_RA); \
+    log_fatal("pc=%08x hi=%08x lo=%08x l:%s=%08x", cpu->pc, cpu->hi, cpu->lo, g_mips_cc_register_names[cpu->load_d], cpu->load_v); \
     exit(1)
 
 #define SE8(v) ((int32_t)((int8_t)v))
@@ -324,7 +324,6 @@ void psx_cpu_cycle(psx_cpu_t* cpu) {
 
     g_psx_cpu_primary_table[OP](cpu);
 
-    // Interrupts not yet working
     if ((cpu->cop0_sr & SR_IEC) && (cpu->cop0_cause & cpu->cop0_sr & SR_IM2)) {
         psx_cpu_exception(cpu, CAUSE_INT);
     }
@@ -369,7 +368,7 @@ void psx_cpu_irq(psx_cpu_t* cpu, uint32_t irq) {
 void psx_cpu_i_invalid(psx_cpu_t* cpu) {
     log_warn("%08x: Illegal instruction %08x", cpu->pc - 8, cpu->buf[1]);
 
-    psx_cpu_exception(cpu, CAUSE_RI);
+    //psx_cpu_exception(cpu, CAUSE_RI);
 }
 
 // Primary
@@ -945,7 +944,6 @@ void psx_cpu_i_jalr(psx_cpu_t* cpu) {
     cpu->pc = s;
 }
 
-
 void psx_cpu_i_syscall(psx_cpu_t* cpu) {
     TRACE_I20("syscall");
 
@@ -1098,7 +1096,7 @@ void psx_cpu_i_sub(psx_cpu_t* cpu) {
 
     DO_PENDING_LOAD;
 
-    int32_t r = s - t;
+    uint32_t r = s - t;
 
     // To-do: Check SUB overflow check
     uint32_t o = (s ^ t) & (t & r);

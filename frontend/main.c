@@ -10,6 +10,8 @@
 psx_cpu_t* g_cpu;
 
 void sigint_handler(int sig) {
+    log_set_quiet(0);
+
     log_fatal("r0=%08x at=%08x v0=%08x v1=%08x", g_cpu->r[0] , g_cpu->r[1] , g_cpu->r[2] , g_cpu->r[3] );
     log_fatal("a0=%08x a1=%08x a2=%08x a3=%08x", g_cpu->r[4] , g_cpu->r[5] , g_cpu->r[6] , g_cpu->r[7] );
     log_fatal("t0=%08x t1=%08x t2=%08x t3=%08x", g_cpu->r[8] , g_cpu->r[9] , g_cpu->r[10], g_cpu->r[11]);
@@ -30,7 +32,7 @@ int main(int argc, const char* argv[]) {
     psxe_cfg_load_defaults(cfg);
     psxe_cfg_load(cfg, argc, argv);
 
-    log_set_level(LOG_ERROR);
+    log_set_level(cfg->log_level);
 
     signal(SIGINT, sigint_handler);
 
@@ -64,6 +66,8 @@ int main(int argc, const char* argv[]) {
     }
 
     psx_cpu_t* cpu = psx_get_cpu(psx);
+
+    log_set_quiet(0);
 
     log_fatal("r0=%08x at=%08x v0=%08x v1=%08x", cpu->r[0] , cpu->r[1] , cpu->r[2] , cpu->r[3] );
     log_fatal("a0=%08x a1=%08x a2=%08x a3=%08x", cpu->r[4] , cpu->r[5] , cpu->r[6] , cpu->r[7] );
