@@ -9,6 +9,10 @@
 
 typedef struct {
     uint32_t io_base, io_size;
+
+    uint32_t t0_stub;
+    uint32_t t1_stub;
+    uint32_t t2_stub;
 } psx_timer_t;
 
 psx_timer_t* psx_timer_create();

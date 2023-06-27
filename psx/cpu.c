@@ -50,7 +50,7 @@ void psx_cpu_fetch(psx_cpu_t* cpu) {
     cpu->pc += 4;
 
     // Discard fetch cycles
-    psx_bus_get_access_cycles(cpu->bus);
+    cpu->last_cycles += psx_bus_get_access_cycles(cpu->bus);
 }
 
 void psx_cpu_init(psx_cpu_t* cpu, psx_bus_t* bus) {
@@ -339,7 +339,7 @@ void psx_cpu_exception(psx_cpu_t* cpu, uint32_t cause) {
     // If we're in a delay slot, set delay slot bit
     // on CAUSE
     if (cpu->delay_slot) {
-        cpu->cop0_epc = cpu->pc - 12;
+        cpu->cop0_epc = cpu->pc - 4;
         cpu->cop0_cause |= 0x80000000;
     } else {
         cpu->cop0_epc = cpu->pc - 8;
@@ -1096,7 +1096,7 @@ void psx_cpu_i_sub(psx_cpu_t* cpu) {
 
     DO_PENDING_LOAD;
 
-    uint32_t r = s - t;
+    int32_t r = s - t;
 
     // To-do: Check SUB overflow check
     uint32_t o = (s ^ t) & (t & r);
@@ -1249,9 +1249,9 @@ void psx_cpu_i_rfe(psx_cpu_t* cpu) {
 
     DO_PENDING_LOAD;
 
-    uint32_t mode = cpu->cop0_sr & 0x3f;
+    uint32_t mode = cpu->cop0_sr & 0xf;
 
-    cpu->cop0_sr &= ~0x3f;
+    cpu->cop0_sr &= 0xfffffff0;
     cpu->cop0_sr |= mode >> 2;
 }
 

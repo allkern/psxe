@@ -712,7 +712,7 @@ void psx_gpu_update(psx_gpu_t* gpu, int cyc) {
         gpu->line++;
 
         if (gpu->line == GPU_SCANS_PER_FRAME_NTSC) {
-            //psx_ic_irq(gpu->ic, IC_VBLANK);
+            psx_ic_irq(gpu->ic, IC_VBLANK);
 
             gpu->line = 0;
         } else {
