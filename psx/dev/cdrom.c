@@ -32,20 +32,6 @@
 typedef uint8_t (*psx_cdrom_read_function_t)(psx_cdrom_t*);
 typedef void (*psx_cdrom_write_function_t)(psx_cdrom_t*, uint8_t);
 
-psx_cdrom_read_function_t g_psx_cdrom_read_table[] = {
-    cdrom_read_status, cdrom_read_rfifo, cdrom_read_dfifo, cdrom_read_ier,
-    cdrom_read_status, cdrom_read_rfifo, cdrom_read_dfifo, cdrom_read_ifr,
-    cdrom_read_status, cdrom_read_rfifo, cdrom_read_dfifo, cdrom_read_ier,
-    cdrom_read_status, cdrom_read_rfifo, cdrom_read_dfifo, cdrom_read_ifr
-};
-
-psx_cdrom_write_function_t g_psx_cdrom_write_table[] = {
-    cdrom_write_status, cdrom_write_cmd     , cdrom_write_pfifo   , cdrom_write_req     ,
-    cdrom_write_status, cdrom_write_smdout  , cdrom_write_ier     , cdrom_write_ifr     ,
-    cdrom_write_status, cdrom_write_sminfo  , cdrom_write_lcdlspuv, cdrom_write_lcdrspuv,
-    cdrom_write_status, cdrom_write_rcdrspuv, cdrom_write_rcdlspuv, cdrom_write_volume
-};
-
 uint8_t cdrom_read_status(psx_cdrom_t* cdrom) {
     log_fatal("    Status read %02x", cdrom->status);
 
@@ -193,6 +179,19 @@ void cdrom_write_volume(psx_cdrom_t* cdrom, uint8_t value) {
     log_fatal("Volume registers unimplemented");
 }
 
+psx_cdrom_read_function_t g_psx_cdrom_read_table[] = {
+    cdrom_read_status, cdrom_read_rfifo, cdrom_read_dfifo, cdrom_read_ier,
+    cdrom_read_status, cdrom_read_rfifo, cdrom_read_dfifo, cdrom_read_ifr,
+    cdrom_read_status, cdrom_read_rfifo, cdrom_read_dfifo, cdrom_read_ier,
+    cdrom_read_status, cdrom_read_rfifo, cdrom_read_dfifo, cdrom_read_ifr
+};
+
+psx_cdrom_write_function_t g_psx_cdrom_write_table[] = {
+    cdrom_write_status, cdrom_write_cmd     , cdrom_write_pfifo   , cdrom_write_req     ,
+    cdrom_write_status, cdrom_write_smdout  , cdrom_write_ier     , cdrom_write_ifr     ,
+    cdrom_write_status, cdrom_write_sminfo  , cdrom_write_lcdlspuv, cdrom_write_lcdrspuv,
+    cdrom_write_status, cdrom_write_rcdrspuv, cdrom_write_rcdlspuv, cdrom_write_volume
+};
 
 psx_cdrom_t* psx_cdrom_create() {
     return (psx_cdrom_t*)malloc(sizeof(psx_cdrom_t));
