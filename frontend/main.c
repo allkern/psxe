@@ -52,7 +52,7 @@ int main(int argc, const char* argv[]) {
     psx_gpu_set_udata(gpu, 0, screen);
 
     if (cfg->exe) {
-        while (psx->cpu->pc != 0x80030008) {
+        while (psx->cpu->pc != 0xBFC06FF0) {
             psx_update(psx);
         }
 

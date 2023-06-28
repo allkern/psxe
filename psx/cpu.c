@@ -50,7 +50,7 @@ void psx_cpu_fetch(psx_cpu_t* cpu) {
     cpu->pc += 4;
 
     // Discard fetch cycles
-    cpu->last_cycles += psx_bus_get_access_cycles(cpu->bus);
+    psx_bus_get_access_cycles(cpu->bus);
 }
 
 void psx_cpu_init(psx_cpu_t* cpu, psx_bus_t* bus) {
@@ -122,11 +122,14 @@ psx_cpu_instruction_t g_psx_cpu_cop0_table[] = {
 };
 
 psx_cpu_instruction_t g_psx_cpu_bxx_table[] = {
-    psx_cpu_i_bltz   , psx_cpu_i_bgez   , psx_cpu_i_invalid, psx_cpu_i_invalid,
-    psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
-    psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
-    psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
-    psx_cpu_i_bltzal , psx_cpu_i_bgezal , psx_cpu_i_invalid, psx_cpu_i_invalid
+    psx_cpu_i_bltz   , psx_cpu_i_bgez   , psx_cpu_i_bltz   , psx_cpu_i_bgez   ,
+    psx_cpu_i_bltz   , psx_cpu_i_bgez   , psx_cpu_i_bltz   , psx_cpu_i_bgez   ,
+    psx_cpu_i_bltz   , psx_cpu_i_bgez   , psx_cpu_i_bltz   , psx_cpu_i_bgez   ,
+    psx_cpu_i_bltz   , psx_cpu_i_bgez   , psx_cpu_i_bltz   , psx_cpu_i_bgez   ,
+    psx_cpu_i_bltzal , psx_cpu_i_bgezal , psx_cpu_i_bltzal , psx_cpu_i_bgezal ,
+    psx_cpu_i_bltzal , psx_cpu_i_bgezal , psx_cpu_i_bltzal , psx_cpu_i_bgezal ,
+    psx_cpu_i_bltzal , psx_cpu_i_bgezal , psx_cpu_i_bltzal , psx_cpu_i_bgezal ,
+    psx_cpu_i_bltzal , psx_cpu_i_bgezal , psx_cpu_i_bltzal , psx_cpu_i_bgezal
 };
 
 #define OP ((cpu->buf[1] >> 26) & 0x3f)
@@ -339,7 +342,7 @@ void psx_cpu_exception(psx_cpu_t* cpu, uint32_t cause) {
     // If we're in a delay slot, set delay slot bit
     // on CAUSE
     if (cpu->delay_slot) {
-        cpu->cop0_epc = cpu->pc - 4;
+        cpu->cop0_epc = cpu->pc - 12;
         cpu->cop0_cause |= 0x80000000;
     } else {
         cpu->cop0_epc = cpu->pc - 8;
@@ -366,9 +369,9 @@ void psx_cpu_irq(psx_cpu_t* cpu, uint32_t irq) {
 }
 
 void psx_cpu_i_invalid(psx_cpu_t* cpu) {
-    log_warn("%08x: Illegal instruction %08x", cpu->pc - 8, cpu->buf[1]);
+    log_fatal("%08x: Illegal instruction %08x", cpu->pc - 8, cpu->buf[1]);
 
-    //psx_cpu_exception(cpu, CAUSE_RI);
+    psx_cpu_exception(cpu, CAUSE_RI);
 }
 
 // Primary
@@ -649,8 +652,14 @@ void psx_cpu_i_lh(psx_cpu_t* cpu) {
 
     DO_PENDING_LOAD;
 
-    cpu->load_d = T;
-    cpu->load_v = SE16(psx_bus_read16(cpu->bus, s + IMM16S));
+    uint32_t addr = s + IMM16S;
+
+    if (addr & 0x1) {
+        psx_cpu_exception(cpu, CAUSE_ADEL);
+    } else {
+        cpu->load_d = T;
+        cpu->load_v = SE16(psx_bus_read16(cpu->bus, addr));
+    }
 }
 
 void psx_cpu_i_lwl(psx_cpu_t* cpu) {
@@ -676,11 +685,16 @@ void psx_cpu_i_lw(psx_cpu_t* cpu) {
     TRACE_M("lw");
 
     uint32_t s = cpu->r[S];
+    uint32_t addr = s + IMM16S;
 
     DO_PENDING_LOAD;
 
-    cpu->load_d = T;
-    cpu->load_v = psx_bus_read32(cpu->bus, s + IMM16S);
+    if (addr & 0x3) {
+        psx_cpu_exception(cpu, CAUSE_ADEL);
+    } else {
+        cpu->load_d = T;
+        cpu->load_v = psx_bus_read32(cpu->bus, addr);
+    }
 }
 
 void psx_cpu_i_lbu(psx_cpu_t* cpu) {
@@ -698,11 +712,16 @@ void psx_cpu_i_lhu(psx_cpu_t* cpu) {
     TRACE_M("lhu");
 
     uint32_t s = cpu->r[S];
+    uint32_t addr = s + IMM16S;
 
     DO_PENDING_LOAD;
 
-    cpu->load_d = T;
-    cpu->load_v = psx_bus_read16(cpu->bus, s + IMM16S);
+    if (addr & 0x1) {
+        psx_cpu_exception(cpu, CAUSE_ADEL);
+    } else {
+        cpu->load_d = T;
+        cpu->load_v = psx_bus_read16(cpu->bus, addr);
+    }
 }
 
 void psx_cpu_i_lwr(psx_cpu_t* cpu) {
@@ -745,6 +764,7 @@ void psx_cpu_i_sh(psx_cpu_t* cpu) {
 
     uint32_t s = cpu->r[S];
     uint32_t t = cpu->r[T];
+    uint32_t addr = s + IMM16S;
 
     DO_PENDING_LOAD;
 
@@ -755,7 +775,11 @@ void psx_cpu_i_sh(psx_cpu_t* cpu) {
         return;
     }
 
-    psx_bus_write16(cpu->bus, s + IMM16S, t);
+    if (addr & 0x1) {
+        psx_cpu_exception(cpu, CAUSE_ADES);
+    } else {
+        psx_bus_write16(cpu->bus, addr, t);
+    }
 }
 
 void psx_cpu_i_swl(psx_cpu_t* cpu) {
@@ -784,6 +808,7 @@ void psx_cpu_i_sw(psx_cpu_t* cpu) {
 
     uint32_t s = cpu->r[S];
     uint32_t t = cpu->r[T];
+    uint32_t addr = s + IMM16S;
 
     DO_PENDING_LOAD;
 
@@ -794,7 +819,11 @@ void psx_cpu_i_sw(psx_cpu_t* cpu) {
         return;
     }
 
-    psx_bus_write32(cpu->bus, s + IMM16S, t);
+    if (addr & 0x3) {
+        psx_cpu_exception(cpu, CAUSE_ADES);
+    } else {
+        psx_bus_write32(cpu->bus, addr, t);
+    }
 }
 
 void psx_cpu_i_swr(psx_cpu_t* cpu) {
@@ -1093,18 +1122,16 @@ void psx_cpu_i_sub(psx_cpu_t* cpu) {
 
     int32_t s = (int32_t)cpu->r[S];
     int32_t t = (int32_t)cpu->r[T];
+    int32_t r;
 
     DO_PENDING_LOAD;
 
-    int32_t r = s - t;
+    int o = __builtin_ssub_overflow(s, t, &r);
 
-    // To-do: Check SUB overflow check
-    uint32_t o = (s ^ t) & (t & r);
-
-    if (o & 0x80000000) {
+    if (o) {
         psx_cpu_exception(cpu, CAUSE_OV);
     } else {
-        cpu->r[D] = (uint32_t)r;
+        cpu->r[D] = r;
     }
 }
 
@@ -1249,7 +1276,7 @@ void psx_cpu_i_rfe(psx_cpu_t* cpu) {
 
     DO_PENDING_LOAD;
 
-    uint32_t mode = cpu->cop0_sr & 0xf;
+    uint32_t mode = cpu->cop0_sr & 0x3f;
 
     cpu->cop0_sr &= 0xfffffff0;
     cpu->cop0_sr |= mode >> 2;

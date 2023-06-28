@@ -186,11 +186,11 @@ void psx_cpu_set_b_kcall_hook(psx_cpu_t*, psx_cpu_kcall_hook_t);
 #define CAUSE_ADES      0x05
 #define CAUSE_IBE       0x06
 #define CAUSE_DBE       0x07
-#define CAUSE_SYSCALL   0x08   
-#define CAUSE_BP        0x09   
-#define CAUSE_RI        0x0a   
-#define CAUSE_CPU       0x0b   
-#define CAUSE_OV        0x0c   
+#define CAUSE_SYSCALL   0x08
+#define CAUSE_BP        0x09
+#define CAUSE_RI        0x0a
+#define CAUSE_CPU       0x0b
+#define CAUSE_OV        0x0c
 
 void psx_cpu_i_invalid(psx_cpu_t*);
 
