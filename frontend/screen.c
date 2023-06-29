@@ -1,7 +1,5 @@
 #include "screen.h"
 
-// #define PSXE_SCREEN_DEBUG 1
-
 psxe_screen_t* psxe_screen_create() {
     return (psxe_screen_t*)malloc(sizeof(psxe_screen_t));
 }
@@ -9,31 +7,32 @@ psxe_screen_t* psxe_screen_create() {
 void psxe_screen_init(psxe_screen_t* screen, psx_t* psx) {
     memset(screen, 0, sizeof(psxe_screen_t));
 
-#ifdef PSXE_SCREEN_DEBUG
-    screen->width = PSX_GPU_FB_WIDTH;
-    screen->height = PSX_GPU_FB_HEIGHT;
-#else
-    screen->width = 320;
-    screen->height = 240;
-#endif
+    if (screen->debug_mode) {
+        screen->width = PSX_GPU_FB_WIDTH;
+        screen->height = PSX_GPU_FB_HEIGHT;
+    } else {
+        screen->width = 320;
+        screen->height = 240;
+    }
+
     screen->scale = 1;
     screen->open = 1;
     screen->psx = psx;
 
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 
-    SDL_SetHint("SDL_HINT_RENDER_SCALE_QUALITY", "2");
+    SDL_SetHint("SDL_HINT_RENDER_SCALE_QUALITY", "0");
 }
 
 void psxe_screen_reload(psxe_screen_t* screen) {
-    SDL_SetHint("SDL_HINT_RENDER_SCALE_QUALITY", "2");
+    SDL_SetHint("SDL_HINT_RENDER_SCALE_QUALITY", "0");
 
     if (screen->texture) SDL_DestroyTexture(screen->texture);
     if (screen->renderer) SDL_DestroyRenderer(screen->renderer);
     if (screen->window) SDL_DestroyWindow(screen->window);
 
     screen->window = SDL_CreateWindow(
-        "PSXE",
+        "psxe " STR(REP_VERSION) "-" STR(REP_COMMIT_HASH),
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         screen->width * screen->scale,
         screen->height * screen->scale,
@@ -72,6 +71,12 @@ int psxe_screen_is_open(psxe_screen_t* screen) {
     return screen->open;
 }
 
+void psxe_screen_toggle_debug_mode(psxe_screen_t* screen) {
+    screen->debug_mode = !screen->debug_mode;
+
+    psxe_screen_reload(screen);
+}
+
 void psxe_screen_update(psxe_screen_t* screen) {
     void* display_buf = psx_get_display_buffer(screen->psx);
 
@@ -91,13 +96,13 @@ void psxe_screen_update(psxe_screen_t* screen) {
 }
 
 void psxe_screen_set_scale(psxe_screen_t* screen, unsigned int scale) {
-#ifdef PSXE_SCREEN_DEBUG
-    screen->scale = 1;
-    screen->saved_scale = 1;
-#else
-    screen->scale = scale;
-    screen->saved_scale = scale;
-#endif
+    if (screen->debug_mode) {
+        screen->scale = 1;
+        screen->saved_scale = 1;
+    } else {
+        screen->scale = scale;
+        screen->saved_scale = scale;
+    }
 }
 
 void psxe_screen_destroy(psxe_screen_t* screen) {
@@ -113,14 +118,14 @@ void psxe_screen_destroy(psxe_screen_t* screen) {
 void psxe_gpu_dmode_event_cb(psx_gpu_t* gpu) {
     psxe_screen_t* screen = gpu->udata[0];
 
-#ifdef PSXE_SCREEN_DEBUG
-    screen->width = PSX_GPU_FB_WIDTH;
-    screen->height = PSX_GPU_FB_HEIGHT;
-#else
-    screen->width = psx_get_display_width(screen->psx);
-    screen->height = psx_get_display_height(screen->psx);
-#endif
-    
+    if (screen->debug_mode) {
+        screen->width = PSX_GPU_FB_WIDTH;
+        screen->height = PSX_GPU_FB_HEIGHT;
+    } else {
+        screen->width = psx_get_display_width(screen->psx);
+        screen->height = psx_get_display_height(screen->psx);
+    }
+
     if (screen->width > 512) {
         screen->saved_scale = screen->scale;
         screen->scale = 1;
