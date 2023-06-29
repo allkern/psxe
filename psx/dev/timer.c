@@ -34,6 +34,21 @@ uint32_t psx_timer_read32(psx_timer_t* timer, uint32_t offset) {
 }
 
 uint16_t psx_timer_read16(psx_timer_t* timer, uint32_t offset) {
+    if (offset == 0x20) {
+        return 0x000016b0;
+    }
+
+    int t = (offset >> 4) & 0x3;
+    int r = offset & 0xf;
+
+    if (r == 0) {
+        switch (t) {
+            case 0: return timer->t0_stub++;
+            case 1: return timer->t1_stub++;
+            case 2: return timer->t2_stub++;
+        }
+    }
+
     log_fatal("Unhandled 16-bit TIMER read at offset %08x", offset);
 
     return 0x0;

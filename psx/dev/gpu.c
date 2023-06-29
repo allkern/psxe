@@ -38,15 +38,7 @@ void psx_gpu_init(psx_gpu_t* gpu, psx_ic_t* ic) {
 uint32_t psx_gpu_read32(psx_gpu_t* gpu, uint32_t offset) {
     switch (offset) {
         case 0x00: return gpu->gpuread; // GPUREAD
-        case 0x04: {
-            if (gpu->gpustat & 0x80000000) {
-                gpu->gpustat &= ~0x80000000;
-            } else {
-                gpu->gpustat |= 0x80000000;
-            }
-
-            return (gpu->gpustat & ~0x00080000) | 0x1c000000; // GPUSTAT
-        }
+        case 0x04: return gpu->gpustat | 0x1c000000;
     }
 
     log_warn("Unhandled 32-bit GPU read at offset %08x", offset);
@@ -56,8 +48,8 @@ uint32_t psx_gpu_read32(psx_gpu_t* gpu, uint32_t offset) {
 
 uint16_t psx_gpu_read16(psx_gpu_t* gpu, uint32_t offset) {
     switch (offset) {
-        case 0x00: return 0x00000000; // GPUREAD
-        case 0x04: return 0x1c000000; // GPUSTAT
+        case 0x00: return gpu->gpuread;
+        case 0x04: return gpu->gpustat;
     }
 
     log_warn("Unhandled 16-bit GPU read at offset %08x", offset);
@@ -67,8 +59,8 @@ uint16_t psx_gpu_read16(psx_gpu_t* gpu, uint32_t offset) {
 
 uint8_t psx_gpu_read8(psx_gpu_t* gpu, uint32_t offset) {
     switch (offset) {
-        case 0x00: return 0x00000000; // GPUREAD
-        case 0x04: return 0x1c000000; // GPUSTAT
+        case 0x00: return gpu->gpuread;
+        case 0x04: return gpu->gpustat;
     }
 
     log_warn("Unhandled 8-bit GPU read at offset %08x", offset);
@@ -111,6 +103,24 @@ uint16_t gpu_fetch_texel(psx_gpu_t* gpu, uint16_t tx, uint16_t ty, uint32_t tpx,
         default: {
             return gpu->vram[(tpx + tx) + ((tpy + ty) * 1024)];
         } break;
+    }
+}
+
+void gpu_render_flat_rectangle(psx_gpu_t* gpu, vertex_t v, uint32_t w, uint32_t h, uint32_t color) {
+    /* Offset coordinates */
+    v.x += gpu->off_x;
+    v.y += gpu->off_y;
+
+    /* Calculate bounding box */
+    int xmin = max(v.x, gpu->draw_x1);
+    int ymin = max(v.y, gpu->draw_y1);
+    int xmax = min(xmin + w, gpu->draw_x2);
+    int ymax = min(ymin + h, gpu->draw_y2);
+
+    for (uint32_t y = ymin; y < ymax; y++) {
+        for (uint32_t x = xmin; x < xmax; x++) {
+            gpu->vram[x + (y * 1024)] = gpu_to_bgr555(color);
+        }
     }
 }
 
@@ -571,6 +581,29 @@ void gpu_cmd_64(psx_gpu_t* gpu) {
     }
 }
 
+void gpu_cmd_68(psx_gpu_t* gpu) {
+    switch (gpu->state) {
+        case GPU_STATE_RECV_CMD: {
+            gpu->state = GPU_STATE_RECV_ARGS;
+            gpu->cmd_args_remaining = 1;
+        } break;
+
+        case GPU_STATE_RECV_ARGS: {
+            if (!gpu->cmd_args_remaining) {
+                gpu->state = GPU_STATE_RECV_DATA;
+
+                gpu->color = gpu->buf[0] & 0xffffff;
+                gpu->v0.x  = gpu->buf[1] & 0xffff;
+                gpu->v0.y  = gpu->buf[1] >> 16;
+
+                gpu_render_flat_rectangle(gpu, gpu->v0, 1, 1, gpu->color);
+
+                gpu->state = GPU_STATE_RECV_CMD;
+            }
+        } break;
+    }
+}
+
 void psx_gpu_update_cmd(psx_gpu_t* gpu) {
     switch (gpu->buf[0] >> 24) {
         case 0x00: /* nop */ break;
@@ -580,6 +613,7 @@ void psx_gpu_update_cmd(psx_gpu_t* gpu) {
         case 0x30: gpu_cmd_30(gpu); break;
         case 0x38: gpu_cmd_38(gpu); break;
         case 0x64: gpu_cmd_64(gpu); break;
+        case 0x68: gpu_cmd_68(gpu); break;
         case 0xa0: gpu_cmd_a0(gpu); break;
         case 0xe1: {
             gpu->gpustat &= 0x7ff;
@@ -698,26 +732,43 @@ void psx_gpu_set_udata(psx_gpu_t* gpu, int index, void* udata) {
     gpu->udata[index] = udata;
 }
 
-#define GPU_CYCLES_PER_SCAN_NTSC 3413
+#define GPU_CYCLES_PER_HDRAW_NTSC 2560
+#define GPU_CYCLES_PER_SCANL_NTSC 3413
+#define GPU_SCANS_PER_VDRAW_NTSC 240
 #define GPU_SCANS_PER_FRAME_NTSC 263
-#define GPU_CYCLES_PER_SCAN_PAL 3406
-#define GPU_SCANS_PER_FRAME_PAL 314
+
+void gpu_scanline_event(psx_gpu_t* gpu) {
+    gpu->line++;
+
+    if (gpu->line < GPU_SCANS_PER_VDRAW_NTSC) {
+        if (gpu->line & 1) {
+            gpu->gpustat |= 1 << 31;
+        } else {
+            gpu->gpustat &= ~(1 << 31);
+        }
+    } else {
+        gpu->gpustat &= ~(1 << 31);
+    }
+
+    if (gpu->line == GPU_SCANS_PER_VDRAW_NTSC) {
+        // Disable Vblank for now
+        // psx_ic_irq(gpu->ic, IC_VBLANK);
+    } else if (gpu->line == GPU_SCANS_PER_FRAME_NTSC) {
+        gpu->line = 0;
+    }
+}
 
 void psx_gpu_update(psx_gpu_t* gpu, int cyc) {
     // Convert CPU (~33.8 MHz) cycles to GPU (~53.7 MHz) cycles
-    gpu->cycles += (float)cyc * (PSX_GPU_CLOCK_FREQ_NTSC / PSX_CPU_CLOCK_FREQ);
+    gpu->cycles += ((float)cyc) * (PSX_GPU_CLOCK_FREQ_PAL / PSX_CPU_CLOCK_FREQ);
 
-    if (gpu->cycles >= (float)GPU_CYCLES_PER_SCAN_NTSC) {
-        gpu->cycles -= (float)GPU_CYCLES_PER_SCAN_NTSC;
-        gpu->line++;
+    //if (gpu->cycles >= (float)GPU_CYCLES_PER_HDRAW_NTSC) {
+        // Tick Hblank timer
 
-        if (gpu->line == GPU_SCANS_PER_FRAME_NTSC) {
-            // psx_ic_irq(gpu->ic, IC_VBLANK);
+    if (gpu->cycles >= (float)GPU_CYCLES_PER_SCANL_NTSC) {
+        gpu->cycles -= (float)GPU_CYCLES_PER_SCANL_NTSC;
 
-            gpu->line = 0;
-        } else {
-            psx_ic_irq(gpu->ic, IC_GPU);
-        }
+        gpu_scanline_event(gpu);
     }
 }
 

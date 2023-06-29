@@ -126,10 +126,10 @@ psx_cpu_instruction_t g_psx_cpu_bxx_table[] = {
     psx_cpu_i_bltz   , psx_cpu_i_bgez   , psx_cpu_i_bltz   , psx_cpu_i_bgez   ,
     psx_cpu_i_bltz   , psx_cpu_i_bgez   , psx_cpu_i_bltz   , psx_cpu_i_bgez   ,
     psx_cpu_i_bltz   , psx_cpu_i_bgez   , psx_cpu_i_bltz   , psx_cpu_i_bgez   ,
-    psx_cpu_i_bltzal , psx_cpu_i_bgezal , psx_cpu_i_bltzal , psx_cpu_i_bgezal ,
-    psx_cpu_i_bltzal , psx_cpu_i_bgezal , psx_cpu_i_bltzal , psx_cpu_i_bgezal ,
-    psx_cpu_i_bltzal , psx_cpu_i_bgezal , psx_cpu_i_bltzal , psx_cpu_i_bgezal ,
-    psx_cpu_i_bltzal , psx_cpu_i_bgezal , psx_cpu_i_bltzal , psx_cpu_i_bgezal
+    psx_cpu_i_bltzal , psx_cpu_i_bgezal , psx_cpu_i_bltz   , psx_cpu_i_bgez   ,
+    psx_cpu_i_bltz   , psx_cpu_i_bgez   , psx_cpu_i_bltz   , psx_cpu_i_bgez   ,
+    psx_cpu_i_bltz   , psx_cpu_i_bgez   , psx_cpu_i_bltz   , psx_cpu_i_bgez   ,
+    psx_cpu_i_bltz   , psx_cpu_i_bgez   , psx_cpu_i_bltz   , psx_cpu_i_bgez
 };
 
 #define OP ((cpu->buf[1] >> 26) & 0x3f)
@@ -319,6 +319,12 @@ void psx_cpu_cycle(psx_cpu_t* cpu) {
         if (cpu->a_function_hook) cpu->b_function_hook(cpu);
 
     cpu->buf[1] = cpu->buf[0];
+
+    if (cpu->pc & 0x3) {
+        psx_cpu_exception(cpu, CAUSE_ADEL);
+
+        return;
+    }
 
     psx_cpu_fetch(cpu);
 
@@ -730,6 +736,8 @@ void psx_cpu_i_lwr(psx_cpu_t* cpu) {
     uint32_t addr = cpu->r[S] + IMM16S;
 
     uint32_t aligned = psx_bus_read32(cpu->bus, addr & ~0x3);
+
+    cpu->load_v = cpu->r[T];
 
     switch (addr & 0x3) {
         case 0: cpu->load_v =                               aligned       ; break;
@@ -1255,6 +1263,10 @@ void psx_cpu_i_mtc0(psx_cpu_t* cpu) {
         case 9: cpu->cop0_bdam = t; break;
         case 11: cpu->cop0_bpcm = t; break;
         case 12: cpu->cop0_sr = t; break;
+    }
+
+    if ((cpu->cop0_sr & SR_IEC) && (cpu->cop0_cause & cpu->cop0_sr & SR_IM2)) {
+        psx_cpu_exception(cpu, CAUSE_INT);
     }
 }
 

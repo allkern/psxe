@@ -22,6 +22,6 @@ gcc -I"`"$($PSX_DIR)`"" `
     -L"`"$($SDL2_DIR)\lib`"" `
     -m64 -lSDL2main -lSDL2 -Wno-overflow `
     -Wall -pedantic -DLOG_USE_COLOR `
-    -ffast-math -Ofast
+    -ffast-math -Ofast -g
 
 Copy-Item -Path "sdl2-win64/SDL2.dll" -Destination "bin"
