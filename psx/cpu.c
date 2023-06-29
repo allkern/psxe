@@ -425,7 +425,7 @@ void psx_cpu_i_bltzal(psx_cpu_t* cpu) {
 
     DO_PENDING_LOAD;
 
-    R_RA = cpu->pc - 4;
+    R_RA = cpu->pc;
 
     if ((int32_t)s < (int32_t)0) {
         cpu->pc -= 4;
@@ -440,7 +440,7 @@ void psx_cpu_i_bgezal(psx_cpu_t* cpu) {
 
     DO_PENDING_LOAD;
 
-    R_RA = cpu->pc - 4;
+    R_RA = cpu->pc;
 
     if ((int32_t)s >= (int32_t)0) {
         cpu->pc -= 4;
