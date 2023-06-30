@@ -53,23 +53,23 @@ Assuming you did everything described above, you should be able to build the emu
 
 ### Windows
 ```
-git clone https://github.com/allkern/psx
+git clone https://github.com/allkern/psxe
 cd psx
 ./build-deps
 ./build-win.ps1
 ```
+On some rare cases, these scripts might not work (PowerShell/Windows bugs). If so, please open an issue on the issues tab with information about your system so we can make sure we cover the maximum amount of systems. 
 
-If `build-win.ps1` fails for whatever reason (*cough* Microsoft *cough*), you can try using the `build-win.bat` (notice the extension) script instead. If this also doesn't work for you, please open an issue on the Issues tab
 ### Ubuntu
 ```
-git clone https://github.com/allkern/psx
+git clone https://github.com/allkern/psxe
 cd psx
 make clean && make
 ```
 
 ### macOS
 ```
-git clone https://github.com/allkern/psx
+git clone https://github.com/allkern/psxe
 cd psx
 ./build.sh
 ```
