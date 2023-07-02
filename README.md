@@ -1,4 +1,3 @@
-
 # psxe
 A simple and portable Sony PlayStation emulator and emulation library written in C
 
@@ -22,9 +21,6 @@ Other BIOSes aren't currently supported, though I've only tested `SCPH1000.bin` 
 ## Progress
 Here's a list of what's currently implemented:
 - All CPU instructions, excluding GTE
-- CPU quirks (Branch, Load delay slots)
-- Bus structure
-- OTC DMA (Burst), GPU DMA (Request, Linked)
 - Several GPU registers
 - GPU commands used by the BIOS
 - Some CDROM commands (`Test`, `Getstat`)
@@ -32,7 +28,7 @@ Here's a list of what's currently implemented:
 ## Building
 Building the emulator should be easy, just use the scripts provided in this repo.
 
-On Windows, the `build-deps.ps1` script downloads SDL2 and unzips it. If you want to run the emulator standalone, you'll have to move the SDL2 DLL to the same folder where the executable is located.
+On Windows, the `build-deps.ps1` script downloads SDL2 and unzips it. If you want to run the emulator standalone, you will have to move the SDL2 DLL to the same folder where the executable is located.
 
 **If you already have SDL2 on your system**, you can skip running `build-deps.ps1`. Though you will have to edit `build-win.ps1` to point the `SDL2_DIR` variable to your installation path.
 
@@ -53,12 +49,15 @@ Assuming you did everything described above, you should be able to build the emu
 
 ### Windows
 ```
+- CPU quirks (Branch, Load delay slots)
+- Bus structure
+- OTC DMA (Burst), GPU DMA (Request, Linked)
 git clone https://github.com/allkern/psxe
 cd psx
 ./build-deps
 ./build-win.ps1
 ```
-On some rare cases, these scripts might not work (PowerShell/Windows bugs). If so, please open an issue on the issues tab with information about your system so we can make sure we cover the maximum amount of systems. 
+On rare cases these scripts might not work (PowerShell/Windows bugs). If so, please open an issue on the issues tab with information about your system so we can make sure we cover the maximum amount of systems. 
 
 ### Ubuntu
 ```
@@ -73,3 +72,11 @@ git clone https://github.com/allkern/psxe
 cd psx
 ./build.sh
 ```
+
+## Acknowledgements
+This project uses external open source code that can be found on the following GitHub repos:
+- log.c (slightly modified): https://github.com/rxi/log.c
+- tomlc99: https://github.com/cktan/tomlc99
+Their original licenses are respected and apply to the code in this project.
+
+As always, I thank all original developers for their amazing work.
