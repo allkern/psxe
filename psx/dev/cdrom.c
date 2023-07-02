@@ -239,8 +239,11 @@ void psx_cdrom_update(psx_cdrom_t* cdrom) {
     if (cdrom->irq_delay) {
         cdrom->irq_delay -= 2;
 
-        if (!cdrom->irq_delay)
+        if (cdrom->irq_delay <= 0) {
             psx_ic_irq(cdrom->ic, IC_CDROM);
+
+            cdrom->irq_delay = 0;
+        }
     }
 }
 

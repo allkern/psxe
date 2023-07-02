@@ -28,6 +28,7 @@ void psx_update(psx_t* psx) {
     psx_cpu_cycle(psx->cpu);
     psx_cdrom_update(psx->cdrom);
     psx_gpu_update(psx->gpu, psx->cpu->last_cycles);
+    psx_cpu_check_irq(psx->cpu);
 }
 
 void psx_run_frame(psx_t* psx) {
@@ -55,6 +56,10 @@ uint32_t psx_get_display_width(psx_t* psx) {
 
 uint32_t psx_get_display_height(psx_t* psx) {
     return (psx->gpu->display_mode & 0x4) ? 480 : 240;
+}
+
+uint32_t psx_get_display_format(psx_t* psx) {
+    return (psx->gpu->display_mode >> 4) & 1;
 }
 
 void psx_init(psx_t* psx, const char* bios_path) {

@@ -17,6 +17,7 @@ typedef struct {
 
     unsigned int saved_scale;
     unsigned int width, height, scale;
+    unsigned int format;
 
     int debug_mode;
     int open;

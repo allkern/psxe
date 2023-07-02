@@ -17,6 +17,7 @@ void psxe_screen_init(psxe_screen_t* screen, psx_t* psx) {
 
     screen->scale = 1;
     screen->open = 1;
+    screen->format = SDL_PIXELFORMAT_BGR555;
     screen->psx = psx;
 
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
@@ -47,7 +48,7 @@ void psxe_screen_reload(psxe_screen_t* screen) {
 
     screen->texture = SDL_CreateTexture(
         screen->renderer,
-        SDL_PIXELFORMAT_BGR555,
+        screen->format,
         SDL_TEXTUREACCESS_STREAMING,
         PSX_GPU_FB_WIDTH, PSX_GPU_FB_HEIGHT
     );
@@ -74,7 +75,7 @@ int psxe_screen_is_open(psxe_screen_t* screen) {
 void psxe_screen_toggle_debug_mode(psxe_screen_t* screen) {
     screen->debug_mode = !screen->debug_mode;
 
-    psxe_screen_reload(screen);
+    psxe_gpu_dmode_event_cb(screen->psx->gpu);
 }
 
 void psxe_screen_update(psxe_screen_t* screen) {
@@ -91,6 +92,14 @@ void psxe_screen_update(psxe_screen_t* screen) {
             case SDL_QUIT: {
                 screen->open = 0;
             } break;
+
+            case SDL_KEYDOWN: {
+                switch (event.key.keysym.sym) {
+                    case SDLK_F1: {
+                        psxe_screen_toggle_debug_mode(screen);
+                    } break;
+                }
+            } break;
         }
     }
 }
@@ -98,7 +107,6 @@ void psxe_screen_update(psxe_screen_t* screen) {
 void psxe_screen_set_scale(psxe_screen_t* screen, unsigned int scale) {
     if (screen->debug_mode) {
         screen->scale = 1;
-        screen->saved_scale = 1;
     } else {
         screen->scale = scale;
         screen->saved_scale = scale;
@@ -117,6 +125,9 @@ void psxe_screen_destroy(psxe_screen_t* screen) {
 
 void psxe_gpu_dmode_event_cb(psx_gpu_t* gpu) {
     psxe_screen_t* screen = gpu->udata[0];
+
+    screen->format = psx_get_display_format(screen->psx) ?
+        SDL_PIXELFORMAT_BGR555 : SDL_PIXELFORMAT_RGB888;
 
     if (screen->debug_mode) {
         screen->width = PSX_GPU_FB_WIDTH;

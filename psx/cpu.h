@@ -52,6 +52,18 @@ typedef void (*psx_cpu_kcall_hook_t)(psx_cpu_t*);
     cop0r15     - PRID - Processor ID (R)
 */
 
+#define COP0_BPC      3
+#define COP0_BDA      5
+#define COP0_JUMPDEST 6
+#define COP0_DCIC     7
+#define COP0_BADVADDR 8
+#define COP0_BDAM     9
+#define COP0_BPCM     11
+#define COP0_SR       12
+#define COP0_CAUSE    13
+#define COP0_EPC      14
+#define COP0_PRID     15
+
 struct psx_cpu_t {
     uint32_t r[32];
     uint32_t buf[2];
@@ -59,19 +71,10 @@ struct psx_cpu_t {
     uint32_t hi, lo;
     uint32_t load_d, load_v;
     uint32_t last_cycles;
+    uint32_t total_cycles;
     int branch, delay_slot;
 
-    uint32_t cop0_bpc;
-    uint32_t cop0_bda;
-    uint32_t cop0_jumpdest;
-    uint32_t cop0_dcic;
-    uint32_t cop0_badvaddr;
-    uint32_t cop0_bdam;
-    uint32_t cop0_bpcm;
-    uint32_t cop0_sr;
-    uint32_t cop0_cause;
-    uint32_t cop0_epc;
-    uint32_t cop0_prid;
+    uint32_t cop0_r[16];
 
     psx_bus_t* bus;
 
@@ -158,6 +161,7 @@ void psx_cpu_save_state(psx_cpu_t*, FILE*);
 void psx_cpu_fetch(psx_cpu_t*);
 void psx_cpu_set_a_kcall_hook(psx_cpu_t*, psx_cpu_kcall_hook_t);
 void psx_cpu_set_b_kcall_hook(psx_cpu_t*, psx_cpu_kcall_hook_t);
+void psx_cpu_check_irq(psx_cpu_t*);
 
 /*
     00h INT     Interrupt
@@ -178,19 +182,19 @@ void psx_cpu_set_b_kcall_hook(psx_cpu_t*, psx_cpu_kcall_hook_t);
     0Ch Ov      Arithmetic overflow
 */
 
-#define CAUSE_INT       0x00
-#define CAUSE_MOD       0x01
-#define CAUSE_TLBL      0x02
-#define CAUSE_TLBS      0x03
-#define CAUSE_ADEL      0x04
-#define CAUSE_ADES      0x05
-#define CAUSE_IBE       0x06
-#define CAUSE_DBE       0x07
-#define CAUSE_SYSCALL   0x08
-#define CAUSE_BP        0x09
-#define CAUSE_RI        0x0a
-#define CAUSE_CPU       0x0b
-#define CAUSE_OV        0x0c
+#define CAUSE_INT       (0x00 << 2)
+#define CAUSE_MOD       (0x01 << 2)
+#define CAUSE_TLBL      (0x02 << 2)
+#define CAUSE_TLBS      (0x03 << 2)
+#define CAUSE_ADEL      (0x04 << 2)
+#define CAUSE_ADES      (0x05 << 2)
+#define CAUSE_IBE       (0x06 << 2)
+#define CAUSE_DBE       (0x07 << 2)
+#define CAUSE_SYSCALL   (0x08 << 2)
+#define CAUSE_BP        (0x09 << 2)
+#define CAUSE_RI        (0x0a << 2)
+#define CAUSE_CPU       (0x0b << 2)
+#define CAUSE_OV        (0x0c << 2)
 
 void psx_cpu_i_invalid(psx_cpu_t*);
 

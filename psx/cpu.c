@@ -5,73 +5,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define R_R0 (cpu->r[0])
-#define R_AT (cpu->r[1])
-#define R_V0 (cpu->r[2])
-#define R_V1 (cpu->r[3])
-#define R_A0 (cpu->r[4])
-#define R_A1 (cpu->r[5])
-#define R_A2 (cpu->r[6])
-#define R_A3 (cpu->r[7])
-#define R_T0 (cpu->r[8])
-#define R_T1 (cpu->r[9])
-#define R_T2 (cpu->r[10])
-#define R_T3 (cpu->r[11])
-#define R_T4 (cpu->r[12])
-#define R_T5 (cpu->r[13])
-#define R_T6 (cpu->r[14])
-#define R_T7 (cpu->r[15])
-#define R_S0 (cpu->r[16])
-#define R_S1 (cpu->r[17])
-#define R_S2 (cpu->r[18])
-#define R_S3 (cpu->r[19])
-#define R_S4 (cpu->r[20])
-#define R_S5 (cpu->r[21])
-#define R_S6 (cpu->r[22])
-#define R_S7 (cpu->r[23])
-#define R_T8 (cpu->r[24])
-#define R_T9 (cpu->r[25])
-#define R_K0 (cpu->r[26])
-#define R_K1 (cpu->r[27])
-#define R_GP (cpu->r[28])
-#define R_SP (cpu->r[29])
-#define R_FP (cpu->r[30])
-#define R_RA (cpu->r[31])
-
-psx_cpu_t* psx_cpu_create() {
-    return (psx_cpu_t*)malloc(sizeof(psx_cpu_t));
-}
-
-void cpu_a_kcall_hook(psx_cpu_t*);
-void cpu_b_kcall_hook(psx_cpu_t*);
-
-void psx_cpu_fetch(psx_cpu_t* cpu) {
-    cpu->buf[0] = psx_bus_read32(cpu->bus, cpu->pc);
-    cpu->pc += 4;
-
-    // Discard fetch cycles
-    psx_bus_get_access_cycles(cpu->bus);
-}
-
-void psx_cpu_init(psx_cpu_t* cpu, psx_bus_t* bus) {
-    memset(cpu, 0, sizeof(psx_cpu_t));
-
-    psx_cpu_set_a_kcall_hook(cpu, cpu_a_kcall_hook);
-    psx_cpu_set_b_kcall_hook(cpu, cpu_b_kcall_hook);
-
-    cpu->bus = bus;
-    cpu->pc = 0xbfc00000;
-
-    cpu->cop0_sr = 0x10900000;
-    cpu->cop0_prid = 0x00000002;
-
-    psx_cpu_fetch(cpu);
-}
-
-void psx_cpu_destroy(psx_cpu_t* cpu) {
-    free(cpu);
-}
-
 psx_cpu_instruction_t g_psx_cpu_secondary_table[] = {
     psx_cpu_i_sll    , psx_cpu_i_invalid, psx_cpu_i_srl    , psx_cpu_i_sra    ,
     psx_cpu_i_sllv   , psx_cpu_i_invalid, psx_cpu_i_srlv   , psx_cpu_i_srav   ,
@@ -142,6 +75,39 @@ psx_cpu_instruction_t g_psx_cpu_bxx_table[] = {
 #define IMM26 (cpu->buf[1] & 0x3ffffff)
 #define IMM16 (cpu->buf[1] & 0xffff)
 #define IMM16S ((int32_t)((int16_t)IMM16))
+
+#define R_R0 (cpu->r[0])
+#define R_AT (cpu->r[1])
+#define R_V0 (cpu->r[2])
+#define R_V1 (cpu->r[3])
+#define R_A0 (cpu->r[4])
+#define R_A1 (cpu->r[5])
+#define R_A2 (cpu->r[6])
+#define R_A3 (cpu->r[7])
+#define R_T0 (cpu->r[8])
+#define R_T1 (cpu->r[9])
+#define R_T2 (cpu->r[10])
+#define R_T3 (cpu->r[11])
+#define R_T4 (cpu->r[12])
+#define R_T5 (cpu->r[13])
+#define R_T6 (cpu->r[14])
+#define R_T7 (cpu->r[15])
+#define R_S0 (cpu->r[16])
+#define R_S1 (cpu->r[17])
+#define R_S2 (cpu->r[18])
+#define R_S3 (cpu->r[19])
+#define R_S4 (cpu->r[20])
+#define R_S5 (cpu->r[21])
+#define R_S6 (cpu->r[22])
+#define R_S7 (cpu->r[23])
+#define R_T8 (cpu->r[24])
+#define R_T9 (cpu->r[25])
+#define R_K0 (cpu->r[26])
+#define R_K1 (cpu->r[27])
+#define R_GP (cpu->r[28])
+#define R_SP (cpu->r[29])
+#define R_FP (cpu->r[30])
+#define R_RA (cpu->r[31])
 
 // #define CPU_TRACE
 
@@ -295,6 +261,40 @@ void cpu_b_kcall_hook(psx_cpu_t* cpu) {
     }
 }
 
+psx_cpu_t* psx_cpu_create() {
+    return (psx_cpu_t*)malloc(sizeof(psx_cpu_t));
+}
+
+void cpu_a_kcall_hook(psx_cpu_t*);
+void cpu_b_kcall_hook(psx_cpu_t*);
+
+void psx_cpu_fetch(psx_cpu_t* cpu) {
+    cpu->buf[0] = psx_bus_read32(cpu->bus, cpu->pc);
+    cpu->pc += 4;
+
+    // Discard fetch cycles
+    psx_bus_get_access_cycles(cpu->bus);
+}
+
+void psx_cpu_init(psx_cpu_t* cpu, psx_bus_t* bus) {
+    memset(cpu, 0, sizeof(psx_cpu_t));
+
+    psx_cpu_set_a_kcall_hook(cpu, cpu_a_kcall_hook);
+    psx_cpu_set_b_kcall_hook(cpu, cpu_b_kcall_hook);
+
+    cpu->bus = bus;
+    cpu->pc = 0xbfc00000;
+
+    cpu->cop0_r[COP0_SR] = 0x10900000;
+    cpu->cop0_r[COP0_PRID] = 0x00000002;
+
+    psx_cpu_fetch(cpu);
+}
+
+void psx_cpu_destroy(psx_cpu_t* cpu) {
+    free(cpu);
+}
+
 void psx_cpu_set_a_kcall_hook(psx_cpu_t* cpu, psx_cpu_kcall_hook_t hook) {
     cpu->a_function_hook = hook;
 }
@@ -333,7 +333,7 @@ void psx_cpu_cycle(psx_cpu_t* cpu) {
 
     g_psx_cpu_primary_table[OP](cpu);
 
-    if ((cpu->cop0_sr & SR_IEC) && (cpu->cop0_cause & cpu->cop0_sr & SR_IM2)) {
+    if ((cpu->cop0_r[COP0_SR] & SR_IEC) && (cpu->cop0_r[COP0_CAUSE] & cpu->cop0_r[COP0_SR] & SR_IM2)) {
         psx_cpu_exception(cpu, CAUSE_INT);
     }
 
@@ -342,36 +342,59 @@ void psx_cpu_cycle(psx_cpu_t* cpu) {
     cpu->r[0] = 0;
 }
 
+void psx_cpu_check_irq(psx_cpu_t* cpu) {
+    if ((cpu->cop0_r[COP0_SR] & SR_IEC) && (cpu->cop0_r[COP0_CAUSE] & cpu->cop0_r[COP0_SR] & SR_IM2)) {
+        // log_fatal("(before) IRQ pc=%08x, epc=%08x, cause=%08x, sr=%08x, tc=%u (%08x), istat=%08x, imask=%08x, [0]=%08x, [1]=%08x",
+        //     cpu->pc,
+        //     cpu->cop0_r[COP0_EPC],
+        //     cpu->cop0_r[COP0_CAUSE],
+        //     cpu->cop0_r[COP0_SR],
+        //     cpu->total_cycles,
+        //     cpu->total_cycles,
+        //     psx_bus_read32(cpu->bus, 0x1F801070),
+        //     psx_bus_read32(cpu->bus, 0x1F801074),
+        //     cpu->buf[0],
+        //     cpu->buf[1]
+        // );
+
+        psx_cpu_exception(cpu, CAUSE_INT);
+    }
+}
+
 void psx_cpu_exception(psx_cpu_t* cpu, uint32_t cause) {
-    cpu->cop0_cause = cause << 2;
+    // Set excode and clear 3 LSBs
+    cpu->cop0_r[COP0_CAUSE] &= 0xffffff80;
+    cpu->cop0_r[COP0_CAUSE] |= cause;
 
     // If we're in a delay slot, set delay slot bit
     // on CAUSE
     if (cpu->delay_slot) {
-        cpu->cop0_epc = cpu->pc - 12;
-        cpu->cop0_cause |= 0x80000000;
+        cpu->cop0_r[COP0_EPC] = cpu->pc - 12;
+        cpu->cop0_r[COP0_CAUSE] |= 0x80000000;
     } else {
-        cpu->cop0_epc = cpu->pc - 8;
-        cpu->cop0_cause &= 0x7fffffff;
+        cpu->cop0_r[COP0_EPC] = cpu->pc - 8;
+        cpu->cop0_r[COP0_CAUSE] &= 0x7fffffff;
     }
 
     // Do exception stack push
-    uint32_t mode = cpu->cop0_sr & 0x3f;
+    uint32_t mode = cpu->cop0_r[COP0_SR] & 0x3f;
 
-    cpu->cop0_sr &= 0xffffffc0;
-    cpu->cop0_sr |= (mode << 2) & 0x3f;
+    cpu->cop0_r[COP0_SR] &= 0xffffffc0;
+    cpu->cop0_r[COP0_SR] |= (mode << 2) & 0x3f;
 
     // Set PC to the vector selected on BEV
-    cpu->pc = (cpu->cop0_sr & SR_BEV) ? 0xbfc00180 : 0x80000080;
+    cpu->pc = (cpu->cop0_r[COP0_SR] & SR_BEV) ? 0xbfc00180 : 0x80000080;
 
     // Simulate pipeline flush
     psx_cpu_fetch(cpu);
+
+    cpu->buf[1] = cpu->buf[0];
 }
 
 void psx_cpu_irq(psx_cpu_t* cpu, uint32_t irq) {
     // Set interrupt pending field
-    cpu->cop0_cause &= ~SR_IM2;
-    cpu->cop0_cause |= irq ? SR_IM2 : 0;
+    cpu->cop0_r[COP0_CAUSE] &= ~SR_IM2;
+    cpu->cop0_r[COP0_CAUSE] |= irq ? SR_IM2 : 0;
 }
 
 void psx_cpu_i_invalid(psx_cpu_t* cpu) {
@@ -758,7 +781,7 @@ void psx_cpu_i_sb(psx_cpu_t* cpu) {
     DO_PENDING_LOAD;
 
     // Cache isolated
-    if (cpu->cop0_sr & SR_ISC) {
+    if (cpu->cop0_r[COP0_SR] & SR_ISC) {
         log_debug("Ignoring write while cache is isolated");
 
         return;
@@ -777,7 +800,7 @@ void psx_cpu_i_sh(psx_cpu_t* cpu) {
     DO_PENDING_LOAD;
 
     // Cache isolated
-    if (cpu->cop0_sr & SR_ISC) {
+    if (cpu->cop0_r[COP0_SR] & SR_ISC) {
         log_debug("Ignoring write while cache is isolated");
 
         return;
@@ -821,7 +844,7 @@ void psx_cpu_i_sw(psx_cpu_t* cpu) {
     DO_PENDING_LOAD;
 
     // Cache isolated
-    if (cpu->cop0_sr & SR_ISC) {
+    if (cpu->cop0_r[COP0_SR] & SR_ISC) {
         log_debug("Ignoring write while cache is isolated");
 
         return;
@@ -1226,20 +1249,7 @@ void psx_cpu_i_mfc0(psx_cpu_t* cpu) {
 
     DO_PENDING_LOAD;
 
-    switch (D) {
-        case 3: cpu->load_v = cpu->cop0_bpc; break;
-        case 5: cpu->load_v = cpu->cop0_bda; break;
-        case 6: cpu->load_v = cpu->cop0_jumpdest; break;
-        case 7: cpu->load_v = cpu->cop0_dcic; break;
-        case 8: cpu->load_v = cpu->cop0_badvaddr; break;
-        case 9: cpu->load_v = cpu->cop0_bdam; break;
-        case 11: cpu->load_v = cpu->cop0_bpcm; break;
-        case 12: cpu->load_v = cpu->cop0_sr; break;
-        case 13: cpu->load_v = cpu->cop0_cause; break;
-        case 14: cpu->load_v = cpu->cop0_epc; break;
-        case 15: cpu->load_v = cpu->cop0_prid; break;
-    }
-
+    cpu->load_v = cpu->cop0_r[D];
     cpu->load_d = T;
 }
 
@@ -1256,18 +1266,7 @@ void psx_cpu_i_mtc0(psx_cpu_t* cpu) {
 
     DO_PENDING_LOAD;
 
-    switch (D) {
-        case 3: cpu->cop0_bpc = t; break;
-        case 5: cpu->cop0_bda = t; break;
-        case 7: cpu->cop0_dcic = t; break;
-        case 9: cpu->cop0_bdam = t; break;
-        case 11: cpu->cop0_bpcm = t; break;
-        case 12: cpu->cop0_sr = t; break;
-    }
-
-    if ((cpu->cop0_sr & SR_IEC) && (cpu->cop0_cause & cpu->cop0_sr & SR_IM2)) {
-        psx_cpu_exception(cpu, CAUSE_INT);
-    }
+    cpu->cop0_r[D] = t;
 }
 
 void psx_cpu_i_ctc0(psx_cpu_t* cpu) {
@@ -1288,10 +1287,10 @@ void psx_cpu_i_rfe(psx_cpu_t* cpu) {
 
     DO_PENDING_LOAD;
 
-    uint32_t mode = cpu->cop0_sr & 0x3f;
+    uint32_t mode = cpu->cop0_r[COP0_SR] & 0x3f;
 
-    cpu->cop0_sr &= 0xfffffff0;
-    cpu->cop0_sr |= mode >> 2;
+    cpu->cop0_r[COP0_SR] &= 0xfffffff0;
+    cpu->cop0_r[COP0_SR] |= mode >> 2;
 }
 
 #undef R_R0

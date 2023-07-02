@@ -596,7 +596,13 @@ void gpu_cmd_68(psx_gpu_t* gpu) {
                 gpu->v0.x  = gpu->buf[1] & 0xffff;
                 gpu->v0.y  = gpu->buf[1] >> 16;
 
-                gpu_render_flat_rectangle(gpu, gpu->v0, 1, 1, gpu->color);
+                gpu->v0.x += gpu->off_x;
+                gpu->v0.y += gpu->off_y;
+
+                gpu->vram[gpu->v0.x + (gpu->v0.y * 1024)] = gpu_to_bgr555(gpu->color);
+
+                // Optimize pixel plotting
+                // gpu_render_flat_rectangle(gpu, gpu->v0, 1, 1, gpu->color);
 
                 gpu->state = GPU_STATE_RECV_CMD;
             }
@@ -752,7 +758,8 @@ void gpu_scanline_event(psx_gpu_t* gpu) {
 
     if (gpu->line == GPU_SCANS_PER_VDRAW_NTSC) {
         // Disable Vblank for now
-        // psx_ic_irq(gpu->ic, IC_VBLANK);
+        // log_fatal("Vblank");
+        psx_ic_irq(gpu->ic, IC_VBLANK);
     } else if (gpu->line == GPU_SCANS_PER_FRAME_NTSC) {
         gpu->line = 0;
     }
@@ -760,13 +767,20 @@ void gpu_scanline_event(psx_gpu_t* gpu) {
 
 void psx_gpu_update(psx_gpu_t* gpu, int cyc) {
     // Convert CPU (~33.8 MHz) cycles to GPU (~53.7 MHz) cycles
-    gpu->cycles += ((float)cyc) * (PSX_GPU_CLOCK_FREQ_PAL / PSX_CPU_CLOCK_FREQ);
+    gpu->cycles += (float)cyc * (PSX_GPU_CLOCK_FREQ_NTSC / PSX_CPU_CLOCK_FREQ);
+    //gpu->cycles += (float)cyc;
 
-    //if (gpu->cycles >= (float)GPU_CYCLES_PER_HDRAW_NTSC) {
-        // Tick Hblank timer
+    // if (gpu->cycles >= ((float)PSX_CPU_CLOCK / 60.0f)) {
+    //     psx_ic_irq(gpu->ic, IC_VBLANK);
+
+    //     gpu->cycles -= (float)PSX_CPU_CLOCK / 60.0f;
+    // }
+
+    // if (gpu->cycles >= (float)GPU_CYCLES_PER_HDRAW_NTSC) {
+    //     Tick Hblank timer
 
     if (gpu->cycles >= (float)GPU_CYCLES_PER_SCANL_NTSC) {
-        gpu->cycles -= (float)GPU_CYCLES_PER_SCANL_NTSC;
+        gpu->cycles = 0;
 
         gpu_scanline_event(gpu);
     }

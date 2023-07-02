@@ -39,6 +39,7 @@ void psx_run_frame(psx_t*);
 void* psx_get_display_buffer(psx_t*);
 uint32_t psx_get_display_width(psx_t*);
 uint32_t psx_get_display_height(psx_t*);
+uint32_t psx_get_display_format(psx_t*);
 uint32_t* psx_take_screenshot(psx_t*);
 psx_bios_t* psx_get_bios(psx_t*);
 psx_ram_t* psx_get_ram(psx_t*);

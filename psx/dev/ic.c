@@ -59,16 +59,26 @@ void psx_ic_write32(psx_ic_t* ic, uint32_t offset, uint32_t value) {
             log_warn("Unhandled 32-bit IC write at offset %08x (%08x)", offset, value);
         } break;
     }
+
+    // Emulate acknowledge
+    if (!(ic->stat & ic->mask)) {
+        ic->cpu->cop0_r[COP0_CAUSE] &= ~SR_IM2;
+    }
 }
 
 void psx_ic_write16(psx_ic_t* ic, uint32_t offset, uint16_t value) {
     switch (offset) {
-        case 0x00: ic->stat = value; break;
+        case 0x00: ic->stat &= value; break;
         case 0x04: ic->mask = value; break;
 
         default: {
             log_warn("Unhandled 16-bit IC write at offset %08x (%08x)", offset, value);
         } break;
+    }
+
+    // Emulate acknowledge
+    if (!(ic->stat & ic->mask)) {
+        ic->cpu->cop0_r[COP0_CAUSE] &= ~SR_IM2;
     }
 }
 
