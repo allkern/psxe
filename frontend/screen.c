@@ -1,5 +1,20 @@
 #include "screen.h"
 
+uint16_t screen_get_button(SDL_Keycode k) {
+    if (k == SDLK_x     ) return PSXI_SW_SDA_CROSS;
+    if (k == SDLK_a     ) return PSXI_SW_SDA_SQUARE;
+    if (k == SDLK_w     ) return PSXI_SW_SDA_TRIANGLE;
+    if (k == SDLK_d     ) return PSXI_SW_SDA_CIRCLE;
+    if (k == SDLK_RETURN) return PSXI_SW_SDA_START;
+    if (k == SDLK_q     ) return PSXI_SW_SDA_SELECT;
+    if (k == SDLK_UP    ) return PSXI_SW_SDA_PAD_UP;
+    if (k == SDLK_DOWN  ) return PSXI_SW_SDA_PAD_DOWN;
+    if (k == SDLK_LEFT  ) return PSXI_SW_SDA_PAD_LEFT;
+    if (k == SDLK_RIGHT ) return PSXI_SW_SDA_PAD_RIGHT;
+
+    return 0;
+}
+
 psxe_screen_t* psxe_screen_create() {
     return (psxe_screen_t*)malloc(sizeof(psxe_screen_t));
 }
@@ -19,6 +34,7 @@ void psxe_screen_init(psxe_screen_t* screen, psx_t* psx) {
     screen->open = 1;
     screen->format = SDL_PIXELFORMAT_BGR555;
     screen->psx = psx;
+    screen->pad = psx_get_pad(psx);
 
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 
@@ -97,8 +113,20 @@ void psxe_screen_update(psxe_screen_t* screen) {
                 switch (event.key.keysym.sym) {
                     case SDLK_F1: {
                         psxe_screen_toggle_debug_mode(screen);
+
+                        return;
                     } break;
                 }
+
+                uint16_t mask = screen_get_button(event.key.keysym.sym);
+
+                psx_pad_button_press(screen->pad, mask);
+            } break;
+
+            case SDL_KEYUP: {
+                uint16_t mask = screen_get_button(event.key.keysym.sym);
+
+                psx_pad_button_release(screen->pad, mask);
             } break;
         }
     }

@@ -113,7 +113,7 @@ void psx_init(psx_t* psx, const char* bios_path) {
     psx_spu_init(psx->spu);
     psx_timer_init(psx->timer);
     psx_cdrom_init(psx->cdrom, psx->ic);
-    psx_pad_init(psx->pad);
+    psx_pad_init(psx->pad, psx->ic);
     psx_bios_load(psx->bios, bios_path);
     psx_cpu_init(psx->cpu, psx->bus);
 }

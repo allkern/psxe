@@ -14,6 +14,7 @@ typedef struct {
     SDL_Texture* texture;
 
     psx_t* psx;
+    psx_pad_t* pad;
 
     unsigned int saved_scale;
     unsigned int width, height, scale;

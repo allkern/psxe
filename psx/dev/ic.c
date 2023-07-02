@@ -53,7 +53,7 @@ uint8_t psx_ic_read8(psx_ic_t* ic, uint32_t offset) {
 void psx_ic_write32(psx_ic_t* ic, uint32_t offset, uint32_t value) {
     switch (offset) {
         case 0x00: ic->stat &= value; break;
-        case 0x04: ic->mask = value; break;
+        case 0x04: log_fatal("32 IMASK write %08x", value); ic->mask = value; break;
 
         default: {
             log_warn("Unhandled 32-bit IC write at offset %08x (%08x)", offset, value);
@@ -69,7 +69,7 @@ void psx_ic_write32(psx_ic_t* ic, uint32_t offset, uint32_t value) {
 void psx_ic_write16(psx_ic_t* ic, uint32_t offset, uint16_t value) {
     switch (offset) {
         case 0x00: ic->stat &= value; break;
-        case 0x04: ic->mask = value; break;
+        case 0x04: log_fatal("16 IMASK write %04x", value); ic->mask = value; break;
 
         default: {
             log_warn("Unhandled 16-bit IC write at offset %08x (%08x)", offset, value);
