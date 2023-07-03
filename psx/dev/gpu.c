@@ -37,7 +37,23 @@ void psx_gpu_init(psx_gpu_t* gpu, psx_ic_t* ic) {
 
 uint32_t psx_gpu_read32(psx_gpu_t* gpu, uint32_t offset) {
     switch (offset) {
-        case 0x00: return gpu->gpuread; // GPUREAD
+        case 0x00: {
+            uint32_t data = 0x0;
+
+            if (gpu->c0_ysiz) {
+                data = *((uint32_t*)(&gpu->vram[gpu->c0_xpos + (gpu->c0_ypos * 1024)]));
+
+                gpu->c0_xsiz -= 2;
+                gpu->c0_xpos += 2;
+
+                if (gpu->c0_xsiz <= 0) {
+                    gpu->c0_ypos += 1;
+                    gpu->c0_ysiz -= 1;
+                }
+            }
+
+            return data;
+        } break;
         case 0x04: return gpu->gpustat | 0x1c000000;
     }
 
@@ -48,7 +64,7 @@ uint32_t psx_gpu_read32(psx_gpu_t* gpu, uint32_t offset) {
 
 uint16_t psx_gpu_read16(psx_gpu_t* gpu, uint32_t offset) {
     switch (offset) {
-        case 0x00: return gpu->gpuread;
+        case 0x00: log_fatal("GPUREAD 16-bit"); return gpu->gpuread;
         case 0x04: return gpu->gpustat;
     }
 
@@ -610,6 +626,28 @@ void gpu_cmd_68(psx_gpu_t* gpu) {
     }
 }
 
+void gpu_cmd_c0(psx_gpu_t* gpu) {
+    switch (gpu->state) {
+        case GPU_STATE_RECV_CMD: {
+            gpu->state = GPU_STATE_RECV_ARGS;
+            gpu->cmd_args_remaining = 2;
+        } break;
+
+        case GPU_STATE_RECV_ARGS: {
+            if (!gpu->cmd_args_remaining) {
+                gpu->state = GPU_STATE_RECV_DATA;
+
+                gpu->c0_xpos = gpu->buf[1] & 0xffff;
+                gpu->c0_ypos = gpu->buf[1] >> 16;
+                gpu->c0_xsiz = gpu->buf[2] & 0xffff;
+                gpu->c0_ysiz = gpu->buf[2] >> 16;
+
+                gpu->state = GPU_STATE_RECV_CMD;
+            }
+        } break;
+    }
+}
+
 void psx_gpu_update_cmd(psx_gpu_t* gpu) {
     switch (gpu->buf[0] >> 24) {
         case 0x00: /* nop */ break;
@@ -621,6 +659,7 @@ void psx_gpu_update_cmd(psx_gpu_t* gpu) {
         case 0x64: gpu_cmd_64(gpu); break;
         case 0x68: gpu_cmd_68(gpu); break;
         case 0xa0: gpu_cmd_a0(gpu); break;
+        case 0xc0: break;
         case 0xe1: {
             gpu->gpustat &= 0x7ff;
             gpu->gpustat |= gpu->buf[0] & 0x7ff;
@@ -759,7 +798,7 @@ void gpu_scanline_event(psx_gpu_t* gpu) {
     if (gpu->line == GPU_SCANS_PER_VDRAW_NTSC) {
         // Disable Vblank for now
         // log_fatal("Vblank");
-        psx_ic_irq(gpu->ic, IC_VBLANK);
+        // psx_ic_irq(gpu->ic, IC_VBLANK);
     } else if (gpu->line == GPU_SCANS_PER_FRAME_NTSC) {
         gpu->line = 0;
     }

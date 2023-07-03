@@ -69,6 +69,8 @@ struct psx_gpu_t {
     uint32_t xcnt, ycnt;
     vertex_t v0, v1, v2, v3;
     uint32_t pal, texp;
+    uint32_t c0_xpos, c0_ypos;
+    int c0_xsiz, c0_ysiz;
 
     // GPU state
     uint32_t state;
