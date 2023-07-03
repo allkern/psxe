@@ -77,6 +77,7 @@ cd psx
 This project uses external open source code that can be found on the following GitHub repos:
 - log.c (slightly modified): https://github.com/rxi/log.c
 - tomlc99: https://github.com/cktan/tomlc99
+
 Their original licenses are respected and apply to the code in this project.
 
-As always, I thank all original developers for their amazing work.
+As always, thanks to all original developers for their amazing work.
