@@ -65,6 +65,25 @@ psx_cpu_instruction_t g_psx_cpu_bxx_table[] = {
     psx_cpu_i_bltz   , psx_cpu_i_bgez   , psx_cpu_i_bltz   , psx_cpu_i_bgez
 };
 
+uint32_t g_psx_cpu_cop0_write_mask_table[] = {
+    0x00000000, // cop0r0-r2   - N/A
+    0x00000000, // cop0r0-r2   - N/A
+    0x00000000, // cop0r0-r2   - N/A
+    0xffffffff, // cop0r3      - BPC - Breakpoint on execute (R/W)
+    0x00000000, // cop0r4      - N/A
+    0xffffffff, // cop0r5      - BDA - Breakpoint on data access (R/W)
+    0x00000000, // cop0r6      - JUMPDEST - Randomly memorized jump address (R)
+    0xffc0f03f, // cop0r7      - DCIC - Breakpoint control (R/W)
+    0x00000000, // cop0r8      - BadVaddr - Bad Virtual Address (R)
+    0xffffffff, // cop0r9      - BDAM - Data Access breakpoint mask (R/W)
+    0x00000000, // cop0r10     - N/A
+    0xffffffff, // cop0r11     - BPCM - Execute breakpoint mask (R/W)
+    0xffffffff, // cop0r12     - SR - System status register (R/W)
+    0x00000300, // cop0r13     - CAUSE - (R)  Describes the most recently recognised exception
+    0x00000000, // cop0r14     - EPC - Return Address from Trap (R)
+    0x00000000  // cop0r15     - PRID - Processor ID (R)
+};
+
 #define OP ((cpu->buf[1] >> 26) & 0x3f)
 #define S ((cpu->buf[1] >> 21) & 0x1f)
 #define T ((cpu->buf[1] >> 16) & 0x1f)
@@ -326,6 +345,9 @@ void psx_cpu_cycle(psx_cpu_t* cpu) {
         return;
     }
 
+    if (psx_cpu_check_irq(cpu))
+        return;
+
     psx_cpu_fetch(cpu);
 
     cpu->delay_slot = cpu->branch;
@@ -333,32 +355,20 @@ void psx_cpu_cycle(psx_cpu_t* cpu) {
 
     g_psx_cpu_primary_table[OP](cpu);
 
-    if ((cpu->cop0_r[COP0_SR] & SR_IEC) && (cpu->cop0_r[COP0_CAUSE] & cpu->cop0_r[COP0_SR] & SR_IM2)) {
-        psx_cpu_exception(cpu, CAUSE_INT);
-    }
-
-    cpu->last_cycles = 2 + psx_bus_get_access_cycles(cpu->bus);
+    cpu->last_cycles = 2;
+    cpu->total_cycles += cpu->last_cycles;
 
     cpu->r[0] = 0;
 }
 
-void psx_cpu_check_irq(psx_cpu_t* cpu) {
-    if ((cpu->cop0_r[COP0_SR] & SR_IEC) && (cpu->cop0_r[COP0_CAUSE] & cpu->cop0_r[COP0_SR] & SR_IM2)) {
-        // log_fatal("(before) IRQ pc=%08x, epc=%08x, cause=%08x, sr=%08x, tc=%u (%08x), istat=%08x, imask=%08x, [0]=%08x, [1]=%08x",
-        //     cpu->pc,
-        //     cpu->cop0_r[COP0_EPC],
-        //     cpu->cop0_r[COP0_CAUSE],
-        //     cpu->cop0_r[COP0_SR],
-        //     cpu->total_cycles,
-        //     cpu->total_cycles,
-        //     psx_bus_read32(cpu->bus, 0x1F801070),
-        //     psx_bus_read32(cpu->bus, 0x1F801074),
-        //     cpu->buf[0],
-        //     cpu->buf[1]
-        // );
-
+int psx_cpu_check_irq(psx_cpu_t* cpu) {
+    if ((cpu->cop0_r[COP0_SR] & SR_IEC) && (cpu->cop0_r[COP0_SR] & cpu->cop0_r[COP0_CAUSE] & 0x00000700)) {
         psx_cpu_exception(cpu, CAUSE_INT);
+
+        return 1;
     }
+
+    return 0;
 }
 
 void psx_cpu_exception(psx_cpu_t* cpu, uint32_t cause) {
@@ -366,13 +376,18 @@ void psx_cpu_exception(psx_cpu_t* cpu, uint32_t cause) {
     cpu->cop0_r[COP0_CAUSE] &= 0xffffff80;
     cpu->cop0_r[COP0_CAUSE] |= cause;
 
+    if (cause == CAUSE_INT) {
+        cpu->cop0_r[COP0_EPC] = cpu->pc - 4;
+    } else {
+        cpu->cop0_r[COP0_EPC] = cpu->pc - 8;
+    }
+
     // If we're in a delay slot, set delay slot bit
     // on CAUSE
     if (cpu->delay_slot) {
-        cpu->cop0_r[COP0_EPC] = cpu->pc - 12;
+        cpu->cop0_r[COP0_EPC] -= 4;
         cpu->cop0_r[COP0_CAUSE] |= 0x80000000;
     } else {
-        cpu->cop0_r[COP0_EPC] = cpu->pc - 8;
         cpu->cop0_r[COP0_CAUSE] &= 0x7fffffff;
     }
 
@@ -1266,7 +1281,7 @@ void psx_cpu_i_mtc0(psx_cpu_t* cpu) {
 
     DO_PENDING_LOAD;
 
-    cpu->cop0_r[D] = t;
+    cpu->cop0_r[D] = t & g_psx_cpu_cop0_write_mask_table[D];
 }
 
 void psx_cpu_i_ctc0(psx_cpu_t* cpu) {

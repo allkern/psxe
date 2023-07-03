@@ -759,7 +759,7 @@ void gpu_scanline_event(psx_gpu_t* gpu) {
     if (gpu->line == GPU_SCANS_PER_VDRAW_NTSC) {
         // Disable Vblank for now
         // log_fatal("Vblank");
-        // psx_ic_irq(gpu->ic, IC_VBLANK);
+        psx_ic_irq(gpu->ic, IC_VBLANK);
     } else if (gpu->line == GPU_SCANS_PER_FRAME_NTSC) {
         gpu->line = 0;
     }
@@ -780,7 +780,7 @@ void psx_gpu_update(psx_gpu_t* gpu, int cyc) {
     //     Tick Hblank timer
 
     if (gpu->cycles >= (float)GPU_CYCLES_PER_SCANL_NTSC) {
-        gpu->cycles = 0;
+        gpu->cycles -= (float)GPU_CYCLES_PER_SCANL_NTSC;
 
         gpu_scanline_event(gpu);
     }

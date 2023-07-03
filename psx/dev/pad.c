@@ -42,7 +42,7 @@ uint32_t psx_pad_read32(psx_pad_t* pad, uint32_t offset) {
 uint16_t psx_pad_read16(psx_pad_t* pad, uint32_t offset) {
     switch (offset) {
         // case 0: return 0x00;
-        // case 4: return 0x03;
+        case 4: return 0x05;
         // case 8: return pad->mode;
         case 10: return pad->ctrl;
         // case 14: return pad->baud;

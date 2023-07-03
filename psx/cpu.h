@@ -161,7 +161,7 @@ void psx_cpu_save_state(psx_cpu_t*, FILE*);
 void psx_cpu_fetch(psx_cpu_t*);
 void psx_cpu_set_a_kcall_hook(psx_cpu_t*, psx_cpu_kcall_hook_t);
 void psx_cpu_set_b_kcall_hook(psx_cpu_t*, psx_cpu_kcall_hook_t);
-void psx_cpu_check_irq(psx_cpu_t*);
+int psx_cpu_check_irq(psx_cpu_t*);
 
 /*
     00h INT     Interrupt

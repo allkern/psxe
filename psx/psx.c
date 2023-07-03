@@ -28,7 +28,7 @@ void psx_update(psx_t* psx) {
     psx_cpu_cycle(psx->cpu);
     psx_cdrom_update(psx->cdrom);
     psx_gpu_update(psx->gpu, psx->cpu->last_cycles);
-    psx_cpu_check_irq(psx->cpu);
+    //psx_cpu_check_irq(psx->cpu);
 }
 
 void psx_run_frame(psx_t* psx) {
