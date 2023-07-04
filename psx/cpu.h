@@ -66,13 +66,13 @@ typedef void (*psx_cpu_kcall_hook_t)(psx_cpu_t*);
 
 struct psx_cpu_t {
     uint32_t r[32];
-    uint32_t buf[2];
-    uint32_t pc;
+    uint32_t opcode;
+    uint32_t pc, next_pc, saved_pc;
     uint32_t hi, lo;
     uint32_t load_d, load_v;
     uint32_t last_cycles;
     uint32_t total_cycles;
-    int branch, delay_slot;
+    int branch, delay_slot, branch_taken;
 
     uint32_t cop0_r[16];
 

@@ -27,6 +27,7 @@ void psx_exe_load(psx_cpu_t* cpu, const char* path) {
 
     // Load initial register values
     cpu->pc = hdr.ipc;
+    cpu->next_pc = cpu->pc + 4;
     cpu->r[28] = hdr.igp;
     cpu->r[29] = hdr.ispb + hdr.ispoff;
     cpu->r[30] = cpu->r[29];

@@ -22,13 +22,14 @@ const psx_dma_do_fn_t g_psx_dma_do_table[] = {
 
 #define CR(c, r) *((&dma->mdec_in.madr) + (c * 3) + r)
 
-void psx_dma_init(psx_dma_t* dma, psx_bus_t* bus) {
+void psx_dma_init(psx_dma_t* dma, psx_bus_t* bus, psx_ic_t* ic) {
     memset(dma, 0, sizeof(psx_dma_t));
 
     dma->io_base = PSX_DMAR_BEGIN;
     dma->io_size = PSX_DMAR_SIZE;
 
     dma->bus = bus;
+    dma->ic = ic;
 
     dma->dpcr = 0x07654321;
     dma->otc.chcr = 0x00000002;
@@ -109,6 +110,12 @@ void psx_dma_write32(psx_dma_t* dma, uint32_t offset, uint32_t value) {
                 irqf &= 0x7f;
 
                 dma->dicr |= irqf << 24;
+
+                if (dma->dicr & 0x00008000) {
+                    dma->dicr |= 0x80000000;
+
+                    psx_ic_irq(dma->ic, IC_DMA);
+                }
                 
                 log_error("DMA irqc    write %08x irqfr=%08x", value, irqfr);
             } break;
@@ -208,6 +215,8 @@ psx_dma_do_fn_t g_psx_dma_gpu_table[] = {
     psx_dma_do_gpu_linked
 };
 
+#define TEST_SET_IRQ_FLAG()
+
 void psx_dma_do_gpu(psx_dma_t* dma) {
     if (!CHCR_BUSY(gpu))
         return;
@@ -222,7 +231,17 @@ void psx_dma_do_gpu(psx_dma_t* dma) {
 
     g_psx_dma_gpu_table[CHCR_SYNC(gpu)](dma);
 
-    dma->dicr |= 0x04000000;
+    if (dma->dicr & 0x00040000) {
+        dma->dicr |= 0x04000000;
+
+        if ((dma->dicr & 0x8000) || ((dma->dicr & 0x800000) && (dma->dicr & 0x7f000000))) {
+            dma->dicr |= 0x80000000;
+
+            psx_ic_irq(dma->ic, IC_DMA);
+        } else {
+            dma->dicr &= 0x7fffffff;
+        }
+    }
 
     // Clear BCR and CHCR trigger and busy bits
     dma->gpu.chcr &= ~(CHCR_BUSY_MASK | CHCR_TRIG_MASK);
@@ -266,7 +285,17 @@ void psx_dma_do_otc(psx_dma_t* dma) {
     //dma->otc.chcr &= ~(CHCR_BUSY_MASK | CHCR_TRIG_MASK);
     dma->otc.bcr = 0;
 
-    dma->dicr |= 0x40000000;
+    if (dma->dicr & 0x00400000) {
+        dma->dicr |= 0x40000000;
+
+        if ((dma->dicr & 0x8000) || ((dma->dicr & 0x800000) && (dma->dicr & 0x7f000000))) {
+            dma->dicr |= 0x80000000;
+
+            psx_ic_irq(dma->ic, IC_DMA);
+        } else {
+            dma->dicr &= 0x7fffffff;
+        }
+    }
 }
 
 void psx_dma_destroy(psx_dma_t* dma) {

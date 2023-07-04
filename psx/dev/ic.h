@@ -28,7 +28,7 @@ enum {
     IC_VBLANK       = 0x001,
     IC_GPU          = 0x002,
     IC_CDROM        = 0x004,
-    IC_DM           = 0x008,
+    IC_DMA          = 0x008,
     IC_TMR0         = 0x010,
     IC_TMR1         = 0x020,
     IC_TMR2         = 0x040,

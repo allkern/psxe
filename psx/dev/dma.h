@@ -8,6 +8,7 @@
 #define PSX_DMAR_END   0x1f8010ff
 
 #include "../bus.h"
+#include "ic.h"
 
 typedef struct {
     uint32_t madr;
@@ -19,6 +20,7 @@ typedef struct {
     uint32_t io_base, io_size;
 
     psx_bus_t* bus;
+    psx_ic_t* ic;
 
     dma_channel_t mdec_in;
     dma_channel_t mdec_out;
@@ -33,7 +35,7 @@ typedef struct {
 } psx_dma_t;
 
 psx_dma_t* psx_dma_create();
-void psx_dma_init(psx_dma_t*, psx_bus_t*);
+void psx_dma_init(psx_dma_t*, psx_bus_t*, psx_ic_t*);
 void psx_dma_do_mdec_in(psx_dma_t*);
 void psx_dma_do_mdec_out(psx_dma_t*);
 void psx_dma_do_gpu(psx_dma_t*);
@@ -99,5 +101,8 @@ typedef void (*psx_dma_do_fn_t)(psx_dma_t*);
 
 #define BCR_SIZE(c) (dma->c.bcr & 0xffff)
 #define BCR_BCNT(c) ((dma->c.bcr >> 16) & 0xffff)
+
+#define DICR_FIRQ 0x00008000
+#define DICR_IRQE 0x00000000
 
 #endif

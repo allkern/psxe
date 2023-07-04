@@ -84,15 +84,15 @@ uint32_t g_psx_cpu_cop0_write_mask_table[] = {
     0x00000000  // cop0r15     - PRID - Processor ID (R)
 };
 
-#define OP ((cpu->buf[1] >> 26) & 0x3f)
-#define S ((cpu->buf[1] >> 21) & 0x1f)
-#define T ((cpu->buf[1] >> 16) & 0x1f)
-#define D ((cpu->buf[1] >> 11) & 0x1f)
-#define IMM5 ((cpu->buf[1] >> 6) & 0x1f)
-#define CMT ((cpu->buf[1] >> 6) & 0xfffff)
-#define SOP (cpu->buf[1] & 0x3f)
-#define IMM26 (cpu->buf[1] & 0x3ffffff)
-#define IMM16 (cpu->buf[1] & 0xffff)
+#define OP ((cpu->opcode >> 26) & 0x3f)
+#define S ((cpu->opcode >> 21) & 0x1f)
+#define T ((cpu->opcode >> 16) & 0x1f)
+#define D ((cpu->opcode >> 11) & 0x1f)
+#define IMM5 ((cpu->opcode >> 6) & 0x1f)
+#define CMT ((cpu->opcode >> 6) & 0xfffff)
+#define SOP (cpu->opcode & 0x3f)
+#define IMM26 (cpu->opcode & 0x3ffffff)
+#define IMM16 (cpu->opcode & 0xffff)
 #define IMM16S ((int32_t)((int16_t)IMM16))
 
 #define R_R0 (cpu->r[0])
@@ -128,7 +128,7 @@ uint32_t g_psx_cpu_cop0_write_mask_table[] = {
 #define R_FP (cpu->r[30])
 #define R_RA (cpu->r[31])
 
-// #define CPU_TRACE
+#define CPU_TRACE
 
 #ifdef CPU_TRACE
 #define TRACE_M(m) \
@@ -210,6 +210,12 @@ uint32_t g_psx_cpu_cop0_write_mask_table[] = {
 #define SE8(v) ((int32_t)((int8_t)v))
 #define SE16(v) ((int32_t)((int16_t)v))
 
+#define BRANCH(offset) \
+    cpu->next_pc = cpu->next_pc + (offset); \
+    cpu->next_pc = cpu->next_pc - 4; \
+    cpu->branch = 1; \
+    cpu->branch_taken = 1;
+
 const char* g_mips_cop0_register_names[] = {
     "cop0_r0",
     "cop0_r1",
@@ -288,26 +294,11 @@ void cpu_a_kcall_hook(psx_cpu_t*);
 void cpu_b_kcall_hook(psx_cpu_t*);
 
 void psx_cpu_fetch(psx_cpu_t* cpu) {
-    cpu->buf[0] = psx_bus_read32(cpu->bus, cpu->pc);
-    cpu->pc += 4;
+    //cpu->buf[0] = psx_bus_read32(cpu->bus, cpu->pc);
+    //cpu->pc += 4;
 
     // Discard fetch cycles
     psx_bus_get_access_cycles(cpu->bus);
-}
-
-void psx_cpu_init(psx_cpu_t* cpu, psx_bus_t* bus) {
-    memset(cpu, 0, sizeof(psx_cpu_t));
-
-    psx_cpu_set_a_kcall_hook(cpu, cpu_a_kcall_hook);
-    psx_cpu_set_b_kcall_hook(cpu, cpu_b_kcall_hook);
-
-    cpu->bus = bus;
-    cpu->pc = 0xbfc00000;
-
-    cpu->cop0_r[COP0_SR] = 0x10900000;
-    cpu->cop0_r[COP0_PRID] = 0x00000002;
-
-    psx_cpu_fetch(cpu);
 }
 
 void psx_cpu_destroy(psx_cpu_t* cpu) {
@@ -330,28 +321,43 @@ void psx_cpu_load_state(psx_cpu_t* cpu, FILE* file) {
     fread((char*)cpu, sizeof(*cpu) - sizeof(psx_bus_t*), 1, file);
 }
 
+void psx_cpu_init(psx_cpu_t* cpu, psx_bus_t* bus) {
+    memset(cpu, 0, sizeof(psx_cpu_t));
+
+    psx_cpu_set_a_kcall_hook(cpu, cpu_a_kcall_hook);
+    psx_cpu_set_b_kcall_hook(cpu, cpu_b_kcall_hook);
+
+    cpu->bus = bus;
+    cpu->pc = 0xbfc00000;
+    cpu->next_pc = cpu->pc + 4;
+
+    cpu->cop0_r[COP0_SR] = 0x10900000;
+    cpu->cop0_r[COP0_PRID] = 0x00000002;
+}
+
 void psx_cpu_cycle(psx_cpu_t* cpu) {
-    if ((cpu->pc & 0x3fffffff) == 0x000000a4)
-        if (cpu->a_function_hook) cpu->a_function_hook(cpu);
-
     if ((cpu->pc & 0x3fffffff) == 0x000000b4)
-        if (cpu->a_function_hook) cpu->b_function_hook(cpu);
+        if (cpu->b_function_hook) cpu->b_function_hook(cpu);
 
-    cpu->buf[1] = cpu->buf[0];
+    cpu->saved_pc = cpu->pc;
+    cpu->delay_slot = cpu->branch;
+    cpu->branch = 0;
+    cpu->branch_taken = 0;
 
-    if (cpu->pc & 0x3) {
+    if (cpu->saved_pc & 3) {
         psx_cpu_exception(cpu, CAUSE_ADEL);
+    }
+
+    cpu->opcode = psx_bus_read32(cpu->bus, cpu->pc);
+
+    cpu->pc = cpu->next_pc;
+    cpu->next_pc += 4;
+
+    if (psx_cpu_check_irq(cpu)) {
+        psx_cpu_exception(cpu, CAUSE_INT);
 
         return;
     }
-
-    if (psx_cpu_check_irq(cpu))
-        return;
-
-    psx_cpu_fetch(cpu);
-
-    cpu->delay_slot = cpu->branch;
-    cpu->branch = 0;
 
     g_psx_cpu_primary_table[OP](cpu);
 
@@ -362,33 +368,25 @@ void psx_cpu_cycle(psx_cpu_t* cpu) {
 }
 
 int psx_cpu_check_irq(psx_cpu_t* cpu) {
-    if ((cpu->cop0_r[COP0_SR] & SR_IEC) && (cpu->cop0_r[COP0_SR] & cpu->cop0_r[COP0_CAUSE] & 0x00000700)) {
-        psx_cpu_exception(cpu, CAUSE_INT);
-
-        return 1;
-    }
-
-    return 0;
+    return (cpu->cop0_r[COP0_SR] & SR_IEC) && (cpu->cop0_r[COP0_SR] & cpu->cop0_r[COP0_CAUSE] & 0x00000700);
 }
 
 void psx_cpu_exception(psx_cpu_t* cpu, uint32_t cause) {
+    cpu->cop0_r[COP0_CAUSE] &= 0x0000ff00;
+
     // Set excode and clear 3 LSBs
     cpu->cop0_r[COP0_CAUSE] &= 0xffffff80;
     cpu->cop0_r[COP0_CAUSE] |= cause;
 
-    if (cause == CAUSE_INT) {
-        cpu->cop0_r[COP0_EPC] = cpu->pc - 4;
-    } else {
-        cpu->cop0_r[COP0_EPC] = cpu->pc - 8;
-    }
+    cpu->cop0_r[COP0_EPC] = cpu->saved_pc;
 
-    // If we're in a delay slot, set delay slot bit
-    // on CAUSE
     if (cpu->delay_slot) {
         cpu->cop0_r[COP0_EPC] -= 4;
         cpu->cop0_r[COP0_CAUSE] |= 0x80000000;
-    } else {
-        cpu->cop0_r[COP0_CAUSE] &= 0x7fffffff;
+    }
+
+    if ((cause == CAUSE_INT) && (cpu->cop0_r[COP0_EPC] & 0xfe000000) == 0x4a000000) {
+        cpu->cop0_r[COP0_EPC] += 4;
     }
 
     // Do exception stack push
@@ -399,21 +397,15 @@ void psx_cpu_exception(psx_cpu_t* cpu, uint32_t cause) {
 
     // Set PC to the vector selected on BEV
     cpu->pc = (cpu->cop0_r[COP0_SR] & SR_BEV) ? 0xbfc00180 : 0x80000080;
-
-    // Simulate pipeline flush
-    psx_cpu_fetch(cpu);
-
-    cpu->buf[1] = cpu->buf[0];
+    cpu->next_pc = cpu->pc + 4;
 }
 
 void psx_cpu_irq(psx_cpu_t* cpu, uint32_t irq) {
-    // Set interrupt pending field
-    cpu->cop0_r[COP0_CAUSE] &= ~SR_IM2;
     cpu->cop0_r[COP0_CAUSE] |= irq ? SR_IM2 : 0;
 }
 
 void psx_cpu_i_invalid(psx_cpu_t* cpu) {
-    log_fatal("%08x: Illegal instruction %08x", cpu->pc - 8, cpu->buf[1]);
+    log_fatal("%08x: Illegal instruction %08x", cpu->pc - 8, cpu->opcode);
 
     psx_cpu_exception(cpu, CAUSE_RI);
 }
@@ -425,6 +417,7 @@ void psx_cpu_i_special(psx_cpu_t* cpu) {
 
 void psx_cpu_i_bxx(psx_cpu_t* cpu) {
     cpu->branch = 1;
+    cpu->branch_taken = 0;
 
     g_psx_cpu_bxx_table[T](cpu);
 }
@@ -438,8 +431,7 @@ void psx_cpu_i_bltz(psx_cpu_t* cpu) {
     DO_PENDING_LOAD;
 
     if ((int32_t)s < (int32_t)0) {
-        cpu->pc -= 4;
-        cpu->pc += (IMM16S << 2);
+        BRANCH(IMM16S << 2);
     }
 }
 
@@ -451,8 +443,7 @@ void psx_cpu_i_bgez(psx_cpu_t* cpu) {
     DO_PENDING_LOAD;
 
     if ((int32_t)s >= (int32_t)0) {
-        cpu->pc -= 4;
-        cpu->pc += (IMM16S << 2);
+        BRANCH(IMM16S << 2);
     }
 }
 
@@ -463,11 +454,10 @@ void psx_cpu_i_bltzal(psx_cpu_t* cpu) {
 
     DO_PENDING_LOAD;
 
-    R_RA = cpu->pc;
+    R_RA = cpu->next_pc;
 
     if ((int32_t)s < (int32_t)0) {
-        cpu->pc -= 4;
-        cpu->pc += (IMM16S << 2);
+        BRANCH(IMM16S << 2);
     }
 }
 
@@ -478,11 +468,10 @@ void psx_cpu_i_bgezal(psx_cpu_t* cpu) {
 
     DO_PENDING_LOAD;
 
-    R_RA = cpu->pc;
+    R_RA = cpu->next_pc;
 
     if ((int32_t)s >= (int32_t)0) {
-        cpu->pc -= 4;
-        cpu->pc += (IMM16S << 2);
+        BRANCH(IMM16S << 2);
     }
 }
 
@@ -493,7 +482,7 @@ void psx_cpu_i_j(psx_cpu_t* cpu) {
 
     DO_PENDING_LOAD;
 
-    cpu->pc = (cpu->pc & 0xf0000000) | (IMM26 << 2);
+    cpu->next_pc = (cpu->next_pc & 0xf0000000) | (IMM26 << 2);
 }
 
 void psx_cpu_i_jal(psx_cpu_t* cpu) {
@@ -503,13 +492,14 @@ void psx_cpu_i_jal(psx_cpu_t* cpu) {
 
     DO_PENDING_LOAD;
 
-    cpu->r[31] = cpu->pc;
+    R_RA = cpu->next_pc;
 
-    cpu->pc = (cpu->pc & 0xf0000000) | (IMM26 << 2);
+    cpu->next_pc = (cpu->next_pc & 0xf0000000) | (IMM26 << 2);
 }
 
 void psx_cpu_i_beq(psx_cpu_t* cpu) {
     cpu->branch = 1;
+    cpu->branch_taken = 0;
 
     TRACE_B("beq");
 
@@ -519,13 +509,13 @@ void psx_cpu_i_beq(psx_cpu_t* cpu) {
     DO_PENDING_LOAD;
 
     if (s == t) {
-        cpu->pc -= 4;
-        cpu->pc += (IMM16S << 2);
+        BRANCH(IMM16S << 2);
     }
 }
 
 void psx_cpu_i_bne(psx_cpu_t* cpu) {
     cpu->branch = 1;
+    cpu->branch_taken = 0;
 
     TRACE_B("bne");
 
@@ -535,13 +525,13 @@ void psx_cpu_i_bne(psx_cpu_t* cpu) {
     DO_PENDING_LOAD;
 
     if (s != t) {
-        cpu->pc -= 4;
-        cpu->pc += (IMM16S << 2);
+        BRANCH(IMM16S << 2);
     }
 }
 
 void psx_cpu_i_blez(psx_cpu_t* cpu) {
     cpu->branch = 1;
+    cpu->branch_taken = 0;
 
     TRACE_B("blez");
 
@@ -550,13 +540,13 @@ void psx_cpu_i_blez(psx_cpu_t* cpu) {
     DO_PENDING_LOAD;
 
     if ((int32_t)s <= (int32_t)0) {
-        cpu->pc -= 4;
-        cpu->pc += (IMM16S << 2);
+        BRANCH(IMM16S << 2);
     }
 }
 
 void psx_cpu_i_bgtz(psx_cpu_t* cpu) {
     cpu->branch = 1;
+    cpu->branch_taken = 0;
 
     TRACE_B("bgtz");
 
@@ -565,8 +555,7 @@ void psx_cpu_i_bgtz(psx_cpu_t* cpu) {
     DO_PENDING_LOAD;
 
     if ((int32_t)s > (int32_t)0) {
-        cpu->pc -= 4;
-        cpu->pc += (IMM16S << 2);
+        BRANCH(IMM16S << 2);
     }
 }
 
@@ -1002,7 +991,7 @@ void psx_cpu_i_jr(psx_cpu_t* cpu) {
 
     DO_PENDING_LOAD;
 
-    cpu->pc = s;
+    cpu->next_pc = s;
 }
 
 void psx_cpu_i_jalr(psx_cpu_t* cpu) {
@@ -1014,15 +1003,13 @@ void psx_cpu_i_jalr(psx_cpu_t* cpu) {
 
     DO_PENDING_LOAD;
 
-    cpu->r[D] = cpu->pc;
+    cpu->r[D] = cpu->next_pc;
 
-    cpu->pc = s;
+    cpu->next_pc = s;
 }
 
 void psx_cpu_i_syscall(psx_cpu_t* cpu) {
     TRACE_I20("syscall");
-
-    //log_info("SYS(%02xh): %s()", cpu->r[4], g_psx_cpu_syscall_function_symbol_table[cpu->r[4]]);
     
     DO_PENDING_LOAD;
 

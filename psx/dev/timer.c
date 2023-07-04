@@ -17,6 +17,10 @@ void psx_timer_init(psx_timer_t* timer) {
 }
 
 uint32_t psx_timer_read32(psx_timer_t* timer, uint32_t offset) {
+    if (offset == 0x20) {
+        return 0x000016b0;
+    }
+
     int t = (offset >> 4) & 0x3;
     int r = offset & 0xf;
 

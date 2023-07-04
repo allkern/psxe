@@ -28,7 +28,6 @@ void psx_update(psx_t* psx) {
     psx_cpu_cycle(psx->cpu);
     psx_cdrom_update(psx->cdrom);
     psx_gpu_update(psx->gpu, psx->cpu->last_cycles);
-    //psx_cpu_check_irq(psx->cpu);
 }
 
 void psx_run_frame(psx_t* psx) {
@@ -102,7 +101,7 @@ void psx_init(psx_t* psx, const char* bios_path) {
     // Init devices
     psx_bios_init(psx->bios);
     psx_ram_init(psx->ram, psx->mc2);
-    psx_dma_init(psx->dma, psx->bus);
+    psx_dma_init(psx->dma, psx->bus, psx->ic);
     psx_exp1_init(psx->exp1, psx->mc1);
     psx_mc1_init(psx->mc1);
     psx_mc2_init(psx->mc2);

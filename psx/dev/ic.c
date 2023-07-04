@@ -87,7 +87,7 @@ void psx_ic_write8(psx_ic_t* ic, uint32_t offset, uint8_t value) {
 }
 
 void psx_ic_irq(psx_ic_t* ic, int id) {
-    ic->stat = id;
+    ic->stat |= id;
 
     psx_cpu_irq(ic->cpu, ic->mask & ic->stat);
 }
