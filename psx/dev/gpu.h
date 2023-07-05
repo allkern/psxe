@@ -65,6 +65,7 @@ struct psx_gpu_t {
     uint32_t color;
     uint32_t xpos, ypos;
     uint32_t xsiz, ysiz;
+    uint32_t tsiz;
     uint32_t addr;
     uint32_t xcnt, ycnt;
     vertex_t v0, v1, v2, v3;
