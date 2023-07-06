@@ -37,7 +37,6 @@ int main(int argc, const char* argv[]) {
     }
 
     while (psxe_screen_is_open(screen)) {
-        // psx_run_frame(psx);
         psx_update(psx);
     }
 
