@@ -25,6 +25,7 @@ int main(int argc, const char* argv[]) {
     psxe_screen_reload(screen);
 
     psx_gpu_set_event_callback(gpu, GPU_EVENT_DMODE, psxe_gpu_dmode_event_cb);
+    psx_gpu_set_event_callback(gpu, GPU_EVENT_VBLANK, psxe_gpu_vblank_event_cb);
     psx_gpu_set_udata(gpu, 0, screen);
 
     if (cfg->exe) {
@@ -36,9 +37,8 @@ int main(int argc, const char* argv[]) {
     }
 
     while (psxe_screen_is_open(screen)) {
-        psx_run_frame(psx);
-
-        psxe_screen_update(screen);
+        // psx_run_frame(psx);
+        psx_update(psx);
     }
 
     psx_cpu_t* cpu = psx_get_cpu(psx);

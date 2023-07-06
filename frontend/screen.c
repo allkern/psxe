@@ -187,3 +187,9 @@ void psxe_gpu_dmode_event_cb(psx_gpu_t* gpu) {
         screen->height * screen->scale
     );
 }
+
+void psxe_gpu_vblank_event_cb(psx_gpu_t* gpu) {
+    psxe_screen_t* screen = gpu->udata[0];
+
+    psxe_screen_update(screen);
+}

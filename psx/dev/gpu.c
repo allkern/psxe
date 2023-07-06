@@ -889,6 +889,9 @@ void gpu_scanline_event(psx_gpu_t* gpu) {
     }
 
     if (gpu->line == GPU_SCANS_PER_VDRAW_NTSC) {
+        if (gpu->event_cb_table[GPU_EVENT_VBLANK])
+            gpu->event_cb_table[GPU_EVENT_VBLANK](gpu);
+
         psx_ic_irq(gpu->ic, IC_VBLANK);
     } else if (gpu->line == GPU_SCANS_PER_FRAME_NTSC) {
         gpu->line = 0;

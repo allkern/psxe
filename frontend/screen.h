@@ -35,5 +35,6 @@ void psxe_screen_toggle_debug_mode(psxe_screen_t*);
 
 // GPU event handlers
 void psxe_gpu_dmode_event_cb(psx_gpu_t*);
+void psxe_gpu_vblank_event_cb(psx_gpu_t*);
 
 #endif
