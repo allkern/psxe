@@ -9,6 +9,7 @@ sdl2-win32/
 sdl2-win64/
 test/
 bios/
+roms/
 *.bin
 *.dll
 *.exe

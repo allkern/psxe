@@ -249,7 +249,52 @@ void psx_dma_do_gpu(psx_dma_t* dma) {
 }
 
 void psx_dma_do_cdrom(psx_dma_t* dma) {
-    log_error("CDROM DMA channel unimplemented"); exit(1);
+    if (!CHCR_BUSY(cdrom))
+        return;
+    
+    log_fatal("CDROM DMA transfer: madr=%08x, dir=%s, sync=%s (%u), step=%s, size=%x",
+        dma->cdrom.madr,
+        CHCR_TDIR(cdrom) ? "to device" : "to RAM",
+        g_psx_dma_sync_type_name_table[CHCR_SYNC(cdrom)], CHCR_SYNC(cdrom),
+        CHCR_STEP(cdrom) ? "decrementing" : "incrementing",
+        BCR_SIZE(cdrom)
+    );
+
+    uint32_t size = BCR_SIZE(cdrom) * BCR_BCNT(cdrom);
+
+    if (!CHCR_TDIR(cdrom)) {
+        for (int i = 0; i < size; i++) {
+            uint32_t data = 0;
+            
+            data |= psx_bus_read8(dma->bus, 0x1f801802) << 0;
+            data |= psx_bus_read8(dma->bus, 0x1f801802) << 8;
+            data |= psx_bus_read8(dma->bus, 0x1f801802) << 16;
+            data |= psx_bus_read8(dma->bus, 0x1f801802) << 24;
+
+            psx_bus_write32(dma->bus, dma->cdrom.madr, data);
+
+            dma->cdrom.madr += CHCR_STEP(cdrom) ? -4 : 4;
+        }
+    } else {
+        log_fatal("Invalid CDROM DMA transfer direction");
+    }
+    
+    // Clear BCR and CHCR trigger and busy bits
+    dma->cdrom.chcr = 0;
+    //dma->otc.chcr &= ~(CHCR_BUSY_MASK | CHCR_TRIG_MASK);
+    dma->cdrom.bcr = 0;
+
+    if (dma->dicr & 0x00400000) {
+        dma->dicr |= 0x40000000;
+
+        if ((dma->dicr & 0x8000) || ((dma->dicr & 0x800000) && (dma->dicr & 0x7f000000))) {
+            dma->dicr |= 0x80000000;
+
+            psx_ic_irq(dma->ic, IC_DMA);
+        } else {
+            dma->dicr &= 0x7fffffff;
+        }
+    }
 }
 
 void psx_dma_do_spu(psx_dma_t* dma) {

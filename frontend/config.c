@@ -88,6 +88,7 @@ void psxe_cfg_load_defaults(psxe_config_t* cfg) {
     cfg->version = 0;
     cfg->log_level = LOG_FATAL;
     cfg->quiet = 0;
+    cfg->cd_path = "";
 }
 
 void psxe_cfg_load(psxe_config_t* cfg, int argc, const char* argv[]) {
@@ -106,6 +107,7 @@ void psxe_cfg_load(psxe_config_t* cfg, int argc, const char* argv[]) {
     const char* exe = NULL;
     const char* region = NULL;
     const char* psxe_version = NULL;
+    const char* cd_path = NULL;
 
     static const char *const usages[] = {
         "psxe [options]",
@@ -127,6 +129,7 @@ void psxe_cfg_load(psxe_config_t* cfg, int argc, const char* argv[]) {
         OPT_STRING  ('x', "exe"          , &exe          , "Boot this PS-X EXE file (ignores CDROM image)"),
         OPT_INTEGER ('L', "log-level"    , &log_level    , "Set log level"),
         OPT_BOOLEAN ('q', "quiet"        , &quiet        , "Silence all logs (ignores -L)"),
+        OPT_STRING  (0  , "cdrom"        , &cd_path      , "Specify a CDROM image"),
         OPT_END()
     };
 
@@ -233,6 +236,19 @@ void psxe_cfg_load(psxe_config_t* cfg, int argc, const char* argv[]) {
 
         fclose(settings);
     }
+
+    if (argc) {
+        if (argc > 1) {
+            log_error("Unrecognized parameter \'%s\'", argv[1]);
+
+            exit(1);
+        }
+
+        cd_path = argv[0];
+    }
+
+    if (cd_path)
+        cfg->cd_path = cd_path;
 
     if (log_level)
         cfg->log_level = log_level - 1;
