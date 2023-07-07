@@ -24,6 +24,9 @@ Here's a list of what's currently implemented:
 - Several GPU registers
 - GPU commands used by the BIOS
 - Some CDROM commands (`Test`, `Getstat`)
+- CPU quirks (Branch, Load delay slots)
+- Bus structure
+- OTC DMA (Burst), GPU DMA (Request, Linked)
 
 ## Building
 Building the emulator should be easy, just use the scripts provided in this repo.
@@ -49,9 +52,6 @@ Assuming you did everything described above, you should be able to build the emu
 
 ### Windows
 ```
-- CPU quirks (Branch, Load delay slots)
-- Bus structure
-- OTC DMA (Burst), GPU DMA (Request, Linked)
 git clone https://github.com/allkern/psxe
 cd psx
 ./build-deps
