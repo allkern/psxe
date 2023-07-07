@@ -146,7 +146,8 @@ void plotLineLow(psx_gpu_t* gpu, int x0, int y0, int x1, int y1, uint16_t color)
     int y = y0;
 
     for (int x = x0; x < x1; x++) {
-        gpu->vram[x + (y * 1024)] = color;
+        if ((x < 1024) && (y < 512))
+            gpu->vram[x + (y * 1024)] = color;
 
         if (d > 0) {
             y += yi;
@@ -169,7 +170,8 @@ void plotLineHigh(psx_gpu_t* gpu, int x0, int y0, int x1, int y1, uint16_t color
     int x = x0;
 
     for (int y = y0; y < y1; y++) {
-        gpu->vram[x + (y * 1024)] = color;
+        if ((x < 1024) && (y < 512))
+            gpu->vram[x + (y * 1024)] = color;
         if (d > 0) {
             x = x + xi;
             d += (2 * (dx - dy));
