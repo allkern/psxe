@@ -69,11 +69,11 @@ void psx_pad_init(psx_pad_t* pad, psx_ic_t* ic) {
 
 uint32_t psx_pad_read32(psx_pad_t* pad, uint32_t offset) {
     switch (offset) {
-        case 0: log_fatal("RX read 32"); return pad_read_rx(pad);
-        case 4: log_fatal("ST read 32"); return pad_handle_stat_read(pad);
-        case 8: log_fatal("MD read 32"); return pad->mode;
-        case 10: log_fatal("CT read 32"); return pad->ctrl;
-        case 14: log_fatal("BD read 32"); return pad->baud;
+        case 0: return pad_read_rx(pad);
+        case 4: return pad_handle_stat_read(pad);
+        case 8: return pad->mode;
+        case 10: return pad->ctrl;
+        case 14: return pad->baud;
     }
 
     log_fatal("Unhandled 32-bit PAD read at offset %08x", offset);
@@ -83,11 +83,11 @@ uint32_t psx_pad_read32(psx_pad_t* pad, uint32_t offset) {
 
 uint16_t psx_pad_read16(psx_pad_t* pad, uint32_t offset) {
     switch (offset) {
-        case 0: log_fatal("RX read 16"); return pad_read_rx(pad) & 0xffff;
-        case 4: log_fatal("ST read 16 %04x", pad_handle_stat_read(pad) & 0xffff); return pad_handle_stat_read(pad) & 0xffff;
-        case 8: log_fatal("MD read 16"); return pad->mode;
-        case 10: log_fatal("CT read 16 %04x", pad->ctrl & 0xffff); return pad->ctrl & 0xffff;
-        case 14: log_fatal("BD read 16"); return pad->baud;
+        case 0: return pad_read_rx(pad) & 0xffff;
+        case 4: return pad_handle_stat_read(pad) & 0xffff;
+        case 8: return pad->mode;
+        case 10: return pad->ctrl & 0xffff;
+        case 14: return pad->baud;
     }
 
     log_fatal("Unhandled 16-bit PAD read at offset %08x", offset);
@@ -97,11 +97,11 @@ uint16_t psx_pad_read16(psx_pad_t* pad, uint32_t offset) {
 
 uint8_t psx_pad_read8(psx_pad_t* pad, uint32_t offset) {
     switch (offset) {
-        case 0: log_fatal("RX read 8 %02x", pad_read_rx(pad) & 0xff); return pad_read_rx(pad) & 0xff;
-        case 4: log_fatal("ST read 8"); return pad_handle_stat_read(pad) & 0xff;
-        case 8: log_fatal("MD read 8"); return pad->mode & 0xff;
-        case 10: log_fatal("CT read 8"); return pad->ctrl & 0xff;
-        case 14: log_fatal("BD read 8"); return pad->baud & 0xff;
+        case 0: return pad_read_rx(pad) & 0xff;
+        case 4: return pad_handle_stat_read(pad) & 0xff;
+        case 8: return pad->mode & 0xff;
+        case 10: return pad->ctrl & 0xff;
+        case 14: return pad->baud & 0xff;
     }
 
     log_fatal("Unhandled 8-bit PAD read at offset %08x", offset);
@@ -111,10 +111,10 @@ uint8_t psx_pad_read8(psx_pad_t* pad, uint32_t offset) {
 
 void psx_pad_write32(psx_pad_t* pad, uint32_t offset, uint32_t value) {
     switch (offset) {
-        case 0: log_fatal("TX write 32 %08x", value); pad_write_tx(pad, value); return;
-        case 8: log_fatal("MD write 32 %08x", value); pad->mode = value & 0xffff; return;
-        case 10: log_fatal("CT write 32 %08x", value); pad_handle_ctrl_write(pad, value); return;
-        case 14: log_fatal("BD write 32 %08x", value); pad->baud = value & 0xffff; return;
+        case 0: pad_write_tx(pad, value); return;
+        case 8: pad->mode = value & 0xffff; return;
+        case 10: pad_handle_ctrl_write(pad, value); return;
+        case 14: pad->baud = value & 0xffff; return;
     }
 
     log_fatal("Unhandled 32-bit PAD write at offset %08x (%08x)", offset, value);
@@ -122,10 +122,10 @@ void psx_pad_write32(psx_pad_t* pad, uint32_t offset, uint32_t value) {
 
 void psx_pad_write16(psx_pad_t* pad, uint32_t offset, uint16_t value) {
     switch (offset) {
-        case 0: log_fatal("TX write 16 %04x", value); pad_write_tx(pad, value); return;
-        case 8: log_fatal("MD write 16 %04x", value); pad->mode = value; return;
-        case 10: log_fatal("CT write 16 %04x", value); pad_handle_ctrl_write(pad, value); return;
-        case 14: log_fatal("BD write 16 %04x", value); pad->baud = value; return;
+        case 0: pad_write_tx(pad, value); return;
+        case 8: pad->mode = value; return;
+        case 10: pad_handle_ctrl_write(pad, value); return;
+        case 14: pad->baud = value; return;
     }
 
     log_fatal("Unhandled 16-bit PAD write at offset %08x (%04x)", offset, value);
@@ -133,10 +133,10 @@ void psx_pad_write16(psx_pad_t* pad, uint32_t offset, uint16_t value) {
 
 void psx_pad_write8(psx_pad_t* pad, uint32_t offset, uint8_t value) {
     switch (offset) {
-        case 0: log_fatal("TX write 8 %02x", value); pad_write_tx(pad, value); return;
-        case 8: log_fatal("MD write 8 %02x", value); pad->mode = value; return;
-        case 10: log_fatal("CT write 8 %02x", value); pad_handle_ctrl_write(pad, value); return;
-        case 14: log_fatal("BD write 8 %02x", value); pad->baud = value; return;
+        case 0: pad_write_tx(pad, value); return;
+        case 8: pad->mode = value; return;
+        case 10: pad_handle_ctrl_write(pad, value); return;
+        case 14: pad->baud = value; return;
     }
 
     log_fatal("Unhandled 8-bit PAD write at offset %08x (%02x)", offset, value);
@@ -166,8 +166,6 @@ void psx_pad_update(psx_pad_t* pad, int cyc) {
 
         if (pad->cycles_until_irq <= 0) {
             psx_ic_irq(pad->ic, IC_JOY);
-
-            log_fatal("PAD IRQ");
 
             pad->cycles_until_irq = 0;
         }
