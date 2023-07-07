@@ -15,6 +15,7 @@ OS_INFO := $(shell uname -rmo)
 
 SOURCES := $(wildcard psx/*.c)
 SOURCES += $(wildcard psx/dev/*.c)
+SOURCES += $(wildcard psx/input/*.c)
 SOURCES += $(wildcard frontend/*.c)
 
 bin/psxe frontend/main.c:

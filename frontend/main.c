@@ -1,4 +1,5 @@
 #include "psx/psx.h"
+#include "psx/input/sda.h"
 
 #include "screen.h"
 #include "config.h"
@@ -17,16 +18,28 @@ int main(int argc, const char* argv[]) {
     psx_t* psx = psx_create();
     psx_init(psx, cfg->bios);
 
-    psx_gpu_t* gpu = psx_get_gpu(psx);
-
     psxe_screen_t* screen = psxe_screen_create();
     psxe_screen_init(screen, psx);
     psxe_screen_set_scale(screen, 2);
     psxe_screen_reload(screen);
 
+    psx_gpu_t* gpu = psx_get_gpu(psx);
+
     psx_gpu_set_event_callback(gpu, GPU_EVENT_DMODE, psxe_gpu_dmode_event_cb);
     psx_gpu_set_event_callback(gpu, GPU_EVENT_VBLANK, psxe_gpu_vblank_event_cb);
     psx_gpu_set_udata(gpu, 0, screen);
+
+    psxi_sda_t* controller = psxi_sda_create();
+
+    psxi_sda_init(controller, SDA_MODEL_DIGITAL);
+
+    psx_input_t* input = psx_input_create();
+
+    psx_input_init(input);
+
+    psxi_sda_init_input(controller, input);
+
+    psx_pad_init_slot(psx->pad, 0, input);
 
     if (cfg->exe) {
         while (psx->cpu->pc != 0x80030000) {
@@ -54,7 +67,9 @@ int main(int argc, const char* argv[]) {
     log_fatal("gp=%08x sp=%08x fp=%08x ra=%08x", cpu->r[28], cpu->r[29], cpu->r[30], cpu->r[31]);
     log_fatal("pc=%08x hi=%08x lo=%08x ep=%08x", cpu->pc, cpu->hi, cpu->lo, cpu->cop0_r[COP0_EPC]);
 
+    psx_input_destroy(input);
     psx_destroy(psx);
+    psxi_sda_destroy(controller);
     psxe_screen_destroy(screen);
 
     return 0;

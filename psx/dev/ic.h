@@ -32,7 +32,7 @@ enum {
     IC_TMR0         = 0x010,
     IC_TMR1         = 0x020,
     IC_TMR2         = 0x040,
-    IC_CTRL         = 0x080,
+    IC_JOY          = 0x080,
     IC_SIO          = 0x100,
     IC_SPU          = 0x200,
     IC_LP_PIO       = 0x400

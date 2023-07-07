@@ -120,13 +120,13 @@ void psxe_screen_update(psxe_screen_t* screen) {
 
                 uint16_t mask = screen_get_button(event.key.keysym.sym);
 
-                psx_pad_button_press(screen->pad, mask);
+                psx_pad_button_press(screen->pad, 0, mask);
             } break;
 
             case SDL_KEYUP: {
                 uint16_t mask = screen_get_button(event.key.keysym.sym);
 
-                psx_pad_button_release(screen->pad, mask);
+                psx_pad_button_release(screen->pad, 0, mask);
             } break;
         }
     }
