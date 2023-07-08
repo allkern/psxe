@@ -76,6 +76,34 @@ struct psx_cpu_t {
 
     uint32_t cop0_r[16];
 
+    struct {
+        int16_t v0[4], v1[4], v2[4];
+        uint32_t rgbc;
+        uint32_t otz;
+        uint32_t ir0, ir1, ir2, ir3;
+        int16_t sxy0[2], sxy1[2], sxy2[2], sxyp[2];
+        uint32_t sz0, sz1, sz2, sz3;
+        uint32_t rgb0, rgb1, rgb2;
+        uint32_t res1;
+        int32_t mac0, mac1, mac2, mac3;
+        uint32_t irgb, orgb;
+        int32_t lzcs, lzcr;
+    } cop2_dr;
+
+    struct {
+        int16_t rt[3 * 3];
+        uint32_t trx, try, trz;
+        int16_t l[3 * 3];
+        uint32_t rbk, gbk, bbk;
+        int16_t lr[3 * 3];
+        uint32_t rfc, gfc, bfc;
+        uint32_t ofx, ofy;
+        uint32_t h;
+        uint32_t dqa, dqb;
+        uint32_t zsf3, zsf4;
+        uint32_t flag;
+    } cop2_cr;
+
     psx_bus_t* bus;
 
     psx_cpu_kcall_hook_t a_function_hook;
@@ -272,16 +300,7 @@ void psx_cpu_i_sltu(psx_cpu_t*);
 
 // COP0
 void psx_cpu_i_mfc0(psx_cpu_t*);
-void psx_cpu_i_cfc0(psx_cpu_t*);
 void psx_cpu_i_mtc0(psx_cpu_t*);
-void psx_cpu_i_ctc0(psx_cpu_t*);
-void psx_cpu_i_bc0c(psx_cpu_t*);
-
-// Unimplemented
-// void psx_cpu_i_cop0_tlbr(psx_cpu_t*);
-// void psx_cpu_i_cop0_tlbwi(psx_cpu_t*);
-// void psx_cpu_i_cop0_tlbwr(psx_cpu_t*);
-// void psx_cpu_i_cop0_tlbp(psx_cpu_t*);
 
 // COP0-specific
 void psx_cpu_i_rfe(psx_cpu_t*);
@@ -291,6 +310,38 @@ void psx_cpu_i_bltz(psx_cpu_t*);
 void psx_cpu_i_bgez(psx_cpu_t*);
 void psx_cpu_i_bltzal(psx_cpu_t*);
 void psx_cpu_i_bgezal(psx_cpu_t*);
+
+// COP2
+void psx_cpu_i_mfc2(psx_cpu_t*);
+void psx_cpu_i_cfc2(psx_cpu_t*);
+void psx_cpu_i_mtc2(psx_cpu_t*);
+void psx_cpu_i_ctc2(psx_cpu_t*);
+void psx_cpu_i_gte(psx_cpu_t*);
+
+// GTE instructions
+void psx_gte_i_invalid(psx_cpu_t*);
+void psx_gte_i_rtps(psx_cpu_t*);
+void psx_gte_i_nclip(psx_cpu_t*);
+void psx_gte_i_op(psx_cpu_t*);
+void psx_gte_i_dpcs(psx_cpu_t*);
+void psx_gte_i_intpl(psx_cpu_t*);
+void psx_gte_i_mvmva(psx_cpu_t*);
+void psx_gte_i_ncds(psx_cpu_t*);
+void psx_gte_i_cdp(psx_cpu_t*);
+void psx_gte_i_ncdt(psx_cpu_t*);
+void psx_gte_i_nccs(psx_cpu_t*);
+void psx_gte_i_cc(psx_cpu_t*);
+void psx_gte_i_ncs(psx_cpu_t*);
+void psx_gte_i_nct(psx_cpu_t*);
+void psx_gte_i_sqr(psx_cpu_t*);
+void psx_gte_i_dcpl(psx_cpu_t*);
+void psx_gte_i_dpct(psx_cpu_t*);
+void psx_gte_i_avsz3(psx_cpu_t*);
+void psx_gte_i_avsz4(psx_cpu_t*);
+void psx_gte_i_rtpt(psx_cpu_t*);
+void psx_gte_i_gpf(psx_cpu_t*);
+void psx_gte_i_gpl(psx_cpu_t*);
+void psx_gte_i_ncct(psx_cpu_t*);
 
 typedef void (*psx_cpu_instruction_t)(psx_cpu_t*);
 

@@ -88,7 +88,7 @@ void psxe_cfg_load_defaults(psxe_config_t* cfg) {
     cfg->version = 0;
     cfg->log_level = LOG_FATAL;
     cfg->quiet = 0;
-    cfg->cd_path = "";
+    cfg->cd_path = NULL;
 }
 
 void psxe_cfg_load(psxe_config_t* cfg, int argc, const char* argv[]) {

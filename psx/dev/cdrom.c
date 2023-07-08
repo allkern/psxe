@@ -31,6 +31,8 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
         RESP_PUSH(cdrom->stat);
         SEND_INT3(COMMAND_DELAY);
 
+        cdrom->stat |= GETSTAT_READ;
+
         cdrom->delayed_response_command = cdrom->command;
     } else {
         log_fatal("Reading data from disc. offset=%02x:%02x:%02x (%08x)",
@@ -46,6 +48,8 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
         SEND_INT1(double_speed ? READ_DOUBLE_DELAY : READ_SINGLE_DELAY);
 
         cdrom->dfifo_full = 1;
+
+        cdrom->stat &= ~GETSTAT_READ;
 
         // Repeat until pause
         cdrom->delayed_response_command = cdrom->command;
@@ -72,15 +76,28 @@ void cdrom_cmd_pause(psx_cdrom_t* cdrom) {
 }
 
 void cdrom_cmd_init(psx_cdrom_t* cdrom) {
-    log_fatal("init: Unimplemented CD command");
+    if (!cdrom->delayed_response_command) {
+        RESP_PUSH(cdrom->stat);
+        SEND_INT3(COMMAND_DELAY);
+
+        cdrom->delayed_response_command = cdrom->command;
+    } else {
+        RESP_PUSH(cdrom->stat);
+        SEND_INT2(COMMAND_DELAY);
+
+        cdrom->delayed_response_command = 0;
+    }
 }
 
 void cdrom_cmd_unmute(psx_cdrom_t* cdrom) {
-    log_fatal("unmute: Unimplemented CD command");
+    RESP_PUSH(cdrom->stat);
+    SEND_INT3(COMMAND_DELAY);
 }
 
 void cdrom_cmd_setfilter(psx_cdrom_t* cdrom) {
+    log_set_quiet(0);
     log_fatal("setfilter: Unimplemented CD command");
+    log_set_quiet(1);
 }
 
 void cdrom_cmd_setmode(psx_cdrom_t* cdrom) {
@@ -97,19 +114,27 @@ void cdrom_cmd_setmode(psx_cdrom_t* cdrom) {
 }
 
 void cdrom_cmd_getlocl(psx_cdrom_t* cdrom) {
+    log_set_quiet(0);
     log_fatal("getlocl: Unimplemented CD command");
+    log_set_quiet(1);
 }
 
 void cdrom_cmd_getlocp(psx_cdrom_t* cdrom) {
+    log_set_quiet(0);
     log_fatal("getlocp: Unimplemented CD command");
+    log_set_quiet(1);
 }
 
 void cdrom_cmd_gettn(psx_cdrom_t* cdrom) {
+    log_set_quiet(0);
     log_fatal("gettn: Unimplemented CD command");
+    log_set_quiet(1);
 }
 
 void cdrom_cmd_gettd(psx_cdrom_t* cdrom) {
+    log_set_quiet(0);
     log_fatal("gettd: Unimplemented CD command");
+    log_set_quiet(1);
 }
 
 void cdrom_cmd_seekl(psx_cdrom_t* cdrom) {
@@ -131,19 +156,27 @@ void cdrom_cmd_seekl(psx_cdrom_t* cdrom) {
 }
 
 void cdrom_cmd_seekp(psx_cdrom_t* cdrom) {
+    log_set_quiet(0);
     log_fatal("seekp: Unimplemented CD command");
+    log_set_quiet(1);
 }
 
 void cdrom_cmd_reads(psx_cdrom_t* cdrom) {
+    log_set_quiet(0);
     log_fatal("reads: Unimplemented CD command");
+    log_set_quiet(1);
 }
 
 void cdrom_cmd_readtoc(psx_cdrom_t* cdrom) {
+    log_set_quiet(0);
     log_fatal("readtoc: Unimplemented CD command");
+    log_set_quiet(1);
 }
 
 void cdrom_cmd_unimplemented(psx_cdrom_t* cdrom) {
+    log_set_quiet(0);
     log_fatal("Unimplemented CD command %02x", cdrom->command);
+    log_set_quiet(1);
 }
 
 void cdrom_cmd_getstat(psx_cdrom_t* cdrom) {
@@ -157,7 +190,7 @@ void cdrom_cmd_getstat(psx_cdrom_t* cdrom) {
 
 void cdrom_cmd_setloc(psx_cdrom_t* cdrom) {
     if (cdrom->pfifo_index != 3) {
-        log_fatal("setloc: Expected exactly 3 parameters");
+        log_fatal("setloc: Expected exactly 3 parameters, got %u instead", cdrom->pfifo_index);
 
         return;
     }
@@ -185,19 +218,31 @@ void cdrom_cmd_setloc(psx_cdrom_t* cdrom) {
 
 void cdrom_cmd_getid(psx_cdrom_t* cdrom) {
     if (!cdrom->delayed_response_command) {
-        RESP_PUSH(cdrom->stat);
+        // RESP_PUSH(cdrom->stat);
         SEND_INT3(COMMAND_DELAY);
 
         cdrom->delayed_response_command = cdrom->command;
     } else {
-        RESP_PUSH(0x02);
-        RESP_PUSH(0x00);
-        RESP_PUSH(0x20);
-        RESP_PUSH(0x00);
-        RESP_PUSH(0x53);
-        RESP_PUSH(0x43);
-        RESP_PUSH(0x45);
-        RESP_PUSH(0x41);
+        if (!cdrom->disc) {
+            RESP_PUSH(0x00);
+            RESP_PUSH(0x00);
+            RESP_PUSH(0x00);
+            RESP_PUSH(0x00);
+            RESP_PUSH(0x00);
+            RESP_PUSH(0x00);
+            RESP_PUSH(0x40);
+            RESP_PUSH(0x08);
+        } else {
+            RESP_PUSH(0x41);
+            RESP_PUSH(0x45);
+            RESP_PUSH(0x43);
+            RESP_PUSH(0x53);
+            RESP_PUSH(0x00);
+            RESP_PUSH(0x20);
+            RESP_PUSH(0x00);
+            RESP_PUSH(0x02);
+        }
+
         SEND_INT2(COMMAND_DELAY);
 
         cdrom->delayed_response_command = 0;
@@ -205,7 +250,11 @@ void cdrom_cmd_getid(psx_cdrom_t* cdrom) {
 }
 
 void cdrom_cmd_test(psx_cdrom_t* cdrom) {
-    switch (cdrom->pfifo[0]) {
+    if (cdrom->pfifo_index != 1) {
+        log_fatal("test: Expected exactly 1 parameter");
+    }
+
+    switch (cdrom->pfifo[--cdrom->pfifo_index]) {
         case 0x20: {
             RESP_PUSH(0x01);
             RESP_PUSH(0x95);
@@ -304,7 +353,7 @@ typedef uint8_t (*psx_cdrom_read_function_t)(psx_cdrom_t*);
 typedef void (*psx_cdrom_write_function_t)(psx_cdrom_t*, uint8_t);
 
 uint8_t cdrom_read_status(psx_cdrom_t* cdrom) {
-    log_fatal("    Status read %02x", cdrom->status);
+    //log_fatal("    Status read %02x, pfifo_index=%u", cdrom->status, cdrom->pfifo_index);
 
     return cdrom->status;
 }
@@ -315,13 +364,13 @@ uint8_t cdrom_read_rfifo(psx_cdrom_t* cdrom) {
         
         SET_BITS(status, STAT_RSLRRDY_MASK, 0);
 
-        log_fatal("    RFIFO read (%02x)", data);
+        //log_fatal("    RFIFO read (%02x)", data);
 
         return data;
     } else {
         uint8_t data = cdrom->rfifo[--cdrom->rfifo_index];
     
-        log_fatal("    RFIFO read (%02x)", data);
+        //log_fatal("    RFIFO read (%02x)", data);
     
         return data;
     }
@@ -346,44 +395,43 @@ uint8_t cdrom_read_dfifo(psx_cdrom_t* cdrom) {
 }
 
 uint8_t cdrom_read_ier(psx_cdrom_t* cdrom) {
-    log_fatal("    IER read %02x", cdrom->ier);
+    //log_fatal("    IER read %02x", cdrom->ier);
 
     return cdrom->ier;
 }
 
 uint8_t cdrom_read_ifr(psx_cdrom_t* cdrom) {
-    log_fatal("    IFR read %02x", cdrom->ifr);
+    //log_fatal("    IFR read %02x", cdrom->ifr);
 
     return cdrom->ifr;
 }
 
 void cdrom_write_status(psx_cdrom_t* cdrom, uint8_t value) {
-    log_fatal("    Status write %02x", value);
+    //log_fatal("    Status write %02x, pfifo_index=%u", value, cdrom->pfifo_index);
 
     SET_BITS(status, STAT_INDEX_MASK, value);
 }
 
 void cdrom_write_cmd(psx_cdrom_t* cdrom, uint8_t value) {
-    log_fatal("    Command %02x (pfifo=%02x, %02x, %02x, %02x)",
-        value,
-        cdrom->pfifo[0],
-        cdrom->pfifo[1],
-        cdrom->pfifo[2],
-        cdrom->pfifo[3]
-    );
-
     cdrom->delayed_response_command = 0;
     cdrom->command = value;
 
     g_psx_cdrom_command_table[value](cdrom);
+
+    log_fatal("    Command %02x (pfifo=%02x, %02x, %02x, %02x), pfifo_index=%u",
+        value,
+        cdrom->pfifo[0],
+        cdrom->pfifo[1],
+        cdrom->pfifo[2],
+        cdrom->pfifo[3],
+        cdrom->pfifo_index
+    );
 }
 
 void cdrom_write_pfifo(psx_cdrom_t* cdrom, uint8_t value) {
-    log_fatal("    PFIFO write %02x", value);
-
     cdrom->pfifo[(cdrom->pfifo_index++) & 0xf] = value;
 
-    SET_BITS(status, STAT_PRMWRDY_MASK, (cdrom->pfifo_index & 0x10) ? 0xff : 0);
+    SET_BITS(status, STAT_PRMWRDY_MASK, (cdrom->pfifo_index & 0x10) ? 0x0 : 0xff);
 
     cdrom->pfifo_index &= 0x1f;
 }
@@ -406,13 +454,13 @@ void cdrom_write_smdout(psx_cdrom_t* cdrom, uint8_t value) {
 }
 
 void cdrom_write_ier(psx_cdrom_t* cdrom, uint8_t value) {
-    log_fatal("    IER write %02x", value);
+    //log_fatal("    IER write %02x", value);
 
     cdrom->ier = value;
 }
 
 void cdrom_write_ifr(psx_cdrom_t* cdrom, uint8_t value) {
-    log_fatal("    IFR write %02x", value);
+    //log_fatal("    IFR write %02x", value);
 
     cdrom->ifr &= ~(value & 0x7);
 
@@ -516,8 +564,11 @@ void psx_cdrom_update(psx_cdrom_t* cdrom) {
 
             cdrom->irq_delay = 0;
 
+            log_fatal("delayed_command=%02x", cdrom->delayed_response_command);
+
             if (cdrom->delayed_response_command) {
                 g_psx_cdrom_command_table[cdrom->delayed_response_command](cdrom);
+                log_fatal("Delayed execution delay=%08x cmd=%02x", cdrom->irq_delay, cdrom->delayed_response_command);
             }
         }
     }
@@ -528,6 +579,8 @@ void psx_cdrom_open(psx_cdrom_t* cdrom, const char* path) {
 
     if (!cdrom->disc) {
         log_fatal("Couldn't open disc image \"%s\"", path);
+
+        cdrom->stat |= GETSTAT_TRAYOPEN;
 
         return;
     }

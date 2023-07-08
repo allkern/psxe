@@ -44,14 +44,25 @@ psx_cpu_instruction_t g_psx_cpu_primary_table[] = {
 };
 
 psx_cpu_instruction_t g_psx_cpu_cop0_table[] = {
-    psx_cpu_i_mfc0   , psx_cpu_i_invalid, psx_cpu_i_cfc0   , psx_cpu_i_invalid,
-    psx_cpu_i_mtc0   , psx_cpu_i_invalid, psx_cpu_i_ctc0   , psx_cpu_i_invalid,
-    psx_cpu_i_bc0c   , psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
+    psx_cpu_i_mfc0   , psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
+    psx_cpu_i_mtc0   , psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
+    psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
     psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
     psx_cpu_i_rfe    , psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
     psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
     psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
     psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid
+};
+
+psx_cpu_instruction_t g_psx_cpu_cop2_table[] = {
+    psx_cpu_i_mfc2   , psx_cpu_i_invalid, psx_cpu_i_cfc2   , psx_cpu_i_invalid,
+    psx_cpu_i_mtc2   , psx_cpu_i_invalid, psx_cpu_i_ctc2   , psx_cpu_i_invalid,
+    psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
+    psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
+    psx_cpu_i_gte    , psx_cpu_i_gte    , psx_cpu_i_gte    , psx_cpu_i_gte    ,
+    psx_cpu_i_gte    , psx_cpu_i_gte    , psx_cpu_i_gte    , psx_cpu_i_gte    ,
+    psx_cpu_i_gte    , psx_cpu_i_gte    , psx_cpu_i_gte    , psx_cpu_i_gte    ,
+    psx_cpu_i_gte    , psx_cpu_i_gte    , psx_cpu_i_gte    , psx_cpu_i_gte
 };
 
 psx_cpu_instruction_t g_psx_cpu_bxx_table[] = {
@@ -63,6 +74,63 @@ psx_cpu_instruction_t g_psx_cpu_bxx_table[] = {
     psx_cpu_i_bltz   , psx_cpu_i_bgez   , psx_cpu_i_bltz   , psx_cpu_i_bgez   ,
     psx_cpu_i_bltz   , psx_cpu_i_bgez   , psx_cpu_i_bltz   , psx_cpu_i_bgez   ,
     psx_cpu_i_bltz   , psx_cpu_i_bgez   , psx_cpu_i_bltz   , psx_cpu_i_bgez
+};
+
+/*
+  Opc  Name      Clk Expl.
+  00h  -             N/A (modifies similar registers than RTPS...)
+  01h  RTPS      15  Perspective Transformation single
+  0xh  -             N/A
+  06h  NCLIP     8   Normal clipping
+  0xh  -             N/A
+  0Ch  OP(sf)    6   Outer product of 2 vectors
+  0xh  -             N/A
+  10h  DPCS      8   Depth Cueing single
+  11h  INTPL     8   Interpolation of a vector and far color vector
+  12h  MVMVA(..) 8   Multiply vector by matrix and add vector (see below)
+  13h  NCDS      19  Normal color depth cue single vector
+  14h  CDP       13  Color Depth Que
+  15h  -             N/A
+  16h  NCDT      44  Normal color depth cue triple vectors
+  1xh  -             N/A
+  1Bh  NCCS      17  Normal Color Color single vector
+  1Ch  CC        11  Color Color
+  1Dh  -             N/A
+  1Eh  NCS       14  Normal color single
+  1Fh  -             N/A
+  20h  NCT       30  Normal color triple
+  2xh  -             N/A
+  28h  SQR(sf)   5   Square of vector IR
+  29h  DCPL      8   Depth Cue Color light
+  2Ah  DPCT      17  Depth Cueing triple (should be fake=08h, but isn't)
+  2xh  -             N/A
+  2Dh  AVSZ3     5   Average of three Z values
+  2Eh  AVSZ4     6   Average of four Z values
+  2Fh  -             N/A
+  30h  RTPT      23  Perspective Transformation triple
+  3xh  -             N/A
+  3Dh  GPF(sf)   5   General purpose interpolation
+  3Eh  GPL(sf)   5   General purpose interpolation with base
+  3Fh  NCCT      39  Normal Color Color triple vector
+*/
+
+psx_cpu_instruction_t g_psx_gte_table[] = {
+    psx_gte_i_invalid, psx_gte_i_rtps   , psx_gte_i_invalid, psx_gte_i_invalid,
+    psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_nclip  , psx_gte_i_invalid,
+    psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_invalid,
+    psx_gte_i_op     , psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_invalid,
+    psx_gte_i_dpcs   , psx_gte_i_intpl  , psx_gte_i_mvmva  , psx_gte_i_ncds   ,
+    psx_gte_i_cdp    , psx_gte_i_invalid, psx_gte_i_ncdt   , psx_gte_i_invalid,
+    psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_nccs   ,
+    psx_gte_i_cc     , psx_gte_i_invalid, psx_gte_i_ncs    , psx_gte_i_invalid,
+    psx_gte_i_nct    , psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_invalid,
+    psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_invalid,
+    psx_gte_i_sqr    , psx_gte_i_dcpl   , psx_gte_i_dpct   , psx_gte_i_invalid,
+    psx_gte_i_invalid, psx_gte_i_avsz3  , psx_gte_i_avsz4  , psx_gte_i_invalid,
+    psx_gte_i_rtpt   , psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_invalid,
+    psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_invalid,
+    psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_invalid,
+    psx_gte_i_invalid, psx_gte_i_gpf    , psx_gte_i_gpl    , psx_gte_i_ncct
 };
 
 uint32_t g_psx_cpu_cop0_write_mask_table[] = {
@@ -656,9 +724,7 @@ void psx_cpu_i_cop1(psx_cpu_t* cpu) {
 }
 
 void psx_cpu_i_cop2(psx_cpu_t* cpu) {
-    log_fatal("%08x: GTE instruction (GTE unimplemented)", cpu->pc - 8);
-
-    DO_PENDING_LOAD;
+    g_psx_cpu_cop2_table[S](cpu);
 }
 
 void psx_cpu_i_cop3(psx_cpu_t* cpu) {
@@ -1271,18 +1337,6 @@ void psx_cpu_i_mtc0(psx_cpu_t* cpu) {
     cpu->cop0_r[D] = t & g_psx_cpu_cop0_write_mask_table[D];
 }
 
-void psx_cpu_i_ctc0(psx_cpu_t* cpu) {
-    log_error("%08x: ctc0 (unimplemented)", cpu->pc - 8);
-
-    exit(1);
-}
-
-void psx_cpu_i_bc0c(psx_cpu_t* cpu) {
-    log_error("%08x: bc0c (unimplemented)", cpu->pc - 8);
-
-    exit(1);
-}
-
 // COP0-specific
 void psx_cpu_i_rfe(psx_cpu_t* cpu) {
     TRACE_N("rfe");
@@ -1293,6 +1347,134 @@ void psx_cpu_i_rfe(psx_cpu_t* cpu) {
 
     cpu->cop0_r[COP0_SR] &= 0xfffffff0;
     cpu->cop0_r[COP0_SR] |= mode >> 2;
+}
+
+// COP2
+void psx_cpu_i_mfc2(psx_cpu_t* cpu) {
+    DO_PENDING_LOAD;
+
+    cpu->load_v = ((uint32_t*)(&cpu->cop2_dr))[D];
+    cpu->load_d = T;
+}
+
+void psx_cpu_i_cfc2(psx_cpu_t* cpu) {
+    DO_PENDING_LOAD;
+
+    cpu->load_v = ((uint32_t*)(&cpu->cop2_cr))[D];
+    cpu->load_d = T;
+}
+
+void psx_cpu_i_mtc2(psx_cpu_t* cpu) {
+    uint32_t t = cpu->r[T];
+
+    DO_PENDING_LOAD;
+
+    ((uint32_t*)(&cpu->cop2_dr))[D] = t & g_psx_cpu_cop0_write_mask_table[D];
+}
+
+void psx_cpu_i_ctc2(psx_cpu_t* cpu) {
+    uint32_t t = cpu->r[T];
+
+    DO_PENDING_LOAD;
+
+    ((uint32_t*)(&cpu->cop2_cr))[D] = t & g_psx_cpu_cop0_write_mask_table[D];
+}
+
+void psx_cpu_i_gte(psx_cpu_t* cpu) {
+    g_psx_gte_table[cpu->opcode & 0x3f](cpu);
+}
+
+
+void psx_gte_i_invalid(psx_cpu_t* cpu) {
+    log_fatal("invalid: Unimplemented GTE instruction %02x, %02x", cpu->opcode & 0x3f, cpu->opcode >> 25);
+}
+
+void psx_gte_i_rtps(psx_cpu_t* cpu) {
+    log_fatal("rtps: Unimplemented GTE instruction");
+}
+
+void psx_gte_i_nclip(psx_cpu_t* cpu) {
+    log_fatal("nclip: Unimplemented GTE instruction");
+}
+
+void psx_gte_i_op(psx_cpu_t* cpu) {
+    log_fatal("op: Unimplemented GTE instruction");
+}
+
+void psx_gte_i_dpcs(psx_cpu_t* cpu) {
+    log_fatal("dpcs: Unimplemented GTE instruction");
+}
+
+void psx_gte_i_intpl(psx_cpu_t* cpu) {
+    log_fatal("intpl: Unimplemented GTE instruction");
+}
+
+void psx_gte_i_mvmva(psx_cpu_t* cpu) {
+    log_fatal("mvmva: Unimplemented GTE instruction");
+}
+
+void psx_gte_i_ncds(psx_cpu_t* cpu) {
+    log_fatal("ncds: Unimplemented GTE instruction");
+}
+
+void psx_gte_i_cdp(psx_cpu_t* cpu) {
+    log_fatal("cdp: Unimplemented GTE instruction");
+}
+
+void psx_gte_i_ncdt(psx_cpu_t* cpu) {
+    log_fatal("ncdt: Unimplemented GTE instruction");
+}
+
+void psx_gte_i_nccs(psx_cpu_t* cpu) {
+    log_fatal("nccs: Unimplemented GTE instruction");
+}
+
+void psx_gte_i_cc(psx_cpu_t* cpu) {
+    log_fatal("cc: Unimplemented GTE instruction");
+}
+
+void psx_gte_i_ncs(psx_cpu_t* cpu) {
+    log_fatal("ncs: Unimplemented GTE instruction");
+}
+
+void psx_gte_i_nct(psx_cpu_t* cpu) {
+    log_fatal("nct: Unimplemented GTE instruction");
+}
+
+void psx_gte_i_sqr(psx_cpu_t* cpu) {
+    log_fatal("sqr: Unimplemented GTE instruction");
+}
+
+void psx_gte_i_dcpl(psx_cpu_t* cpu) {
+    log_fatal("dcpl: Unimplemented GTE instruction");
+}
+
+void psx_gte_i_dpct(psx_cpu_t* cpu) {
+    log_fatal("dpct: Unimplemented GTE instruction");
+}
+
+void psx_gte_i_avsz3(psx_cpu_t* cpu) {
+    log_fatal("avsz3: Unimplemented GTE instruction");
+}
+
+void psx_gte_i_avsz4(psx_cpu_t* cpu) {
+    log_fatal("avsz4: Unimplemented GTE instruction");
+}
+
+void psx_gte_i_rtpt(psx_cpu_t* cpu) {
+    log_fatal("rtpt: Unimplemented GTE instruction");
+}
+
+void psx_gte_i_gpf(psx_cpu_t* cpu) {
+    log_fatal("gpf: Unimplemented GTE instruction");
+}
+
+void psx_gte_i_gpl(psx_cpu_t* cpu) {
+    log_fatal("gpl: Unimplemented GTE instruction");
+}
+
+void psx_gte_i_ncct(psx_cpu_t* cpu) {
+    log_fatal("ncct: Unimplemented GTE instruction");
 }
 
 #undef R_R0
