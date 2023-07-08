@@ -76,44 +76,6 @@ psx_cpu_instruction_t g_psx_cpu_bxx_table[] = {
     psx_cpu_i_bltz   , psx_cpu_i_bgez   , psx_cpu_i_bltz   , psx_cpu_i_bgez
 };
 
-/*
-  Opc  Name      Clk Expl.
-  00h  -             N/A (modifies similar registers than RTPS...)
-  01h  RTPS      15  Perspective Transformation single
-  0xh  -             N/A
-  06h  NCLIP     8   Normal clipping
-  0xh  -             N/A
-  0Ch  OP(sf)    6   Outer product of 2 vectors
-  0xh  -             N/A
-  10h  DPCS      8   Depth Cueing single
-  11h  INTPL     8   Interpolation of a vector and far color vector
-  12h  MVMVA(..) 8   Multiply vector by matrix and add vector (see below)
-  13h  NCDS      19  Normal color depth cue single vector
-  14h  CDP       13  Color Depth Que
-  15h  -             N/A
-  16h  NCDT      44  Normal color depth cue triple vectors
-  1xh  -             N/A
-  1Bh  NCCS      17  Normal Color Color single vector
-  1Ch  CC        11  Color Color
-  1Dh  -             N/A
-  1Eh  NCS       14  Normal color single
-  1Fh  -             N/A
-  20h  NCT       30  Normal color triple
-  2xh  -             N/A
-  28h  SQR(sf)   5   Square of vector IR
-  29h  DCPL      8   Depth Cue Color light
-  2Ah  DPCT      17  Depth Cueing triple (should be fake=08h, but isn't)
-  2xh  -             N/A
-  2Dh  AVSZ3     5   Average of three Z values
-  2Eh  AVSZ4     6   Average of four Z values
-  2Fh  -             N/A
-  30h  RTPT      23  Perspective Transformation triple
-  3xh  -             N/A
-  3Dh  GPF(sf)   5   General purpose interpolation
-  3Eh  GPL(sf)   5   General purpose interpolation with base
-  3Fh  NCCT      39  Normal Color Color triple vector
-*/
-
 psx_cpu_instruction_t g_psx_gte_table[] = {
     psx_gte_i_invalid, psx_gte_i_rtps   , psx_gte_i_invalid, psx_gte_i_invalid,
     psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_nclip  , psx_gte_i_invalid,
@@ -219,6 +181,12 @@ uint32_t g_psx_cpu_cop0_write_mask_table[] = {
 
 #define TRACE_C0M(m) \
     log_trace("%08x: %-7s $%s, $%s", cpu->pc-8, m, g_mips_cc_register_names[T], g_mips_cop0_register_names[D])
+
+#define TRACE_C2M(m) \
+    log_trace("%08x: %-7s $%s, $cop2_r%u", cpu->pc-8, m, g_mips_cc_register_names[T], D)
+
+#define TRACE_C2MC(m) \
+    log_trace("%08x: %-7s $%s, $cop2_r%u", cpu->pc-8, m, g_mips_cc_register_names[T], D + 32)
 
 #define TRACE_B(m) \
     log_trace("%08x: %-7s $%s, $%s, %-i", cpu->pc-8, m, g_mips_cc_register_names[S], g_mips_cc_register_names[T], IMM16S << 2)
@@ -1321,12 +1289,6 @@ void psx_cpu_i_mfc0(psx_cpu_t* cpu) {
     cpu->load_d = T;
 }
 
-void psx_cpu_i_cfc0(psx_cpu_t* cpu) {
-    log_error("%08x: cfc0 (unimplemented)", cpu->pc - 8);
-
-    exit(1);
-}
-
 void psx_cpu_i_mtc0(psx_cpu_t* cpu) {
     TRACE_C0M("mtc0");
 
@@ -1337,7 +1299,6 @@ void psx_cpu_i_mtc0(psx_cpu_t* cpu) {
     cpu->cop0_r[D] = t & g_psx_cpu_cop0_write_mask_table[D];
 }
 
-// COP0-specific
 void psx_cpu_i_rfe(psx_cpu_t* cpu) {
     TRACE_N("rfe");
 
@@ -1351,6 +1312,8 @@ void psx_cpu_i_rfe(psx_cpu_t* cpu) {
 
 // COP2
 void psx_cpu_i_mfc2(psx_cpu_t* cpu) {
+    TRACE_C2M("mfc2");
+
     DO_PENDING_LOAD;
 
     cpu->load_v = ((uint32_t*)(&cpu->cop2_dr))[D];
@@ -1358,6 +1321,8 @@ void psx_cpu_i_mfc2(psx_cpu_t* cpu) {
 }
 
 void psx_cpu_i_cfc2(psx_cpu_t* cpu) {
+    TRACE_C2MC("cfc2");
+
     DO_PENDING_LOAD;
 
     cpu->load_v = ((uint32_t*)(&cpu->cop2_cr))[D];
@@ -1365,6 +1330,8 @@ void psx_cpu_i_cfc2(psx_cpu_t* cpu) {
 }
 
 void psx_cpu_i_mtc2(psx_cpu_t* cpu) {
+    TRACE_C2M("mtc2");
+
     uint32_t t = cpu->r[T];
 
     DO_PENDING_LOAD;
@@ -1373,6 +1340,8 @@ void psx_cpu_i_mtc2(psx_cpu_t* cpu) {
 }
 
 void psx_cpu_i_ctc2(psx_cpu_t* cpu) {
+    TRACE_C2MC("ctc2");
+
     uint32_t t = cpu->r[T];
 
     DO_PENDING_LOAD;
@@ -1381,9 +1350,10 @@ void psx_cpu_i_ctc2(psx_cpu_t* cpu) {
 }
 
 void psx_cpu_i_gte(psx_cpu_t* cpu) {
+    DO_PENDING_LOAD;
+
     g_psx_gte_table[cpu->opcode & 0x3f](cpu);
 }
-
 
 void psx_gte_i_invalid(psx_cpu_t* cpu) {
     log_fatal("invalid: Unimplemented GTE instruction %02x, %02x", cpu->opcode & 0x3f, cpu->opcode >> 25);

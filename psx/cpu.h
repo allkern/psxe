@@ -301,8 +301,6 @@ void psx_cpu_i_sltu(psx_cpu_t*);
 // COP0
 void psx_cpu_i_mfc0(psx_cpu_t*);
 void psx_cpu_i_mtc0(psx_cpu_t*);
-
-// COP0-specific
 void psx_cpu_i_rfe(psx_cpu_t*);
 
 // BXX

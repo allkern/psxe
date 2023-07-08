@@ -233,10 +233,10 @@ void cdrom_cmd_getid(psx_cdrom_t* cdrom) {
             RESP_PUSH(0x40);
             RESP_PUSH(0x08);
         } else {
-            RESP_PUSH(0x41);
-            RESP_PUSH(0x45);
-            RESP_PUSH(0x43);
-            RESP_PUSH(0x53);
+            RESP_PUSH('A');
+            RESP_PUSH('E');
+            RESP_PUSH('C');
+            RESP_PUSH('S');
             RESP_PUSH(0x00);
             RESP_PUSH(0x20);
             RESP_PUSH(0x00);
