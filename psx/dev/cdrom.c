@@ -184,6 +184,10 @@ void cdrom_cmd_getstat(psx_cdrom_t* cdrom) {
         SET_BITS(stat, GETSTAT_TRAYOPEN, 0);
     }
 
+    if (!cdrom->disc) {
+        SET_BITS(stat, GETSTAT_TRAYOPEN, 0xff);
+    }
+
     RESP_PUSH(cdrom->stat);
     SEND_INT3(COMMAND_DELAY);
 }
@@ -221,7 +225,7 @@ void cdrom_cmd_getid(psx_cdrom_t* cdrom) {
         // RESP_PUSH(cdrom->stat);
         SEND_INT3(COMMAND_DELAY);
 
-        cdrom->delayed_response_command = cdrom->command;
+        cdrom->delayed_response_command = cdrom->disc ? cdrom->command : 0;
     } else {
         if (!cdrom->disc) {
             RESP_PUSH(0x00);
