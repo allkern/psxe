@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-psx_cpu_instruction_t g_psx_cpu_secondary_table[] = {
+static const psx_cpu_instruction_t g_psx_cpu_secondary_table[] = {
     psx_cpu_i_sll    , psx_cpu_i_invalid, psx_cpu_i_srl    , psx_cpu_i_sra    ,
     psx_cpu_i_sllv   , psx_cpu_i_invalid, psx_cpu_i_srlv   , psx_cpu_i_srav   ,
     psx_cpu_i_jr     , psx_cpu_i_jalr   , psx_cpu_i_invalid, psx_cpu_i_invalid,
@@ -24,7 +24,7 @@ psx_cpu_instruction_t g_psx_cpu_secondary_table[] = {
     psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid
 };
 
-psx_cpu_instruction_t g_psx_cpu_primary_table[] = {
+static const psx_cpu_instruction_t g_psx_cpu_primary_table[] = {
     psx_cpu_i_special, psx_cpu_i_bxx    , psx_cpu_i_j      , psx_cpu_i_jal    ,
     psx_cpu_i_beq    , psx_cpu_i_bne    , psx_cpu_i_blez   , psx_cpu_i_bgtz   ,
     psx_cpu_i_addi   , psx_cpu_i_addiu  , psx_cpu_i_slti   , psx_cpu_i_sltiu  ,
@@ -43,7 +43,7 @@ psx_cpu_instruction_t g_psx_cpu_primary_table[] = {
     psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid
 };
 
-psx_cpu_instruction_t g_psx_cpu_cop0_table[] = {
+static const psx_cpu_instruction_t g_psx_cpu_cop0_table[] = {
     psx_cpu_i_mfc0   , psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
     psx_cpu_i_mtc0   , psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
     psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
@@ -54,7 +54,7 @@ psx_cpu_instruction_t g_psx_cpu_cop0_table[] = {
     psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid
 };
 
-psx_cpu_instruction_t g_psx_cpu_cop2_table[] = {
+static const psx_cpu_instruction_t g_psx_cpu_cop2_table[] = {
     psx_cpu_i_mfc2   , psx_cpu_i_invalid, psx_cpu_i_cfc2   , psx_cpu_i_invalid,
     psx_cpu_i_mtc2   , psx_cpu_i_invalid, psx_cpu_i_ctc2   , psx_cpu_i_invalid,
     psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
@@ -65,7 +65,7 @@ psx_cpu_instruction_t g_psx_cpu_cop2_table[] = {
     psx_cpu_i_gte    , psx_cpu_i_gte    , psx_cpu_i_gte    , psx_cpu_i_gte
 };
 
-psx_cpu_instruction_t g_psx_cpu_bxx_table[] = {
+static const psx_cpu_instruction_t g_psx_cpu_bxx_table[] = {
     psx_cpu_i_bltz   , psx_cpu_i_bgez   , psx_cpu_i_bltz   , psx_cpu_i_bgez   ,
     psx_cpu_i_bltz   , psx_cpu_i_bgez   , psx_cpu_i_bltz   , psx_cpu_i_bgez   ,
     psx_cpu_i_bltz   , psx_cpu_i_bgez   , psx_cpu_i_bltz   , psx_cpu_i_bgez   ,
@@ -76,7 +76,7 @@ psx_cpu_instruction_t g_psx_cpu_bxx_table[] = {
     psx_cpu_i_bltz   , psx_cpu_i_bgez   , psx_cpu_i_bltz   , psx_cpu_i_bgez
 };
 
-psx_cpu_instruction_t g_psx_gte_table[] = {
+static const psx_cpu_instruction_t g_psx_gte_table[] = {
     psx_gte_i_invalid, psx_gte_i_rtps   , psx_gte_i_invalid, psx_gte_i_invalid,
     psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_nclip  , psx_gte_i_invalid,
     psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_invalid,
@@ -95,23 +95,59 @@ psx_cpu_instruction_t g_psx_gte_table[] = {
     psx_gte_i_invalid, psx_gte_i_gpf    , psx_gte_i_gpl    , psx_gte_i_ncct
 };
 
-uint32_t g_psx_cpu_cop0_write_mask_table[] = {
-    0x00000000, // cop0r0-r2   - N/A
-    0x00000000, // cop0r0-r2   - N/A
-    0x00000000, // cop0r0-r2   - N/A
-    0xffffffff, // cop0r3      - BPC - Breakpoint on execute (R/W)
-    0x00000000, // cop0r4      - N/A
-    0xffffffff, // cop0r5      - BDA - Breakpoint on data access (R/W)
-    0x00000000, // cop0r6      - JUMPDEST - Randomly memorized jump address (R)
-    0xffc0f03f, // cop0r7      - DCIC - Breakpoint control (R/W)
-    0x00000000, // cop0r8      - BadVaddr - Bad Virtual Address (R)
-    0xffffffff, // cop0r9      - BDAM - Data Access breakpoint mask (R/W)
-    0x00000000, // cop0r10     - N/A
-    0xffffffff, // cop0r11     - BPCM - Execute breakpoint mask (R/W)
-    0xffffffff, // cop0r12     - SR - System status register (R/W)
-    0x00000300, // cop0r13     - CAUSE - (R)  Describes the most recently recognised exception
-    0x00000000, // cop0r14     - EPC - Return Address from Trap (R)
-    0x00000000  // cop0r15     - PRID - Processor ID (R)
+static const uint32_t g_psx_cpu_cop0_write_mask_table[] = {
+    0x00000000, // cop0r0   - N/A
+    0x00000000, // cop0r1   - N/A
+    0x00000000, // cop0r2   - N/A
+    0xffffffff, // BPC      - Breakpoint on execute (R/W)
+    0x00000000, // cop0r4   - N/A
+    0xffffffff, // BDA      - Breakpoint on data access (R/W)
+    0x00000000, // JUMPDEST - Randomly memorized jump address (R)
+    0xffc0f03f, // DCIC     - Breakpoint control (R/W)
+    0x00000000, // BadVaddr - Bad Virtual Address (R)
+    0xffffffff, // BDAM     - Data Access breakpoint mask (R/W)
+    0x00000000, // cop0r10  - N/A
+    0xffffffff, // BPCM     - Execute breakpoint mask (R/W)
+    0xffffffff, // SR       - System status register (R/W)
+    0x00000300, // CAUSE    - Describes the most recently recognised exception (R)
+    0x00000000, // EPC      - Return Address from Trap (R)
+    0x00000000  // PRID     - Processor ID (R)
+};
+
+static const uint8_t g_psx_gte_unr_table[] = {
+    0xff, 0xfd, 0xfb, 0xf9, 0xf7, 0xf5, 0xf3, 0xf1,
+    0xef, 0xee, 0xec, 0xea, 0xe8, 0xe6, 0xe4, 0xe3,
+    0xe1, 0xdf, 0xdd, 0xdc, 0xda, 0xd8, 0xd6, 0xd5,
+    0xd3, 0xd1, 0xd0, 0xce, 0xcd, 0xcb, 0xc9, 0xc8,
+    0xc6, 0xc5, 0xc3, 0xc1, 0xc0, 0xbe, 0xbd, 0xbb,
+    0xba, 0xb8, 0xb7, 0xb5, 0xb4, 0xb2, 0xb1, 0xb0,
+    0xae, 0xad, 0xab, 0xaa, 0xa9, 0xa7, 0xa6, 0xa4,
+    0xa3, 0xa2, 0xa0, 0x9f, 0x9e, 0x9c, 0x9b, 0x9a,
+    0x99, 0x97, 0x96, 0x95, 0x94, 0x92, 0x91, 0x90,
+    0x8f, 0x8d, 0x8c, 0x8b, 0x8a, 0x89, 0x87, 0x86,
+    0x85, 0x84, 0x83, 0x82, 0x81, 0x7f, 0x7e, 0x7d,
+    0x7c, 0x7b, 0x7a, 0x79, 0x78, 0x77, 0x75, 0x74,
+    0x73, 0x72, 0x71, 0x70, 0x6f, 0x6e, 0x6d, 0x6c,
+    0x6b, 0x6a, 0x69, 0x68, 0x67, 0x66, 0x65, 0x64,
+    0x63, 0x62, 0x61, 0x60, 0x5f, 0x5e, 0x5d, 0x5d,
+    0x5c, 0x5b, 0x5a, 0x59, 0x58, 0x57, 0x56, 0x55,
+    0x54, 0x53, 0x53, 0x52, 0x51, 0x50, 0x4f, 0x4e,
+    0x4d, 0x4d, 0x4c, 0x4b, 0x4a, 0x49, 0x48, 0x48,
+    0x47, 0x46, 0x45, 0x44, 0x43, 0x43, 0x42, 0x41,
+    0x40, 0x3f, 0x3f, 0x3e, 0x3d, 0x3c, 0x3c, 0x3b,
+    0x3a, 0x39, 0x39, 0x38, 0x37, 0x36, 0x36, 0x35,
+    0x34, 0x33, 0x33, 0x32, 0x31, 0x31, 0x30, 0x2f,
+    0x2e, 0x2e, 0x2d, 0x2c, 0x2c, 0x2b, 0x2a, 0x2a,
+    0x29, 0x28, 0x28, 0x27, 0x26, 0x26, 0x25, 0x24,
+    0x24, 0x23, 0x22, 0x22, 0x21, 0x20, 0x20, 0x1f,
+    0x1e, 0x1e, 0x1d, 0x1d, 0x1c, 0x1b, 0x1b, 0x1a,
+    0x19, 0x19, 0x18, 0x18, 0x17, 0x16, 0x16, 0x15,
+    0x15, 0x14, 0x14, 0x13, 0x12, 0x12, 0x11, 0x11,
+    0x10, 0x0f, 0x0f, 0x0e, 0x0e, 0x0d, 0x0d, 0x0c,
+    0x0c, 0x0b, 0x0a, 0x0a, 0x09, 0x09, 0x08, 0x08,
+    0x07, 0x07, 0x06, 0x06, 0x05, 0x05, 0x04, 0x04,
+    0x03, 0x03, 0x02, 0x02, 0x01, 0x01, 0x00, 0x00,
+    0x00
 };
 
 #define OP ((cpu->opcode >> 26) & 0x3f)
@@ -126,39 +162,10 @@ uint32_t g_psx_cpu_cop0_write_mask_table[] = {
 #define IMM16S ((int32_t)((int16_t)IMM16))
 
 #define R_R0 (cpu->r[0])
-#define R_AT (cpu->r[1])
-#define R_V0 (cpu->r[2])
-#define R_V1 (cpu->r[3])
 #define R_A0 (cpu->r[4])
-#define R_A1 (cpu->r[5])
-#define R_A2 (cpu->r[6])
-#define R_A3 (cpu->r[7])
-#define R_T0 (cpu->r[8])
-#define R_T1 (cpu->r[9])
-#define R_T2 (cpu->r[10])
-#define R_T3 (cpu->r[11])
-#define R_T4 (cpu->r[12])
-#define R_T5 (cpu->r[13])
-#define R_T6 (cpu->r[14])
-#define R_T7 (cpu->r[15])
-#define R_S0 (cpu->r[16])
-#define R_S1 (cpu->r[17])
-#define R_S2 (cpu->r[18])
-#define R_S3 (cpu->r[19])
-#define R_S4 (cpu->r[20])
-#define R_S5 (cpu->r[21])
-#define R_S6 (cpu->r[22])
-#define R_S7 (cpu->r[23])
-#define R_T8 (cpu->r[24])
-#define R_T9 (cpu->r[25])
-#define R_K0 (cpu->r[26])
-#define R_K1 (cpu->r[27])
-#define R_GP (cpu->r[28])
-#define R_SP (cpu->r[29])
-#define R_FP (cpu->r[30])
 #define R_RA (cpu->r[31])
 
-#define CPU_TRACE
+//#define CPU_TRACE
 
 #ifdef CPU_TRACE
 #define TRACE_M(m) \
@@ -216,6 +223,8 @@ uint32_t g_psx_cpu_cop0_write_mask_table[] = {
 #define TRACE_I26(m)
 #define TRACE_RT(m)
 #define TRACE_C0M(m)
+#define TRACE_C2M(m)
+#define TRACE_C2MC(m)
 #define TRACE_B(m)
 #define TRACE_RS(m)
 #define TRACE_MTF(m)
@@ -231,26 +240,18 @@ uint32_t g_psx_cpu_cop0_write_mask_table[] = {
     cpu->load_v = 0xffffffff; \
     cpu->load_d = 0;
 
+#ifdef CPU_TRACE
 #define DEBUG_ALL \
-    log_fatal("r0=%08x at=%08x v0=%08x v1=%08x", R_R0, R_AT, R_V0, R_V1); \
-    log_fatal("a0=%08x a1=%08x a2=%08x a3=%08x", R_A0, R_A1, R_A2, R_A3); \
-    log_fatal("t0=%08x t1=%08x t2=%08x t3=%08x", R_T0, R_T1, R_T2, R_T3); \
-    log_fatal("t4=%08x t5=%08x t6=%08x t7=%08x", R_T4, R_T5, R_T6, R_T7); \
-    log_fatal("s0=%08x s1=%08x s2=%08x s3=%08x", R_S0, R_S1, R_S2, R_S3); \
-    log_fatal("s4=%08x s5=%08x s6=%08x s7=%08x", R_S4, R_S5, R_S6, R_S7); \
-    log_fatal("t8=%08x t9=%08x k0=%08x k1=%08x", R_T8, R_T9, R_K0, R_K1); \
-    log_fatal("gp=%08x sp=%08x fp=%08x ra=%08x", R_GP, R_SP, R_FP, R_RA); \
+    log_fatal("r0=%08x at=%08x v0=%08x v1=%08x", cpu->r[0] , cpu->r[1] , cpu->r[2] , cpu->r[3] ); \
+    log_fatal("a0=%08x a1=%08x a2=%08x a3=%08x", cpu->r[4] , cpu->r[5] , cpu->r[6] , cpu->r[7] ); \
+    log_fatal("t0=%08x t1=%08x t2=%08x t3=%08x", cpu->r[8] , cpu->r[9] , cpu->r[10], cpu->r[11]); \
+    log_fatal("t4=%08x t5=%08x t6=%08x t7=%08x", cpu->r[12], cpu->r[13], cpu->r[14], cpu->r[15]); \
+    log_fatal("s0=%08x s1=%08x s2=%08x s3=%08x", cpu->r[16], cpu->r[17], cpu->r[18], cpu->r[19]); \
+    log_fatal("s4=%08x s5=%08x s6=%08x s7=%08x", cpu->r[20], cpu->r[21], cpu->r[22], cpu->r[23]); \
+    log_fatal("t8=%08x t9=%08x k0=%08x k1=%08x", cpu->r[24], cpu->r[25], cpu->r[26], cpu->r[27]); \
+    log_fatal("gp=%08x sp=%08x fp=%08x ra=%08x", cpu->r[28], cpu->r[29], cpu->r[30], cpu->r[31]); \
     log_fatal("pc=%08x hi=%08x lo=%08x l:%s=%08x", cpu->pc, cpu->hi, cpu->lo, g_mips_cc_register_names[cpu->load_d], cpu->load_v); \
     exit(1)
-
-#define SE8(v) ((int32_t)((int8_t)v))
-#define SE16(v) ((int32_t)((int16_t)v))
-
-#define BRANCH(offset) \
-    cpu->next_pc = cpu->next_pc + (offset); \
-    cpu->next_pc = cpu->next_pc - 4; \
-    cpu->branch = 1; \
-    cpu->branch_taken = 1;
 
 const char* g_mips_cop0_register_names[] = {
     "cop0_r0",
@@ -271,20 +272,30 @@ const char* g_mips_cop0_register_names[] = {
     "cop0_prid"
 };
 
-const char* g_mips_cc_register_names[] = {
+static const char* g_mips_cc_register_names[] = {
     "r0", "at", "v0", "v1", "a0", "a1", "a2", "a3",
     "t0", "t1", "t2", "t3", "t4", "t5", "t6", "t7",
     "s0", "s1", "s2", "s3", "s4", "s5", "s6", "s7",
     "t8", "t9", "k0", "k1", "gp", "sp", "fp", "ra"
 };
 
-const char* g_psx_cpu_syscall_function_symbol_table[] = {
+static const char* g_psx_cpu_syscall_function_symbol_table[] = {
     "NoFunction",
     "EnterCriticalSection",
     "ExitCriticalSection",
     "ChangeThreadSubFunction"
     // DeliverEvent (invalid)
 };
+#endif
+
+#define SE8(v) ((int32_t)((int8_t)v))
+#define SE16(v) ((int32_t)((int16_t)v))
+
+#define BRANCH(offset) \
+    cpu->next_pc = cpu->next_pc + (offset); \
+    cpu->next_pc = cpu->next_pc - 4; \
+    cpu->branch = 1; \
+    cpu->branch_taken = 1;
 
 void cpu_a_kcall_hook(psx_cpu_t* cpu) {
     switch (cpu->r[9]) {
@@ -692,6 +703,8 @@ void psx_cpu_i_cop1(psx_cpu_t* cpu) {
 }
 
 void psx_cpu_i_cop2(psx_cpu_t* cpu) {
+    cpu->cop2_flag = 0;
+
     g_psx_cpu_cop2_table[S](cpu);
 }
 
@@ -1336,7 +1349,7 @@ void psx_cpu_i_mtc2(psx_cpu_t* cpu) {
 
     DO_PENDING_LOAD;
 
-    ((uint32_t*)(&cpu->cop2_dr))[D] = t & g_psx_cpu_cop0_write_mask_table[D];
+    ((uint32_t*)(&cpu->cop2_dr))[D] = t;
 }
 
 void psx_cpu_i_ctc2(psx_cpu_t* cpu) {
@@ -1346,8 +1359,38 @@ void psx_cpu_i_ctc2(psx_cpu_t* cpu) {
 
     DO_PENDING_LOAD;
 
-    ((uint32_t*)(&cpu->cop2_cr))[D] = t & g_psx_cpu_cop0_write_mask_table[D];
+    ((uint32_t*)(&cpu->cop2_cr))[D] = t;
 }
+
+#define R_IR1 cpu->cop2_dr.ir1
+#define R_IR2 cpu->cop2_dr.ir2
+#define R_IR3 cpu->cop2_dr.ir3
+#define R_MAC0 cpu->cop2_dr.mac0
+#define R_MAC1 cpu->cop2_dr.mac1
+#define R_MAC2 cpu->cop2_dr.mac2
+#define R_MAC3 cpu->cop2_dr.mac3
+#define R_RT11 cpu->cop2_cr.rt[0]
+#define R_RT12 cpu->cop2_cr.rt[1]
+#define R_RT13 cpu->cop2_cr.rt[2]
+#define R_RT21 cpu->cop2_cr.rt[3]
+#define R_RT22 cpu->cop2_cr.rt[4]
+#define R_RT23 cpu->cop2_cr.rt[5]
+#define R_RT31 cpu->cop2_cr.rt[6]
+#define R_RT32 cpu->cop2_cr.rt[7]
+#define R_RT33 cpu->cop2_cr.rt[8]
+#define R_VX0 cpu->cop2_dr.v0[0]
+#define R_VY0 cpu->cop2_dr.v0[1]
+#define R_VZ0 cpu->cop2_dr.v0[2]
+#define R_VX1 cpu->cop2_dr.v1[0]
+#define R_VY1 cpu->cop2_dr.v1[1]
+#define R_VZ1 cpu->cop2_dr.v1[2]
+#define R_VX2 cpu->cop2_dr.v2[0]
+#define R_VY2 cpu->cop2_dr.v2[1]
+#define R_VZ2 cpu->cop2_dr.v2[2]
+#define R_TRX cpu->cop2_cr.trx
+#define R_TRY cpu->cop2_cr.try
+#define R_TRZ cpu->cop2_cr.trz
+#define R_SZ3 cpu->cop2_dr.sz3
 
 void psx_cpu_i_gte(psx_cpu_t* cpu) {
     DO_PENDING_LOAD;
@@ -1360,7 +1403,20 @@ void psx_gte_i_invalid(psx_cpu_t* cpu) {
 }
 
 void psx_gte_i_rtps(psx_cpu_t* cpu) {
-    log_fatal("rtps: Unimplemented GTE instruction");
+    int sf = (cpu->opcode >> 19) & 1;
+
+    R_MAC1 = (R_TRX * 0x1000) + (R_RT11 * R_VX0 + R_RT12 * R_VY0 + R_RT13 * R_VZ0);
+    R_MAC2 = (R_TRY * 0x1000) + (R_RT21 * R_VX0 + R_RT22 * R_VY0 + R_RT23 * R_VZ0);
+    R_MAC3 = (R_TRZ * 0x1000) + (R_RT31 * R_VX0 + R_RT32 * R_VY0 + R_RT33 * R_VZ0);
+
+    R_IR1 = R_MAC1;
+    R_IR2 = R_MAC2;
+    R_IR3 = R_MAC3;
+    
+    // R_SZ3 = R_MAC3 << ((1 - sf) * 12)
+    // R_MAC0 = (((H*20000h/SZ3)+1)/2)*IR1+OFX, SX2=MAC0/10000h
+    // R_MAC0 = (((H*20000h/SZ3)+1)/2)*IR2+OFY, SY2=MAC0/10000h
+    // R_MAC0 = (((H*20000h/SZ3)+1)/2)*DQA+DQB, IR0=MAC0/1000h
 }
 
 void psx_gte_i_nclip(psx_cpu_t* cpu) {
@@ -1432,7 +1488,7 @@ void psx_gte_i_avsz4(psx_cpu_t* cpu) {
 }
 
 void psx_gte_i_rtpt(psx_cpu_t* cpu) {
-    log_fatal("rtpt: Unimplemented GTE instruction");
+    log_fatal("rtpt: Unimplemented GTE instruction");   
 }
 
 void psx_gte_i_gpf(psx_cpu_t* cpu) {
@@ -1448,36 +1504,7 @@ void psx_gte_i_ncct(psx_cpu_t* cpu) {
 }
 
 #undef R_R0
-#undef R_AT
-#undef R_V0
-#undef R_V1
 #undef R_A0
-#undef R_A1
-#undef R_A2
-#undef R_A3
-#undef R_T0
-#undef R_T1
-#undef R_T2
-#undef R_T3
-#undef R_T4
-#undef R_T5
-#undef R_T6
-#undef R_T7
-#undef R_S0
-#undef R_S1
-#undef R_S2
-#undef R_S3
-#undef R_S4
-#undef R_S5
-#undef R_S6
-#undef R_S7
-#undef R_T8
-#undef R_T9
-#undef R_K0
-#undef R_K1
-#undef R_GP
-#undef R_SP
-#undef R_FP
 #undef R_RA
 
 #undef OP
@@ -1498,6 +1525,8 @@ void psx_gte_i_ncct(psx_cpu_t* cpu) {
 #undef TRACE_I26
 #undef TRACE_RT
 #undef TRACE_C0M
+#undef TRACE_C2M
+#undef TRACE_C2MC
 #undef TRACE_B
 #undef TRACE_RS
 #undef TRACE_MTF
