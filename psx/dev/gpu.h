@@ -25,7 +25,8 @@
 
 enum {
     GPU_EVENT_DMODE,
-    GPU_EVENT_VBLANK
+    GPU_EVENT_VBLANK,
+    GPU_EVENT_HBLANK
 };
 
 enum {

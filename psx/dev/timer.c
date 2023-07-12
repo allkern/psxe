@@ -9,50 +9,22 @@ psx_timer_t* psx_timer_create() {
     return (psx_timer_t*)malloc(sizeof(psx_timer_t));
 }
 
-void psx_timer_init(psx_timer_t* timer) {
+void psx_timer_init(psx_timer_t* timer, psx_ic_t* ic) {
     memset(timer, 0, sizeof(psx_timer_t));
 
     timer->io_base = PSX_TIMER_BEGIN;
     timer->io_size = PSX_TIMER_SIZE;
+
+    timer->ic = ic;
 }
 
 uint32_t psx_timer_read32(psx_timer_t* timer, uint32_t offset) {
-    if (offset == 0x20) {
-        return 0x000016b0;
-    }
-
-    int t = (offset >> 4) & 0x3;
-    int r = offset & 0xf;
-
-    if (r == 0) {
-        switch (t) {
-            case 0: return timer->t0_stub++;
-            case 1: return timer->t1_stub++;
-            case 2: return timer->t2_stub++;
-        }
-    }
-
     log_fatal("Unhandled 32-bit TIMER read at offset %08x", offset);
 
     return 0x0;
 }
 
 uint16_t psx_timer_read16(psx_timer_t* timer, uint32_t offset) {
-    if (offset == 0x20) {
-        return 0x000016b0;
-    }
-
-    int t = (offset >> 4) & 0x3;
-    int r = offset & 0xf;
-
-    if (r == 0) {
-        switch (t) {
-            case 0: return timer->t0_stub++;
-            case 1: return timer->t1_stub++;
-            case 2: return timer->t2_stub++;
-        }
-    }
-
     log_fatal("Unhandled 16-bit TIMER read at offset %08x", offset);
 
     return 0x0;

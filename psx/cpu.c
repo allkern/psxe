@@ -1421,6 +1421,17 @@ void psx_cpu_i_ctc2(psx_cpu_t* cpu) {
 #define R_SY1 cpu->cop2_dr.sxy1[1]
 #define R_SX2 cpu->cop2_dr.sxy2[0]
 #define R_SY2 cpu->cop2_dr.sxy2[1]
+#define R_SZ0 cpu->cop2_dr.sz0
+#define R_SZ1 cpu->cop2_dr.sz1
+#define R_SZ2 cpu->cop2_dr.sz2
+#define R_SZ3 cpu->cop2_dr.sz3
+#define R_ZSF3 cpu->cop2_cr.zsf3
+#define R_ZSF4 cpu->cop2_cr.zsf4
+#define R_OTZ cpu->cop2_dr.otz
+
+#define CLAMPU32(v, min, max) ((uint32_t)v < (uint32_t)min ? min : ((uint32_t)v > (uint32_t)max ? max : (uint32_t)v))
+#define CLAMPS32(v, min, max) ((int32_t)v < (int32_t)min ? min : ((int32_t)v > (int32_t)max ? max : (int32_t)v))
+#define CLAMPS16(v, min, max) ((int16_t)v < (int16_t)min ? min : ((int16_t)v > (int16_t)max ? max : (int16_t)v))
 
 void psx_cpu_i_gte(psx_cpu_t* cpu) {
     DO_PENDING_LOAD;
@@ -1432,30 +1443,34 @@ void psx_gte_i_invalid(psx_cpu_t* cpu) {
     log_fatal("invalid: Unimplemented GTE instruction %02x, %02x", cpu->opcode & 0x3f, cpu->opcode >> 25);
 }
 
-#define LA1S(v) (v > )
+static const int16_t g_psx_gte_ir_clamp_table[] = {
+    -0x8000, 0x7fff, 0x0000, 0x7fff
+};
 
 void psx_gte_i_rtps(psx_cpu_t* cpu) {
     int sf = (cpu->opcode >> 19) & 1;
+    int lm = (cpu->opcode >> 9) & 2;
+    int shift = 12 * sf;
 
-    uint64_t ssx = (R_TRX * 0x1000) + (R_RT11 * R_VX0 + R_RT12 * R_VY0 + R_RT13 * R_VZ0);
-    uint64_t ssy = (R_TRY * 0x1000) + (R_RT21 * R_VX0 + R_RT22 * R_VY0 + R_RT23 * R_VZ0);
-    uint64_t ssz = (R_TRZ * 0x1000) + (R_RT31 * R_VX0 + R_RT32 * R_VY0 + R_RT33 * R_VZ0);
+    int16_t ir_upper = g_psx_gte_ir_clamp_table[lm];
+    int16_t ir_lower = g_psx_gte_ir_clamp_table[lm + 1];
 
-    R_IR1 = R_MAC1;
-    R_IR2 = R_MAC2;
-    R_IR3 = R_MAC3;
-    // R_SZ3 = R_MAC3 << ((1 - sf) * 12)
-    // R_MAC0 = (((H*20000h/SZ3)+1)/2)*IR1+OFX, SX2=MAC0/10000h
-    // R_MAC0 = (((H*20000h/SZ3)+1)/2)*IR2+OFY, SY2=MAC0/10000h
-    // R_MAC0 = (((H*20000h/SZ3)+1)/2)*DQA+DQB, IR0=MAC0/1000h
+    R_MAC1 = (R_TRX << 12) + (R_RT11 * R_VX0 + R_RT12 * R_VY0 + R_RT13 * R_VZ0);
+    R_MAC2 = (R_TRY << 12) + (R_RT21 * R_VX0 + R_RT22 * R_VY0 + R_RT23 * R_VZ0);
+    R_MAC3 = (R_TRZ << 12) + (R_RT31 * R_VX0 + R_RT32 * R_VY0 + R_RT33 * R_VZ0);
+
+    R_IR1 = CLAMPS16(R_MAC1 >> shift, ir_lower, ir_upper);
+    R_IR2 = CLAMPS16(R_MAC2 >> shift, ir_lower, ir_upper);
+    R_IR3 = CLAMPS16(R_MAC3 >> shift, ir_lower, ir_upper);
+
+    R_SZ0 = R_SZ1;
+    R_SZ1 = R_SZ2;
+    R_SZ2 = R_SZ3;
+    R_SZ3 = CLAMPU32(R_MAC3 >> (12 * !sf), 0x0000, 0xffff);
 }
 
 void psx_gte_i_nclip(psx_cpu_t* cpu) {
-    uint32_t opz = R_SX0 * (R_SY1 - R_SY2) +
-                   R_SX1 * (R_SY2 - R_SY0) +
-                   R_SX2 * (R_SY0 - R_SY1);
-
-    R_MAC0 = opz;
+    R_MAC0 = R_SX0 * (R_SY1 - R_SY2) + R_SX1 * (R_SY2 - R_SY0) + R_SX2 * (R_SY0 - R_SY1);
 }
 
 void psx_gte_i_op(psx_cpu_t* cpu) {
@@ -1515,11 +1530,19 @@ void psx_gte_i_dpct(psx_cpu_t* cpu) {
 }
 
 void psx_gte_i_avsz3(psx_cpu_t* cpu) {
-    log_fatal("avsz3: Unimplemented GTE instruction");
+    R_MAC0 = R_ZSF3 * (R_SZ1 + R_SZ2 + R_SZ3);
+
+    uint32_t mac0 = R_MAC0 >> 12;
+
+    R_OTZ = CLAMPU32(mac0, 0x0000, 0xffff);
 }
 
 void psx_gte_i_avsz4(psx_cpu_t* cpu) {
-    log_fatal("avsz4: Unimplemented GTE instruction");
+    R_MAC0 = R_ZSF4 * (R_SZ0 + R_SZ1 + R_SZ2 + R_SZ3);
+
+    uint32_t mac0 = R_MAC0 >> 12;
+
+    R_OTZ = CLAMPU32(mac0, 0x0000, 0xffff);
 }
 
 void psx_gte_i_rtpt(psx_cpu_t* cpu) {
