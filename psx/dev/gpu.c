@@ -951,12 +951,12 @@ void psx_gpu_set_udata(psx_gpu_t* gpu, int index, void* udata) {
     gpu->udata[index] = udata;
 }
 
-#define GPU_CYCLES_PER_HDRAW_NTSC 2560
-#define GPU_CYCLES_PER_SCANL_NTSC 3413
+#define GPU_CYCLES_PER_HDRAW_NTSC 2560.0f
+#define GPU_CYCLES_PER_SCANL_NTSC 3413.0f
 #define GPU_SCANS_PER_VDRAW_NTSC 240
 #define GPU_SCANS_PER_FRAME_NTSC 263
 
-void gpu_scanline_event(psx_gpu_t* gpu) {
+void gpu_hblank_event(psx_gpu_t* gpu) {
     gpu->line++;
 
     if (gpu->line < GPU_SCANS_PER_VDRAW_NTSC) {
@@ -975,18 +975,30 @@ void gpu_scanline_event(psx_gpu_t* gpu) {
 
         psx_ic_irq(gpu->ic, IC_VBLANK);
     } else if (gpu->line == GPU_SCANS_PER_FRAME_NTSC) {
+        if (gpu->event_cb_table[GPU_EVENT_VBLANK_END])
+            gpu->event_cb_table[GPU_EVENT_VBLANK_END](gpu);
+
         gpu->line = 0;
     }
 }
 
 void psx_gpu_update(psx_gpu_t* gpu, int cyc) {
+    int prev_hblank = (gpu->cycles >= GPU_CYCLES_PER_HDRAW_NTSC) &&
+                      (gpu->cycles <= GPU_CYCLES_PER_SCANL_NTSC);
+
     // Convert CPU (~33.8 MHz) cycles to GPU (~53.7 MHz) cycles
-    gpu->cycles += ((float)cyc) * (PSX_GPU_CLOCK_FREQ_NTSC / PSX_CPU_CLOCK_FREQ);
+    gpu->cycles += (float)cyc * (PSX_GPU_CLOCK_FREQ_NTSC / PSX_CPU_CLOCK_FREQ);
 
-    if (gpu->cycles >= (float)GPU_CYCLES_PER_SCANL_NTSC) {
+    int curr_hblank = (gpu->cycles >= GPU_CYCLES_PER_HDRAW_NTSC) &&
+                      (gpu->cycles <= GPU_CYCLES_PER_SCANL_NTSC);
+    
+    if (curr_hblank && !prev_hblank) {
+        gpu_hblank_event(gpu);
+    } else if (prev_hblank && !curr_hblank) {
+        if (gpu->event_cb_table[GPU_EVENT_HBLANK_END])
+            gpu->event_cb_table[GPU_EVENT_HBLANK_END](gpu);
+        
         gpu->cycles -= (float)GPU_CYCLES_PER_SCANL_NTSC;
-
-        gpu_scanline_event(gpu);
     }
 }
 
