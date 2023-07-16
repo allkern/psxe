@@ -16,24 +16,6 @@ typedef struct psx_cpu_t psx_cpu_t;
 typedef void (*psx_cpu_kcall_hook_t)(psx_cpu_t*);
 
 /*
-  Name       Alias    Common Usage
-  R0         zero     Constant (always 0)
-  R1         at       Assembler temporary (destroyed by some assembler pseudoinstructions!)
-  R2-R3      v0-v1    Subroutine return values, may be changed by subroutines
-  R4-R7      a0-a3    Subroutine arguments, may be changed by subroutines
-  R8-R15     t0-t7    Temporaries, may be changed by subroutines
-  R16-R23    s0-s7    Static variables, must be saved by subs
-  R24-R25    t8-t9    Temporaries, may be changed by subroutines
-  R26-R27    k0-k1    Reserved for kernel (destroyed by some IRQ handlers!)
-  R28        gp       Global pointer (rarely used)
-  R29        sp       Stack pointer
-  R30        fp(s8)   Frame Pointer, or 9th Static variable, must be saved
-  R31        ra       Return address (used so by JAL,BLTZAL,BGEZAL opcodes)
-  -          pc       Program counter
-  -          hi,lo    Multiply/divide results, may be changed by subroutines
-*/
-
-/*
     cop0r0      - N/A
     cop0r1      - N/A
     cop0r2      - N/A
@@ -63,6 +45,24 @@ typedef void (*psx_cpu_kcall_hook_t)(psx_cpu_t*);
 #define COP0_CAUSE    13
 #define COP0_EPC      14
 #define COP0_PRID     15
+
+/*
+  Name       Alias    Common Usage
+  R0         zero     Constant (always 0)
+  R1         at       Assembler temporary (destroyed by some assembler pseudoinstructions!)
+  R2-R3      v0-v1    Subroutine return values, may be changed by subroutines
+  R4-R7      a0-a3    Subroutine arguments, may be changed by subroutines
+  R8-R15     t0-t7    Temporaries, may be changed by subroutines
+  R16-R23    s0-s7    Static variables, must be saved by subs
+  R24-R25    t8-t9    Temporaries, may be changed by subroutines
+  R26-R27    k0-k1    Reserved for kernel (destroyed by some IRQ handlers!)
+  R28        gp       Global pointer (rarely used)
+  R29        sp       Stack pointer
+  R30        fp(s8)   Frame Pointer, or 9th Static variable, must be saved
+  R31        ra       Return address (used so by JAL,BLTZAL,BGEZAL opcodes)
+  -          pc       Program counter
+  -          hi,lo    Multiply/divide results, may be changed by subroutines
+*/
 
 struct psx_cpu_t {
     uint32_t r[32];

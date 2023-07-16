@@ -1386,6 +1386,7 @@ void psx_cpu_i_ctc2(psx_cpu_t* cpu) {
     ((uint32_t*)(&cpu->cop2_cr))[D] = t;
 }
 
+#define R_IR0 cpu->cop2_dr.ir0
 #define R_IR1 cpu->cop2_dr.ir1
 #define R_IR2 cpu->cop2_dr.ir2
 #define R_IR3 cpu->cop2_dr.ir3
@@ -1427,7 +1428,12 @@ void psx_cpu_i_ctc2(psx_cpu_t* cpu) {
 #define R_SZ3 cpu->cop2_dr.sz3
 #define R_ZSF3 cpu->cop2_cr.zsf3
 #define R_ZSF4 cpu->cop2_cr.zsf4
+#define R_OFX cpu->cop2_cr.ofx
+#define R_OFY cpu->cop2_cr.ofy
 #define R_OTZ cpu->cop2_dr.otz
+#define R_H cpu->cop2_cr.h
+#define R_DQA cpu->cop2_cr.dqa
+#define R_DQB cpu->cop2_cr.dqb
 
 #define CLAMPU32(v, min, max) ((uint32_t)v < (uint32_t)min ? min : ((uint32_t)v > (uint32_t)max ? max : (uint32_t)v))
 #define CLAMPS32(v, min, max) ((int32_t)v < (int32_t)min ? min : ((int32_t)v > (int32_t)max ? max : (int32_t)v))
@@ -1467,6 +1473,19 @@ void psx_gte_i_rtps(psx_cpu_t* cpu) {
     R_SZ1 = R_SZ2;
     R_SZ2 = R_SZ3;
     R_SZ3 = CLAMPU32(R_MAC3 >> (12 * !sf), 0x0000, 0xffff);
+
+    uint32_t f = R_H / R_SZ3;
+
+    R_SX0 = R_SX1;
+    R_SX1 = R_SX2;
+    R_SX2 = R_OFX + R_IR1 * f;
+
+    R_SY0 = R_SY1;
+    R_SY1 = R_SY2;
+    R_SY2 = R_OFY + R_IR2 * f;
+
+    R_IR0 = R_DQB + R_DQA * f;
+    R_MAC0 = R_IR0;
 }
 
 void psx_gte_i_nclip(psx_cpu_t* cpu) {
@@ -1546,7 +1565,38 @@ void psx_gte_i_avsz4(psx_cpu_t* cpu) {
 }
 
 void psx_gte_i_rtpt(psx_cpu_t* cpu) {
-    log_fatal("rtpt: Unimplemented GTE instruction");   
+    int sf = (cpu->opcode >> 19) & 1;
+    int lm = (cpu->opcode >> 9) & 2;
+    int shift = 12 * sf;
+
+    int16_t ir_upper = g_psx_gte_ir_clamp_table[lm];
+    int16_t ir_lower = g_psx_gte_ir_clamp_table[lm + 1];
+
+    R_MAC1 = (R_TRX << 12) + (R_RT11 * R_VX0 + R_RT12 * R_VY0 + R_RT13 * R_VZ0);
+    R_MAC2 = (R_TRY << 12) + (R_RT21 * R_VX0 + R_RT22 * R_VY0 + R_RT23 * R_VZ0);
+    R_MAC3 = (R_TRZ << 12) + (R_RT31 * R_VX0 + R_RT32 * R_VY0 + R_RT33 * R_VZ0);
+
+    R_IR1 = CLAMPS16(R_MAC1 >> shift, ir_lower, ir_upper);
+    R_IR2 = CLAMPS16(R_MAC2 >> shift, ir_lower, ir_upper);
+    R_IR3 = CLAMPS16(R_MAC3 >> shift, ir_lower, ir_upper);
+
+    R_SZ0 = R_SZ1;
+    R_SZ1 = R_SZ2;
+    R_SZ2 = R_SZ3;
+    R_SZ3 = CLAMPU32(R_MAC3 >> (12 * !sf), 0x0000, 0xffff);
+
+    uint32_t f = R_H / R_SZ3;
+
+    R_SX0 = R_SX1;
+    R_SX1 = R_SX2;
+    R_SX2 = R_OFX + R_IR1 * f;
+
+    R_SY0 = R_SY1;
+    R_SY1 = R_SY2;
+    R_SY2 = R_OFY + R_IR2 * f;
+
+    R_IR0 = R_DQB + R_DQA * f;
+    R_MAC0 = R_IR0;
 }
 
 void psx_gte_i_gpf(psx_cpu_t* cpu) {

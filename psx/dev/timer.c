@@ -107,43 +107,11 @@ void psx_timer_write8(psx_timer_t* timer, uint32_t offset, uint8_t value) {
 }
 
 void timer_update_timer0(psx_timer_t* timer, int cyc) {
-    int src = T0_MODE & 0x100;
 
-    // if (src) {
-    //     log_fatal("Unimplemented T0 clock source: dotclock");
-
-    //     exit(1);
-    // }
-
-    T0_PREV = T0_COUNTER;
-
-    if (!T0_PAUSED)
-        T0_COUNTER += cyc;
-
-    uint16_t reset = (T0_MODE & MODE_RESETC) ? T0_TARGET : 0xffff;
-
-    if ((T0_COUNTER >= reset) && (T0_PREV <= reset)) {
-        T0_COUNTER -= reset;
-        T0_MODE |= 0x800;
-
-        if (reset == 0xffff)
-            T0_MODE |= 0x1000;
-    }
-
-    if ((T0_COUNTER >= 0xffff) && (T0_PREV <= 0xffff)) {
-        T0_COUNTER &= 0xffff;
-        T0_MODE |= 0x1000;
-    }
 }
 
 void timer_update_timer1(psx_timer_t* timer, int cyc) {
     int src = T1_MODE & 0x100;
-
-    // if (src) {
-    //     log_fatal("Unimplemented T1 clock source: dotclock");
-
-    //     exit(1);
-    // }
 
     T1_PREV = T1_COUNTER;
 
@@ -167,12 +135,6 @@ void timer_update_timer1(psx_timer_t* timer, int cyc) {
 }
 void timer_update_timer2(psx_timer_t* timer, int cyc) {
     int src = T2_MODE & 0x100;
-
-    // if (src) {
-    //     log_fatal("Unimplemented T2 clock source: dotclock");
-
-    //     exit(1);
-    // }
 
     T2_PREV = T2_COUNTER;
 
@@ -201,8 +163,47 @@ void psx_timer_update(psx_timer_t* timer, int cyc) {
     timer_update_timer2(timer, cyc);
 }
 
-void psxe_gpu_hblank_event_cb(psx_gpu_t* gpu) {}
-void psxe_gpu_hblank_end_event_cb(psx_gpu_t* gpu) {}
+void psxe_gpu_hblank_event_cb(psx_gpu_t* gpu) {
+    psx_timer_t* timer = gpu->udata[1];
+
+    if (T0_MODE & MODE_SYNCEN) {
+        switch (T0_MODE & 6) {
+            case 0: {
+                T0_PAUSED = 1;
+            } break;
+
+            case 2: {
+                T0_COUNTER = 0;
+            } break;
+
+            case 4: {
+                T0_COUNTER = 0;
+                T0_PAUSED = 0;
+            } break;
+
+            case 6: {
+                T0_MODE &= ~MODE_SYNCEN;
+            } break;
+        }
+    }
+}
+
+void psxe_gpu_hblank_end_event_cb(psx_gpu_t* gpu) {
+    psx_timer_t* timer = gpu->udata[1];
+
+    if (T0_MODE & MODE_SYNCEN) {
+        switch (T0_MODE & 6) {
+            case 0: {
+                T0_PAUSED = 0;
+            } break;
+
+            case 4: {
+                T0_PAUSED = 1;
+            } break;
+        }
+    }
+}
+
 void psxe_gpu_vblank_end_event_cb(psx_gpu_t* gpu) {}
 
 void psx_timer_destroy(psx_timer_t* timer) {
