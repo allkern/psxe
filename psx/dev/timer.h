@@ -68,6 +68,7 @@ typedef struct {
         uint32_t mode;
         uint32_t target;
         int paused;
+        int irq_fired;
     } timer[3];
 
     float f_counter[3];
@@ -84,9 +85,10 @@ void psx_timer_write8(psx_timer_t*, uint32_t, uint8_t);
 void psx_timer_update(psx_timer_t*, int);
 void psx_timer_destroy(psx_timer_t*);
 
-// Hblank event handlers
+// GPU event handlers
 void psxe_gpu_hblank_event_cb(psx_gpu_t*);
 void psxe_gpu_hblank_end_event_cb(psx_gpu_t*);
+void psxe_gpu_vblank_timer_event_cb(psx_gpu_t*);
 void psxe_gpu_vblank_end_event_cb(psx_gpu_t*);
 
 #endif

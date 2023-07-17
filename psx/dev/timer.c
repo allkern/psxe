@@ -10,16 +10,21 @@
 #define T0_MODE timer->timer[0].mode
 #define T0_TARGET timer->timer[0].target
 #define T0_PAUSED timer->timer[0].paused
+#define T0_IRQ_FIRED timer->timer[0].irq_fired
+
 #define T1_COUNTER timer->timer[1].counter
 #define T1_PREV timer->timer[1].prev_counter
 #define T1_MODE timer->timer[1].mode
 #define T1_TARGET timer->timer[1].target
 #define T1_PAUSED timer->timer[1].paused
+#define T1_IRQ_FIRED timer->timer[1].irq_fired
+
 #define T2_COUNTER timer->timer[2].counter
 #define T2_PREV timer->timer[2].prev_counter
 #define T2_MODE timer->timer[2].mode
 #define T2_TARGET timer->timer[2].target
 #define T2_PAUSED timer->timer[2].paused
+#define T2_IRQ_FIRED timer->timer[2].irq_fired
 
 psx_timer_t* psx_timer_create() {
     return (psx_timer_t*)malloc(sizeof(psx_timer_t));
@@ -40,7 +45,11 @@ uint32_t psx_timer_read32(psx_timer_t* timer, uint32_t offset) {
 
     switch (reg) {
         case 0: return timer->timer[index].counter;
-        case 4: return timer->timer[index].mode;
+        case 4: {
+            timer->timer[index].mode &= 0xffffe7ff;
+
+            return timer->timer[index].mode;
+        } break;
         case 8: return timer->timer[index].target;
     }
 
@@ -55,7 +64,11 @@ uint16_t psx_timer_read16(psx_timer_t* timer, uint32_t offset) {
 
     switch (reg) {
         case 0: return timer->timer[index].counter;
-        case 4: return timer->timer[index].mode;
+        case 4: {
+            timer->timer[index].mode &= 0xffffe7ff;
+
+            return timer->timer[index].mode;
+        } break;
         case 8: return timer->timer[index].target;
     }
 
@@ -79,7 +92,11 @@ void psx_timer_write32(psx_timer_t* timer, uint32_t offset, uint32_t value) {
             timer->timer[index].counter = value;
             timer->f_counter[index] = value;
         } return;
-        case 4: timer->timer[index].mode = value; return;
+        case 4: {
+            timer->timer[index].mode = value;
+            timer->timer[index].mode |= 0x400;
+            timer->timer[index].irq_fired = 0;
+        } return;
         case 8: timer->timer[index].target = value; return;
     }
 
@@ -95,7 +112,11 @@ void psx_timer_write16(psx_timer_t* timer, uint32_t offset, uint16_t value) {
             timer->timer[index].counter = value;
             timer->f_counter[index] = value;
         } return;
-        case 4: timer->timer[index].mode = value; return;
+        case 4: {
+            timer->timer[index].mode = value;
+            timer->timer[index].mode |= 0x400;
+            timer->timer[index].irq_fired = 0;
+        } return;
         case 8: timer->timer[index].target = value; return;
     }
 
@@ -107,35 +128,90 @@ void psx_timer_write8(psx_timer_t* timer, uint32_t offset, uint8_t value) {
 }
 
 void timer_update_timer0(psx_timer_t* timer, int cyc) {
+    T0_PREV = T0_COUNTER;
 
+    // Dotclock unsupported
+    // if (T0_MODE & 0x100)
+
+    if (!T0_PAUSED)
+        T0_COUNTER += cyc;
+
+    int can_fire_irq = (T0_MODE & MODE_IRQRMD) || !T0_IRQ_FIRED;
+
+    int reached_target = (T0_PREV <= T0_TARGET) && (T0_COUNTER >= T0_TARGET);
+    int reached_max = (T0_PREV <= 0xffff) && (T0_COUNTER >= 0xffff);
+
+    int target_irq = reached_target && (T0_MODE & MODE_TGTIRQ);
+    int max_irq = reached_max && (T0_MODE & MODE_MAXIRQ);
+
+    T0_MODE &= ~0x0800;
+    T0_MODE |= reached_target << 11;
+
+    T0_MODE &= ~0x1000;
+    T0_MODE |= reached_max << 12;
+
+    if ((target_irq || max_irq) && can_fire_irq) {
+        if (T0_MODE & MODE_IRQPMD) {
+            T0_MODE ^= 0x400;
+        } else {
+            T0_MODE |= 0x400;
+        }
+
+        timer->timer[0].irq_fired = 1;
+
+        psx_ic_irq(timer->ic, IC_TIMER0);
+    }
+
+    if (T0_MODE & MODE_RESETC) {
+        if (reached_target)
+            T0_COUNTER -= T0_TARGET;
+    } else {
+        T0_COUNTER -= 0xffff;
+    }
 }
 
 void timer_update_timer1(psx_timer_t* timer, int cyc) {
-    int src = T1_MODE & 0x100;
-
     T1_PREV = T1_COUNTER;
 
-    if (!T1_PAUSED)
+    // Hblank increment is done in handler
+    if ((!T1_PAUSED) && !(T1_MODE & 0x100))
         T1_COUNTER += cyc;
 
-    uint16_t reset = (T1_MODE & MODE_RESETC) ? T1_TARGET : 0xffff;
+    int can_fire_irq = (T1_MODE & MODE_IRQRMD) || !T1_IRQ_FIRED;
 
-    if ((T1_COUNTER >= reset) && (T1_PREV <= reset)) {
-        T1_COUNTER -= reset;
-        T1_MODE |= 0x800;
+    int reached_target = (T1_PREV <= T1_TARGET) && (T1_COUNTER >= T1_TARGET);
+    int reached_max = (T1_PREV <= 0xffff) && (T1_COUNTER >= 0xffff);
 
-        if (reset == 0xffff)
-            T1_MODE |= 0x1000;
+    int target_irq = reached_target && (T1_MODE & MODE_TGTIRQ);
+    int max_irq = reached_max && (T1_MODE & MODE_MAXIRQ);
+
+    T1_MODE &= ~0x0800;
+    T1_MODE |= reached_target << 11;
+
+    T1_MODE &= ~0x1000;
+    T1_MODE |= reached_max << 12;
+
+    if ((target_irq || max_irq) && can_fire_irq) {
+        if (T1_MODE & MODE_IRQPMD) {
+            T1_MODE ^= 0x400;
+        } else {
+            T1_MODE |= 0x400;
+        }
+
+        timer->timer[0].irq_fired = 1;
+
+        psx_ic_irq(timer->ic, IC_TIMER0);
     }
 
-    if ((T1_COUNTER >= 0xffff) && (T1_PREV <= 0xffff)) {
-        T1_COUNTER &= 0xffff;
-        T1_MODE |= 0x1000;
+    if (T1_MODE & MODE_RESETC) {
+        if (reached_target)
+            T1_COUNTER -= T1_TARGET;
+    } else {
+        T1_COUNTER -= 0xffff;
     }
 }
-void timer_update_timer2(psx_timer_t* timer, int cyc) {
-    int src = T2_MODE & 0x100;
 
+void timer_update_timer2(psx_timer_t* timer, int cyc) {
     T2_PREV = T2_COUNTER;
 
     if (!T2_PAUSED)
@@ -165,6 +241,9 @@ void psx_timer_update(psx_timer_t* timer, int cyc) {
 
 void psxe_gpu_hblank_event_cb(psx_gpu_t* gpu) {
     psx_timer_t* timer = gpu->udata[1];
+
+    if (T1_MODE & 0x100)
+        T1_COUNTER++;
 
     if (T0_MODE & MODE_SYNCEN) {
         switch (T0_MODE & 6) {
@@ -204,7 +283,46 @@ void psxe_gpu_hblank_end_event_cb(psx_gpu_t* gpu) {
     }
 }
 
-void psxe_gpu_vblank_end_event_cb(psx_gpu_t* gpu) {}
+void psxe_gpu_vblank_timer_event_cb(psx_gpu_t* gpu) {
+    psx_timer_t* timer = gpu->udata[1];
+
+    if (T1_MODE & MODE_SYNCEN) {
+        switch (T1_MODE & 6) {
+            case 0: {
+                T1_PAUSED = 1;
+            } break;
+
+            case 2: {
+                T1_COUNTER = 0;
+            } break;
+
+            case 4: {
+                T1_COUNTER = 0;
+                T1_PAUSED = 0;
+            } break;
+
+            case 6: {
+                T1_MODE &= ~MODE_SYNCEN;
+            } break;
+        }
+    }
+}
+
+void psxe_gpu_vblank_end_event_cb(psx_gpu_t* gpu) {
+    psx_timer_t* timer = gpu->udata[1];
+
+    if (T1_MODE & MODE_SYNCEN) {
+        switch (T1_MODE & 6) {
+            case 0: {
+                T1_PAUSED = 0;
+            } break;
+
+            case 4: {
+                T1_PAUSED = 1;
+            } break;
+        }
+    }
+}
 
 void psx_timer_destroy(psx_timer_t* timer) {
     free(timer);
