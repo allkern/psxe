@@ -36,7 +36,7 @@ void psx_run_frame(psx_t* psx) {
     // NTSC: 59.29 Hz, PAL: 49.76 Hz
     float framerate = (psx->gpu->display_mode & 0x8) ? 59.29 : 49.76;
 
-    unsigned int counter = (float)PSX_CPU_CLOCK / framerate;
+    unsigned int counter = (float)PSX_CPU_CPS / framerate;
 
     while (counter--) {
         psx_update(psx);

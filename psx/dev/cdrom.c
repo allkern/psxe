@@ -5,11 +5,6 @@
 #include "cdrom.h"
 #include "../log.h"
 
-#define CPU_SPEED (44100 * 0x300)
-#define COMMAND_DELAY (CPU_SPEED / 1000)
-#define READ_SINGLE_DELAY (CPU_SPEED / 75)
-#define READ_DOUBLE_DELAY (CPU_SPEED / (2 * 75))
-
 #define RESP_PUSH(data) \
     cdrom->rfifo[cdrom->rfifo_index++] = data; \
     SET_BITS(status, STAT_RSLRRDY_MASK, STAT_RSLRRDY_MASK);
@@ -22,252 +17,61 @@
 #define SEND_INT6(delay) SET_BITS(ifr, IFR_INT, IFR_INT6) cdrom->irq_delay = delay;
 #define SEND_INT7(delay) SET_BITS(ifr, IFR_INT, IFR_INT7) cdrom->irq_delay = delay;
 
-uint8_t cdrom_btoi(uint8_t b) {
-    return ((b >> 4) * 10) + (b & 0xf);
-}
+static const uint8_t g_psx_cdrom_btoi_table[] = {
+    0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+    0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+    0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11,
+    0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19,
+    0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b,
+    0x1c, 0x1d, 0x1e, 0x1f, 0x20, 0x21, 0x22, 0x23,
+    0x1e, 0x1f, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25,
+    0x26, 0x27, 0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d,
+    0x28, 0x29, 0x2a, 0x2b, 0x2c, 0x2d, 0x2e, 0x2f,
+    0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
+    0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39,
+    0x3a, 0x3b, 0x3c, 0x3d, 0x3e, 0x3f, 0x40, 0x41,
+    0x3c, 0x3d, 0x3e, 0x3f, 0x40, 0x41, 0x42, 0x43,
+    0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x4a, 0x4b,
+    0x46, 0x47, 0x48, 0x49, 0x4a, 0x4b, 0x4c, 0x4d,
+    0x4e, 0x4f, 0x50, 0x51, 0x52, 0x53, 0x54, 0x55,
+    0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57,
+    0x58, 0x59, 0x5a, 0x5b, 0x5c, 0x5d, 0x5e, 0x5f,
+    0x5a, 0x5b, 0x5c, 0x5d, 0x5e, 0x5f, 0x60, 0x61,
+    0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69,
+    0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6a, 0x6b,
+    0x6c, 0x6d, 0x6e, 0x6f, 0x70, 0x71, 0x72, 0x73,
+    0x6e, 0x6f, 0x70, 0x71, 0x72, 0x73, 0x74, 0x75,
+    0x76, 0x77, 0x78, 0x79, 0x7a, 0x7b, 0x7c, 0x7d,
+    0x78, 0x79, 0x7a, 0x7b, 0x7c, 0x7d, 0x7e, 0x7f,
+    0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86, 0x87,
+    0x82, 0x83, 0x84, 0x85, 0x86, 0x87, 0x88, 0x89,
+    0x8a, 0x8b, 0x8c, 0x8d, 0x8e, 0x8f, 0x90, 0x91,
+    0x8c, 0x8d, 0x8e, 0x8f, 0x90, 0x91, 0x92, 0x93,
+    0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9a, 0x9b,
+    0x96, 0x97, 0x98, 0x99, 0x9a, 0x9b, 0x9c, 0x9d,
+    0x9e, 0x9f, 0xa0, 0xa1, 0xa2, 0xa3, 0xa4, 0xa5,
+};
 
-void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
-    if (!cdrom->delayed_response_command) {
-        RESP_PUSH(cdrom->stat);
-        SEND_INT3(COMMAND_DELAY);
-
-        cdrom->stat |= GETSTAT_READ;
-
-        cdrom->delayed_response_command = cdrom->command;
-    } else {
-        log_fatal("Reading data from disc. offset=%02x:%02x:%02x (%08x)",
-            cdrom->seek_mm, cdrom->seek_ss, cdrom->seek_sect,
-            cdrom->seek_offset
-        );
-
-        fread(cdrom->read_buf, 1, CD_SECTOR_SIZE, cdrom->disc);
-
-        int double_speed = cdrom->mode & MODE_SPEED;
-
-        RESP_PUSH(cdrom->stat);
-        SEND_INT1(double_speed ? READ_DOUBLE_DELAY : READ_SINGLE_DELAY);
-
-        cdrom->dfifo_full = 1;
-
-        cdrom->stat &= ~GETSTAT_READ;
-
-        // Repeat until pause
-        cdrom->delayed_response_command = cdrom->command;
-    }
-}
-
-void cdrom_cmd_stop(psx_cdrom_t* cdrom) {
-    log_fatal("stop: Unimplemented CD command");
-}
-
-void cdrom_cmd_pause(psx_cdrom_t* cdrom) {
-    log_fatal("pause command");
-    if (!cdrom->delayed_response_command) {
-        RESP_PUSH(cdrom->stat);
-        SEND_INT3(COMMAND_DELAY);
-
-        cdrom->delayed_response_command = cdrom->command;
-    } else {
-        RESP_PUSH(cdrom->stat);
-        SEND_INT2(COMMAND_DELAY);
-
-        cdrom->delayed_response_command = 0;
-    }
-}
-
-void cdrom_cmd_init(psx_cdrom_t* cdrom) {
-    if (!cdrom->delayed_response_command) {
-        RESP_PUSH(cdrom->stat);
-        SEND_INT3(COMMAND_DELAY);
-
-        cdrom->delayed_response_command = cdrom->command;
-    } else {
-        RESP_PUSH(cdrom->stat);
-        SEND_INT2(COMMAND_DELAY);
-
-        cdrom->delayed_response_command = 0;
-    }
-}
-
-void cdrom_cmd_unmute(psx_cdrom_t* cdrom) {
-    RESP_PUSH(cdrom->stat);
-    SEND_INT3(COMMAND_DELAY);
-}
-
-void cdrom_cmd_setfilter(psx_cdrom_t* cdrom) {
-    log_set_quiet(0);
-    log_fatal("setfilter: Unimplemented CD command");
-    log_set_quiet(1);
-}
-
-void cdrom_cmd_setmode(psx_cdrom_t* cdrom) {
-    if (cdrom->pfifo_index != 1) {
-        log_fatal("setmode: Expected exactly 1 parameter");
-
-        return;
-    }
-
-    cdrom->mode = cdrom->pfifo[--cdrom->pfifo_index];
-
-    RESP_PUSH(cdrom->stat);
-    SEND_INT3(COMMAND_DELAY);
-}
-
-void cdrom_cmd_getlocl(psx_cdrom_t* cdrom) {
-    log_set_quiet(0);
-    log_fatal("getlocl: Unimplemented CD command");
-    log_set_quiet(1);
-}
-
-void cdrom_cmd_getlocp(psx_cdrom_t* cdrom) {
-    log_set_quiet(0);
-    log_fatal("getlocp: Unimplemented CD command");
-    log_set_quiet(1);
-}
-
-void cdrom_cmd_gettn(psx_cdrom_t* cdrom) {
-    log_set_quiet(0);
-    log_fatal("gettn: Unimplemented CD command");
-    log_set_quiet(1);
-}
-
-void cdrom_cmd_gettd(psx_cdrom_t* cdrom) {
-    log_set_quiet(0);
-    log_fatal("gettd: Unimplemented CD command");
-    log_set_quiet(1);
-}
-
-void cdrom_cmd_seekl(psx_cdrom_t* cdrom) {
-    if (!cdrom->delayed_response_command) {
-        RESP_PUSH(cdrom->stat);
-        SEND_INT3(COMMAND_DELAY);
-
-        log_fatal("seekl: Seeking to address %08x", cdrom->seek_offset);
-
-        fseek(cdrom->disc, cdrom->seek_offset, 0);
-
-        cdrom->delayed_response_command = cdrom->command;
-    } else {
-        RESP_PUSH(cdrom->stat);
-        SEND_INT2(COMMAND_DELAY);
-
-        cdrom->delayed_response_command = 0;
-    }
-}
-
-void cdrom_cmd_seekp(psx_cdrom_t* cdrom) {
-    log_set_quiet(0);
-    log_fatal("seekp: Unimplemented CD command");
-    log_set_quiet(1);
-}
-
-void cdrom_cmd_reads(psx_cdrom_t* cdrom) {
-    log_set_quiet(0);
-    log_fatal("reads: Unimplemented CD command");
-    log_set_quiet(1);
-}
-
-void cdrom_cmd_readtoc(psx_cdrom_t* cdrom) {
-    log_set_quiet(0);
-    log_fatal("readtoc: Unimplemented CD command");
-    log_set_quiet(1);
-}
-
-void cdrom_cmd_unimplemented(psx_cdrom_t* cdrom) {
-    log_set_quiet(0);
-    log_fatal("Unimplemented CD command %02x", cdrom->command);
-    log_set_quiet(1);
-}
-
-void cdrom_cmd_getstat(psx_cdrom_t* cdrom) {
-    if (!cdrom->tray_open) {
-        SET_BITS(stat, GETSTAT_TRAYOPEN, 0);
-    }
-
-    if (!cdrom->disc) {
-        SET_BITS(stat, GETSTAT_TRAYOPEN, 0xff);
-    }
-
-    RESP_PUSH(cdrom->stat);
-    SEND_INT3(COMMAND_DELAY);
-}
-
-void cdrom_cmd_setloc(psx_cdrom_t* cdrom) {
-    if (cdrom->pfifo_index != 3) {
-        log_fatal("setloc: Expected exactly 3 parameters, got %u instead", cdrom->pfifo_index);
-
-        return;
-    }
-
-    cdrom->seek_sect = cdrom_btoi(cdrom->pfifo[--cdrom->pfifo_index]);
-    cdrom->seek_ss = cdrom_btoi(cdrom->pfifo[--cdrom->pfifo_index]);
-    cdrom->seek_mm = cdrom_btoi(cdrom->pfifo[--cdrom->pfifo_index]);
-
-    // Account for 2 second gap
-    uint32_t seconds = (cdrom->seek_mm * 60) + cdrom->seek_ss - 2;
-    uint32_t sectors = (seconds * CD_SECTORS_PER_SECOND) + cdrom->seek_sect;
-
-    cdrom->seek_offset = sectors * CD_SECTOR_SIZE;
-
-    log_fatal("setloc: %02u:%02u:%02u (%08x)",
-        cdrom->seek_mm,
-        cdrom->seek_ss,
-        cdrom->seek_sect,
-        cdrom->seek_offset
-    );
-
-    RESP_PUSH(cdrom->stat);
-    SEND_INT3(COMMAND_DELAY);
-}
-
-void cdrom_cmd_getid(psx_cdrom_t* cdrom) {
-    if (!cdrom->delayed_response_command) {
-        // RESP_PUSH(cdrom->stat);
-        SEND_INT3(COMMAND_DELAY);
-
-        cdrom->delayed_response_command = cdrom->disc ? cdrom->command : 0;
-    } else {
-        if (!cdrom->disc) {
-            RESP_PUSH(0x00);
-            RESP_PUSH(0x00);
-            RESP_PUSH(0x00);
-            RESP_PUSH(0x00);
-            RESP_PUSH(0x00);
-            RESP_PUSH(0x00);
-            RESP_PUSH(0x40);
-            RESP_PUSH(0x08);
-        } else {
-            RESP_PUSH('A');
-            RESP_PUSH('E');
-            RESP_PUSH('C');
-            RESP_PUSH('S');
-            RESP_PUSH(0x00);
-            RESP_PUSH(0x20);
-            RESP_PUSH(0x00);
-            RESP_PUSH(0x02);
-        }
-
-        SEND_INT2(COMMAND_DELAY);
-
-        cdrom->delayed_response_command = 0;
-    }
-}
-
-void cdrom_cmd_test(psx_cdrom_t* cdrom) {
-    if (cdrom->pfifo_index != 1) {
-        log_fatal("test: Expected exactly 1 parameter");
-    }
-
-    switch (cdrom->pfifo[--cdrom->pfifo_index]) {
-        case 0x20: {
-            RESP_PUSH(0x01);
-            RESP_PUSH(0x95);
-            RESP_PUSH(0x13);
-            RESP_PUSH(0x03);
-            SEND_INT3(COMMAND_DELAY);
-        } break;
-    }
-}
+void cdrom_cmd_unimplemented(psx_cdrom_t*) {}
+void cdrom_cmd_getstat(psx_cdrom_t*) {}
+void cdrom_cmd_setloc(psx_cdrom_t*) {}
+void cdrom_cmd_readn(psx_cdrom_t*) {}
+void cdrom_cmd_stop(psx_cdrom_t*) {}
+void cdrom_cmd_pause(psx_cdrom_t*) {}
+void cdrom_cmd_init(psx_cdrom_t*) {}
+void cdrom_cmd_unmute(psx_cdrom_t*) {}
+void cdrom_cmd_setfilter(psx_cdrom_t*) {}
+void cdrom_cmd_setmode(psx_cdrom_t*) {}
+void cdrom_cmd_getlocl(psx_cdrom_t*) {}
+void cdrom_cmd_getlocp(psx_cdrom_t*) {}
+void cdrom_cmd_gettn(psx_cdrom_t*) {}
+void cdrom_cmd_gettd(psx_cdrom_t*) {}
+void cdrom_cmd_seekl(psx_cdrom_t*) {}
+void cdrom_cmd_seekp(psx_cdrom_t*) {}
+void cdrom_cmd_test(psx_cdrom_t*) {}
+void cdrom_cmd_getid(psx_cdrom_t*) {}
+void cdrom_cmd_reads(psx_cdrom_t*) {}
+void cdrom_cmd_readtoc(psx_cdrom_t*) {}
 
 typedef void (*cdrom_cmd_t)(psx_cdrom_t*);
 
@@ -306,53 +110,6 @@ cdrom_cmd_t g_psx_cdrom_command_table[] = {
     cdrom_cmd_unimplemented
 };
 
-/*
-  Command          Parameters      Response(s)
-  00h -            -               INT5(11h,40h)  ;reportedly "Sync" uh?
-  01h Getstat      -               INT3(stat)
-  02h Setloc     E amm,ass,asect   INT3(stat)
-  03h Play       E (track)         INT3(stat), optional INT1(report bytes)
-  04h Forward    E -               INT3(stat), optional INT1(report bytes)
-  05h Backward   E -               INT3(stat), optional INT1(report bytes)
-  06h ReadN      E -               INT3(stat), INT1(stat), datablock
-  07h MotorOn    E -               INT3(stat), INT2(stat)
-  08h Stop       E -               INT3(stat), INT2(stat)
-  09h Pause      E -               INT3(stat), INT2(stat)
-  0Ah Init         -               INT3(late-stat), INT2(stat)
-  0Bh Mute       E -               INT3(stat)
-  0Ch Demute     E -               INT3(stat)
-  0Dh Setfilter  E file,channel    INT3(stat)
-  0Eh Setmode      mode            INT3(stat)
-  0Fh Getparam     -               INT3(stat,mode,null,file,channel)
-  10h GetlocL    E -               INT3(amm,ass,asect,mode,file,channel,sm,ci)
-  11h GetlocP    E -               INT3(track,index,mm,ss,sect,amm,ass,asect)
-  12h SetSession E session         INT3(stat), INT2(stat)
-  13h GetTN      E -               INT3(stat,first,last)  ;BCD
-  14h GetTD      E track (BCD)     INT3(stat,mm,ss)       ;BCD
-  15h SeekL      E -               INT3(stat), INT2(stat)  ;\use prior Setloc
-  16h SeekP      E -               INT3(stat), INT2(stat)  ;/to set target
-  17h -            -               INT5(11h,40h)  ;reportedly "SetClock" uh?
-  18h -            -               INT5(11h,40h)  ;reportedly "GetClock" uh?
-  19h Test         sub_function    depends on sub_function (see below)
-  1Ah GetID      E -               INT3(stat), INT2/5(stat,flg,typ,atip,"SCEx")
-  1Bh ReadS      E?-               INT3(stat), INT1(stat), datablock
-  1Ch Reset        -               INT3(stat), Delay            ;-not DTL-H2000
-  1Dh GetQ       E adr,point       INT3(stat), INT2(10bytesSubQ,peak_lo) ;\not
-  1Eh ReadTOC      -               INT3(late-stat), INT2(stat)           ;/vC0
-  1Fh VideoCD      sub,a,b,c,d,e   INT3(stat,a,b,c,d,e)   ;<-- SCPH-5903 only
-  1Fh..4Fh -       -               INT5(11h,40h)  ;-Unused/invalid
-  50h Secret 1     -               INT5(11h,40h)  ;\
-  51h Secret 2     "Licensed by"   INT5(11h,40h)  ;
-  52h Secret 3     "Sony"          INT5(11h,40h)  ; Secret Unlock Commands
-  53h Secret 4     "Computer"      INT5(11h,40h)  ; (not in version vC0, and,
-  54h Secret 5     "Entertainment" INT5(11h,40h)  ; nonfunctional in japan)
-  55h Secret 6     "<region>"      INT5(11h,40h)  ;
-  56h Secret 7     -               INT5(11h,40h)  ;/
-  57h SecretLock   -               INT5(11h,40h)  ;-Secret Lock Command
-  58h..5Fh Crash   -               Crashes the HC05 (jumps into a data area)
-  6Fh..FFh -       -               INT5(11h,40h)  ;-Unused/invalid
-*/
-
 typedef uint8_t (*psx_cdrom_read_function_t)(psx_cdrom_t*);
 typedef void (*psx_cdrom_write_function_t)(psx_cdrom_t*, uint8_t);
 
@@ -368,13 +125,9 @@ uint8_t cdrom_read_rfifo(psx_cdrom_t* cdrom) {
         
         SET_BITS(status, STAT_RSLRRDY_MASK, 0);
 
-        //log_fatal("    RFIFO read (%02x)", data);
-
         return data;
     } else {
         uint8_t data = cdrom->rfifo[--cdrom->rfifo_index];
-    
-        //log_fatal("    RFIFO read (%02x)", data);
     
         return data;
     }
@@ -399,20 +152,14 @@ uint8_t cdrom_read_dfifo(psx_cdrom_t* cdrom) {
 }
 
 uint8_t cdrom_read_ier(psx_cdrom_t* cdrom) {
-    //log_fatal("    IER read %02x", cdrom->ier);
-
     return cdrom->ier;
 }
 
 uint8_t cdrom_read_ifr(psx_cdrom_t* cdrom) {
-    //log_fatal("    IFR read %02x", cdrom->ifr);
-
     return cdrom->ifr;
 }
 
 void cdrom_write_status(psx_cdrom_t* cdrom, uint8_t value) {
-    //log_fatal("    Status write %02x, pfifo_index=%u", value, cdrom->pfifo_index);
-
     SET_BITS(status, STAT_INDEX_MASK, value);
 }
 
@@ -458,14 +205,10 @@ void cdrom_write_smdout(psx_cdrom_t* cdrom, uint8_t value) {
 }
 
 void cdrom_write_ier(psx_cdrom_t* cdrom, uint8_t value) {
-    //log_fatal("    IER write %02x", value);
-
     cdrom->ier = value;
 }
 
 void cdrom_write_ifr(psx_cdrom_t* cdrom, uint8_t value) {
-    //log_fatal("    IFR write %02x", value);
-
     cdrom->ifr &= ~(value & 0x7);
 
     if (value & 0x40) {

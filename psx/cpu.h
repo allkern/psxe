@@ -6,8 +6,8 @@
 
 #include "bus.h"
 
-#define PSX_CPU_CLOCK 33868800 // 33.868800 MHz
-#define PSX_CPU_CLOCK_FREQ 33.868800f
+#define PSX_CPU_CPS 33868800 // 33868800 Clocks/s
+#define PSX_CPU_FREQ 33.868800f // 33.868800 MHz
 
 struct psx_cpu_t;
 

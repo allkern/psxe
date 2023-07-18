@@ -987,7 +987,7 @@ void psx_gpu_update(psx_gpu_t* gpu, int cyc) {
                       (gpu->cycles <= GPU_CYCLES_PER_SCANL_NTSC);
 
     // Convert CPU (~33.8 MHz) cycles to GPU (~53.7 MHz) cycles
-    gpu->cycles += (float)cyc * (PSX_GPU_CLOCK_FREQ_NTSC / PSX_CPU_CLOCK_FREQ);
+    gpu->cycles += (float)cyc * (PSX_GPU_CLOCK_FREQ_NTSC / PSX_CPU_FREQ);
 
     int curr_hblank = (gpu->cycles >= GPU_CYCLES_PER_HDRAW_NTSC) &&
                       (gpu->cycles <= GPU_CYCLES_PER_SCANL_NTSC);
