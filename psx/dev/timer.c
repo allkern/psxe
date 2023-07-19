@@ -26,6 +26,12 @@
 #define T2_PAUSED timer->timer[2].paused
 #define T2_IRQ_FIRED timer->timer[2].irq_fired
 
+const char* g_psx_timer_reg_names[] = {
+    "counter", 0, 0, 0,
+    "mode", 0, 0, 0,
+    "target", 0, 0, 0
+};
+
 psx_timer_t* psx_timer_create() {
     return (psx_timer_t*)malloc(sizeof(psx_timer_t));
 }
@@ -42,6 +48,8 @@ void psx_timer_init(psx_timer_t* timer, psx_ic_t* ic) {
 uint32_t psx_timer_read32(psx_timer_t* timer, uint32_t offset) {
     int index = offset >> 4;
     int reg = offset & 0xf;
+
+    log_fatal("Timer %u %s read32", index, g_psx_timer_reg_names[reg]);
 
     switch (reg) {
         case 0: return timer->timer[index].counter;
@@ -61,6 +69,8 @@ uint32_t psx_timer_read32(psx_timer_t* timer, uint32_t offset) {
 uint16_t psx_timer_read16(psx_timer_t* timer, uint32_t offset) {
     int index = offset >> 4;
     int reg = offset & 0xf;
+
+    log_fatal("Timer %u %s read16", index, g_psx_timer_reg_names[reg]);
 
     switch (reg) {
         case 0: return timer->timer[index].counter;
@@ -87,6 +97,8 @@ void psx_timer_write32(psx_timer_t* timer, uint32_t offset, uint32_t value) {
     int index = offset >> 4;
     int reg = offset & 0xf;
 
+    log_fatal("Timer %u %s write32 %08x", index, g_psx_timer_reg_names[reg], value);
+
     switch (reg) {
         case 0: {
             timer->timer[index].counter = value;
@@ -106,6 +118,8 @@ void psx_timer_write32(psx_timer_t* timer, uint32_t offset, uint32_t value) {
 void psx_timer_write16(psx_timer_t* timer, uint32_t offset, uint16_t value) {
     int index = offset >> 4;
     int reg = offset & 0xf;
+
+    log_fatal("Timer %u %s write16 %04x", index, g_psx_timer_reg_names[reg], value);
 
     switch (reg) {
         case 0: {

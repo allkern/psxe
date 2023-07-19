@@ -52,26 +52,41 @@ static const uint8_t g_psx_cdrom_btoi_table[] = {
     0x9e, 0x9f, 0xa0, 0xa1, 0xa2, 0xa3, 0xa4, 0xa5,
 };
 
-void cdrom_cmd_unimplemented(psx_cdrom_t*) {}
-void cdrom_cmd_getstat(psx_cdrom_t*) {}
-void cdrom_cmd_setloc(psx_cdrom_t*) {}
-void cdrom_cmd_readn(psx_cdrom_t*) {}
-void cdrom_cmd_stop(psx_cdrom_t*) {}
-void cdrom_cmd_pause(psx_cdrom_t*) {}
-void cdrom_cmd_init(psx_cdrom_t*) {}
-void cdrom_cmd_unmute(psx_cdrom_t*) {}
-void cdrom_cmd_setfilter(psx_cdrom_t*) {}
-void cdrom_cmd_setmode(psx_cdrom_t*) {}
-void cdrom_cmd_getlocl(psx_cdrom_t*) {}
-void cdrom_cmd_getlocp(psx_cdrom_t*) {}
-void cdrom_cmd_gettn(psx_cdrom_t*) {}
-void cdrom_cmd_gettd(psx_cdrom_t*) {}
-void cdrom_cmd_seekl(psx_cdrom_t*) {}
-void cdrom_cmd_seekp(psx_cdrom_t*) {}
-void cdrom_cmd_test(psx_cdrom_t*) {}
-void cdrom_cmd_getid(psx_cdrom_t*) {}
-void cdrom_cmd_reads(psx_cdrom_t*) {}
-void cdrom_cmd_readtoc(psx_cdrom_t*) {}
+void cdrom_cmd_unimplemented(psx_cdrom_t* cdrom) {}
+void cdrom_cmd_getstat(psx_cdrom_t* cdrom) {}
+void cdrom_cmd_setloc(psx_cdrom_t* cdrom) {}
+void cdrom_cmd_readn(psx_cdrom_t* cdrom) {}
+void cdrom_cmd_stop(psx_cdrom_t* cdrom) {}
+void cdrom_cmd_pause(psx_cdrom_t* cdrom) {}
+void cdrom_cmd_init(psx_cdrom_t* cdrom) {
+    log_fatal("CdlInit");
+
+    if (!cdrom->delayed_response_command) {
+        SEND_INT3(DELAY_1MS);
+        RESP_PUSH(cdrom->stat);
+
+        cdrom->delayed_response_command = 0x0a;
+    } else {
+        SEND_INT2(DELAY_1MS);
+        RESP_PUSH(cdrom->stat);
+
+        cdrom->delayed_response_command = 0x00;
+    }
+}
+
+void cdrom_cmd_unmute(psx_cdrom_t* cdrom) {}
+void cdrom_cmd_setfilter(psx_cdrom_t* cdrom) {}
+void cdrom_cmd_setmode(psx_cdrom_t* cdrom) {}
+void cdrom_cmd_getlocl(psx_cdrom_t* cdrom) {}
+void cdrom_cmd_getlocp(psx_cdrom_t* cdrom) {}
+void cdrom_cmd_gettn(psx_cdrom_t* cdrom) {}
+void cdrom_cmd_gettd(psx_cdrom_t* cdrom) {}
+void cdrom_cmd_seekl(psx_cdrom_t* cdrom) {}
+void cdrom_cmd_seekp(psx_cdrom_t* cdrom) {}
+void cdrom_cmd_test(psx_cdrom_t* cdrom) {}
+void cdrom_cmd_getid(psx_cdrom_t* cdrom) {}
+void cdrom_cmd_reads(psx_cdrom_t* cdrom) {}
+void cdrom_cmd_readtoc(psx_cdrom_t* cdrom) {}
 
 typedef void (*cdrom_cmd_t)(psx_cdrom_t*);
 
@@ -114,8 +129,6 @@ typedef uint8_t (*psx_cdrom_read_function_t)(psx_cdrom_t*);
 typedef void (*psx_cdrom_write_function_t)(psx_cdrom_t*, uint8_t);
 
 uint8_t cdrom_read_status(psx_cdrom_t* cdrom) {
-    //log_fatal("    Status read %02x, pfifo_index=%u", cdrom->status, cdrom->pfifo_index);
-
     return cdrom->status;
 }
 
@@ -167,8 +180,6 @@ void cdrom_write_cmd(psx_cdrom_t* cdrom, uint8_t value) {
     cdrom->delayed_response_command = 0;
     cdrom->command = value;
 
-    g_psx_cdrom_command_table[value](cdrom);
-
     log_fatal("    Command %02x (pfifo=%02x, %02x, %02x, %02x), pfifo_index=%u",
         value,
         cdrom->pfifo[0],
@@ -177,6 +188,8 @@ void cdrom_write_cmd(psx_cdrom_t* cdrom, uint8_t value) {
         cdrom->pfifo[3],
         cdrom->pfifo_index
     );
+
+    g_psx_cdrom_command_table[value](cdrom);
 }
 
 void cdrom_write_pfifo(psx_cdrom_t* cdrom, uint8_t value) {
@@ -260,6 +273,20 @@ psx_cdrom_write_function_t g_psx_cdrom_write_table[] = {
     cdrom_write_status, cdrom_write_rcdrspuv, cdrom_write_rcdlspuv, cdrom_write_volume
 };
 
+const char* g_psx_cdrom_read_names_table[] = {
+    "cdrom_read_status", "cdrom_read_rfifo", "cdrom_read_dfifo", "cdrom_read_ier",
+    "cdrom_read_status", "cdrom_read_rfifo", "cdrom_read_dfifo", "cdrom_read_ifr",
+    "cdrom_read_status", "cdrom_read_rfifo", "cdrom_read_dfifo", "cdrom_read_ier",
+    "cdrom_read_status", "cdrom_read_rfifo", "cdrom_read_dfifo", "cdrom_read_ifr"
+};
+
+const char* g_psx_cdrom_write_names_table[] = {
+    "cdrom_write_status", "cdrom_write_cmd"     , "cdrom_write_pfifo"   , "cdrom_write_req"     ,
+    "cdrom_write_status", "cdrom_write_smdout"  , "cdrom_write_ier"     , "cdrom_write_ifr"     ,
+    "cdrom_write_status", "cdrom_write_sminfo"  , "cdrom_write_lcdlspuv", "cdrom_write_lcdrspuv",
+    "cdrom_write_status", "cdrom_write_rcdrspuv", "cdrom_write_rcdlspuv", "cdrom_write_volume"
+};
+
 psx_cdrom_t* psx_cdrom_create() {
     return (psx_cdrom_t*)malloc(sizeof(psx_cdrom_t));
 }
@@ -287,6 +314,8 @@ uint16_t psx_cdrom_read16(psx_cdrom_t* cdrom, uint32_t offset) {
 }
 
 uint8_t psx_cdrom_read8(psx_cdrom_t* cdrom, uint32_t offset) {
+    log_fatal("CDROM read -> %s", g_psx_cdrom_read_names_table[(STAT_INDEX << 2) | offset]);
+
     return g_psx_cdrom_read_table[(STAT_INDEX << 2) | offset](cdrom);
 }
 
@@ -299,6 +328,8 @@ void psx_cdrom_write16(psx_cdrom_t* cdrom, uint32_t offset, uint16_t value) {
 }
 
 void psx_cdrom_write8(psx_cdrom_t* cdrom, uint32_t offset, uint8_t value) {
+    log_fatal("CDROM write -> %s (%02x)", g_psx_cdrom_write_names_table[(STAT_INDEX << 2) | offset], value);
+
     g_psx_cdrom_write_table[(STAT_INDEX << 2) | offset](cdrom, value);
 }
 
@@ -311,11 +342,8 @@ void psx_cdrom_update(psx_cdrom_t* cdrom) {
 
             cdrom->irq_delay = 0;
 
-            log_fatal("delayed_command=%02x", cdrom->delayed_response_command);
-
             if (cdrom->delayed_response_command) {
                 g_psx_cdrom_command_table[cdrom->delayed_response_command](cdrom);
-                log_fatal("Delayed execution delay=%08x cmd=%02x", cdrom->irq_delay, cdrom->delayed_response_command);
             }
         }
     }

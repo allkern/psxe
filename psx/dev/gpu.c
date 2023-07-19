@@ -993,6 +993,9 @@ void psx_gpu_update(psx_gpu_t* gpu, int cyc) {
                       (gpu->cycles <= GPU_CYCLES_PER_SCANL_NTSC);
     
     if (curr_hblank && !prev_hblank) {
+        if (gpu->event_cb_table[GPU_EVENT_HBLANK])
+            gpu->event_cb_table[GPU_EVENT_HBLANK](gpu);
+
         gpu_hblank_event(gpu);
     } else if (prev_hblank && !curr_hblank) {
         if (gpu->event_cb_table[GPU_EVENT_HBLANK_END])
