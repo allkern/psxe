@@ -166,7 +166,6 @@ void psxe_gpu_dmode_event_cb(psx_gpu_t* gpu) {
     }
 
     if (screen->width > 512) {
-        screen->saved_scale = screen->scale;
         screen->scale = 1;
     } else {
         screen->scale = screen->saved_scale;

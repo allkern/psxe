@@ -831,6 +831,7 @@ void psx_gpu_update_cmd(psx_gpu_t* gpu) {
         case 0x40: gpu_cmd_40(gpu); break;
         case 0x64: gpu_cmd_64(gpu); break;
         case 0x65: gpu_cmd_64(gpu); break;
+        case 0x66: gpu_cmd_64(gpu); break;
         case 0x68: gpu_cmd_68(gpu); break;
         case 0xa0: gpu_cmd_a0(gpu); break;
         case 0xc0: gpu_cmd_c0(gpu); break;
