@@ -117,6 +117,7 @@ typedef struct {
     int irq_delay;
     uint8_t command;
     uint8_t delayed_response_command;
+    uint8_t int_number;
     int delayed_response;
 
     const char* path;

@@ -63,15 +63,13 @@ typedef struct {
     psx_ic_t* ic;
 
     struct {
-        int32_t prev_counter;
-        int32_t counter;
+        uint16_t prev_counter;
+        uint16_t counter;
         uint32_t mode;
         uint32_t target;
         int paused;
         int irq_fired;
     } timer[3];
-
-    float f_counter[3];
 } psx_timer_t;
 
 psx_timer_t* psx_timer_create();

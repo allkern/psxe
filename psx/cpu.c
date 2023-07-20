@@ -450,8 +450,8 @@ void psx_cpu_exception(psx_cpu_t* cpu, uint32_t cause) {
     cpu->next_pc = cpu->pc + 4;
 }
 
-void psx_cpu_irq(psx_cpu_t* cpu, uint32_t irq) {
-    cpu->cop0_r[COP0_CAUSE] |= irq ? SR_IM2 : 0;
+void psx_cpu_set_irq_pending(psx_cpu_t* cpu) {
+    cpu->cop0_r[COP0_CAUSE] |= SR_IM2;
 }
 
 void psx_cpu_i_invalid(psx_cpu_t* cpu) {
@@ -1509,7 +1509,7 @@ void psx_gte_i_mvmva(psx_cpu_t* cpu) {
 }
 
 void psx_gte_i_ncds(psx_cpu_t* cpu) {
-    log_fatal("ncds: Unimplemented GTE instruction");
+    // log_fatal("ncds: Unimplemented GTE instruction");
 }
 
 void psx_gte_i_cdp(psx_cpu_t* cpu) {

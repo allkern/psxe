@@ -9,13 +9,17 @@
     cdrom->rfifo[cdrom->rfifo_index++] = data; \
     SET_BITS(status, STAT_RSLRRDY_MASK, STAT_RSLRRDY_MASK);
 
-#define SEND_INT1(delay) SET_BITS(ifr, IFR_INT, IFR_INT1) cdrom->irq_delay = delay;
-#define SEND_INT2(delay) SET_BITS(ifr, IFR_INT, IFR_INT2) cdrom->irq_delay = delay;
-#define SEND_INT3(delay) SET_BITS(ifr, IFR_INT, IFR_INT3) cdrom->irq_delay = delay;
-#define SEND_INT4(delay) SET_BITS(ifr, IFR_INT, IFR_INT4) cdrom->irq_delay = delay;
-#define SEND_INT5(delay) SET_BITS(ifr, IFR_INT, IFR_INT5) cdrom->irq_delay = delay;
-#define SEND_INT6(delay) SET_BITS(ifr, IFR_INT, IFR_INT6) cdrom->irq_delay = delay;
-#define SEND_INT7(delay) SET_BITS(ifr, IFR_INT, IFR_INT7) cdrom->irq_delay = delay;
+#define SEND_INT1(delay) cdrom->int_number = IFR_INT1; cdrom->irq_delay = delay;
+#define SEND_INT2(delay) cdrom->int_number = IFR_INT2; cdrom->irq_delay = delay;
+#define SEND_INT3(delay) cdrom->int_number = IFR_INT3; cdrom->irq_delay = delay;
+#define SEND_INT4(delay) cdrom->int_number = IFR_INT4; cdrom->irq_delay = delay;
+#define SEND_INT5(delay) cdrom->int_number = IFR_INT5; cdrom->irq_delay = delay;
+#define SEND_INT6(delay) cdrom->int_number = IFR_INT6; cdrom->irq_delay = delay;
+#define SEND_INT7(delay) cdrom->int_number = IFR_INT7; cdrom->irq_delay = delay;
+
+uint8_t cdrom_btoi(uint8_t b) {
+    return ((b >> 4) * 10) + (b & 0xf);
+}
 
 static const uint8_t g_psx_cdrom_btoi_table[] = {
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
@@ -53,15 +57,107 @@ static const uint8_t g_psx_cdrom_btoi_table[] = {
 };
 
 void cdrom_cmd_unimplemented(psx_cdrom_t* cdrom) {}
-void cdrom_cmd_getstat(psx_cdrom_t* cdrom) {}
-void cdrom_cmd_setloc(psx_cdrom_t* cdrom) {}
-void cdrom_cmd_readn(psx_cdrom_t* cdrom) {}
-void cdrom_cmd_stop(psx_cdrom_t* cdrom) {}
-void cdrom_cmd_pause(psx_cdrom_t* cdrom) {}
-void cdrom_cmd_init(psx_cdrom_t* cdrom) {
-    log_fatal("CdlInit");
+void cdrom_cmd_getstat(psx_cdrom_t* cdrom) {
+    if (!cdrom->tray_open) {
+        SET_BITS(stat, GETSTAT_TRAYOPEN, 0);
+    }
 
+    if (!cdrom->disc) {
+        SET_BITS(stat, GETSTAT_TRAYOPEN, 0xff);
+    }
+
+    RESP_PUSH(cdrom->stat);
+    SEND_INT3(DELAY_1MS);
+
+    cdrom->delayed_response_command = 0;
+}
+void cdrom_cmd_setloc(psx_cdrom_t* cdrom) {
+    if (cdrom->pfifo_index != 3) {
+        log_fatal("setloc: Expected exactly 3 parameters, got %u instead", cdrom->pfifo_index);
+
+        return;
+    }
+
+    cdrom->seek_sect = g_psx_cdrom_btoi_table[cdrom->pfifo[--cdrom->pfifo_index]];
+    cdrom->seek_ss = g_psx_cdrom_btoi_table[cdrom->pfifo[--cdrom->pfifo_index]];
+    cdrom->seek_mm = g_psx_cdrom_btoi_table[cdrom->pfifo[--cdrom->pfifo_index]];
+
+    // Account for 2 second gap
+    uint32_t seconds = (cdrom->seek_mm * 60) + cdrom->seek_ss - 2;
+    uint32_t sectors = (seconds * CD_SECTORS_PER_SECOND) + cdrom->seek_sect;
+
+    cdrom->seek_offset = sectors * CD_SECTOR_SIZE;
+
+    log_fatal("setloc: %02u:%02u:%02u (%08x)",
+        cdrom->seek_mm,
+        cdrom->seek_ss,
+        cdrom->seek_sect,
+        cdrom->seek_offset
+    );
+
+    RESP_PUSH(cdrom->stat);
+    SEND_INT3(DELAY_1MS);
+}
+void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
     if (!cdrom->delayed_response_command) {
+        RESP_PUSH(cdrom->stat);
+        SEND_INT3(DELAY_1MS);
+
+        cdrom->stat |= GETSTAT_READ;
+
+        log_fatal("Reading data from disc. offset=%02x:%02x:%02x (%08x)",
+            cdrom->seek_mm, cdrom->seek_ss, cdrom->seek_sect,
+            cdrom->seek_offset
+        );
+
+        fread(cdrom->read_buf, 1, CD_SECTOR_SIZE, cdrom->disc);
+
+        cdrom->delayed_response_command = 0x06;
+    } else {
+        //fseek(cdrom->disc, cdrom->seek_offset, 0);
+
+        // for (int y = 0; y < 8; y++) {
+        //     for (int x = 0; x < 0x10; x++) {
+        //         printf("%02x ", cdrom->read_buf[x + (y * 0x10)]);
+        //     }
+
+        //     printf("\n");
+        // }
+
+        // exit(1);
+
+        int double_speed = cdrom->mode & MODE_SPEED;
+
+        RESP_PUSH(cdrom->stat);
+        SEND_INT1(double_speed ? READ_DOUBLE_DELAY : READ_SINGLE_DELAY);
+    
+        SET_BITS(status, STAT_DRQSTS_MASK, STAT_DRQSTS_MASK);
+
+        cdrom->dfifo_full = 1;
+        cdrom->stat &= ~GETSTAT_READ;
+
+        // Repeat until pause
+        cdrom->delayed_response_command = 0x06;
+    }
+}
+void cdrom_cmd_stop(psx_cdrom_t* cdrom) {}
+void cdrom_cmd_pause(psx_cdrom_t* cdrom) {
+    if (!cdrom->delayed_response_command) {
+        RESP_PUSH(cdrom->stat);
+        SEND_INT3(DELAY_1MS);
+
+        cdrom->delayed_response_command = 0x09;
+    } else {
+        RESP_PUSH(cdrom->stat);
+        SEND_INT2(DELAY_1MS);
+
+        cdrom->delayed_response_command = 0;
+    }
+}
+void cdrom_cmd_init(psx_cdrom_t* cdrom) {
+    if (!cdrom->delayed_response_command) {
+        cdrom->stat = 0x20;
+
         SEND_INT3(DELAY_1MS);
         RESP_PUSH(cdrom->stat);
 
@@ -70,25 +166,134 @@ void cdrom_cmd_init(psx_cdrom_t* cdrom) {
         SEND_INT2(DELAY_1MS);
         RESP_PUSH(cdrom->stat);
 
-        cdrom->delayed_response_command = 0x00;
+        cdrom->delayed_response_command = 0;
     }
 }
 
 void cdrom_cmd_unmute(psx_cdrom_t* cdrom) {}
 void cdrom_cmd_setfilter(psx_cdrom_t* cdrom) {}
-void cdrom_cmd_setmode(psx_cdrom_t* cdrom) {}
+void cdrom_cmd_setmode(psx_cdrom_t* cdrom) {
+    if (cdrom->pfifo_index != 1) {
+        log_fatal("CdlSetmode: Expected exactly 1 parameter");
+
+        return;
+    }
+
+    cdrom->mode = cdrom->pfifo[--cdrom->pfifo_index];
+
+    RESP_PUSH(cdrom->stat);
+    SEND_INT3(DELAY_1MS);
+
+    cdrom->delayed_response_command = 0;
+}
 void cdrom_cmd_getlocl(psx_cdrom_t* cdrom) {}
 void cdrom_cmd_getlocp(psx_cdrom_t* cdrom) {}
 void cdrom_cmd_gettn(psx_cdrom_t* cdrom) {}
 void cdrom_cmd_gettd(psx_cdrom_t* cdrom) {}
-void cdrom_cmd_seekl(psx_cdrom_t* cdrom) {}
+void cdrom_cmd_seekl(psx_cdrom_t* cdrom) {
+    if (!cdrom->delayed_response_command) {
+        RESP_PUSH(cdrom->stat);
+        SEND_INT3(DELAY_1MS);
+
+        log_fatal("seekl: Seeking to address %08x", cdrom->seek_offset);
+
+        fseek(cdrom->disc, cdrom->seek_offset, 0);
+
+        cdrom->delayed_response_command = 0x15;
+    } else {
+        RESP_PUSH(cdrom->stat);
+        SEND_INT2(DELAY_1MS);
+
+        cdrom->delayed_response_command = 0;
+    }
+}
 void cdrom_cmd_seekp(psx_cdrom_t* cdrom) {}
-void cdrom_cmd_test(psx_cdrom_t* cdrom) {}
-void cdrom_cmd_getid(psx_cdrom_t* cdrom) {}
+void cdrom_cmd_test(psx_cdrom_t* cdrom) {
+    if (cdrom->pfifo_index != 1) {
+        log_fatal("test: Expected exactly 1 parameter");
+    }
+
+    switch (cdrom->pfifo[--cdrom->pfifo_index]) {
+        case 0x20: {
+            RESP_PUSH(0x01);
+            RESP_PUSH(0x95);
+            RESP_PUSH(0x13);
+            RESP_PUSH(0x03);
+            SEND_INT3(DELAY_1MS);
+        } break;
+    }
+
+    cdrom->delayed_response_command = 0;
+}
+void cdrom_cmd_getid(psx_cdrom_t* cdrom) {
+    if (!cdrom->delayed_response_command) {
+        RESP_PUSH(cdrom->stat);
+        SEND_INT3(DELAY_1MS);
+
+        cdrom->delayed_response_command = 0x1a;
+    } else {
+        if (!cdrom->disc) {
+            RESP_PUSH(0x00);
+            RESP_PUSH(0x00);
+            RESP_PUSH(0x00);
+            RESP_PUSH(0x00);
+            RESP_PUSH(0x00);
+            RESP_PUSH(0x00);
+            RESP_PUSH(0x40);
+        } else {
+            RESP_PUSH('A');
+            RESP_PUSH('A');
+            RESP_PUSH('A');
+            RESP_PUSH('A');
+            RESP_PUSH('A');
+            RESP_PUSH('A');
+            RESP_PUSH('A');
+        }
+
+        SEND_INT2(DELAY_1MS);
+
+        cdrom->delayed_response_command = 0;
+    }
+}
 void cdrom_cmd_reads(psx_cdrom_t* cdrom) {}
 void cdrom_cmd_readtoc(psx_cdrom_t* cdrom) {}
 
 typedef void (*cdrom_cmd_t)(psx_cdrom_t*);
+
+const char* g_psx_cdrom_command_names[] = {
+    "CdlUnimplemented",
+    "CdlGetstat",
+    "CdlSetloc",
+    "CdlUnimplemented",
+    "CdlUnimplemented",
+    "CdlUnimplemented",
+    "CdlReadn",
+    "CdlUnimplemented",
+    "CdlStop",
+    "CdlPause",
+    "CdlInit",
+    "CdlUnimplemented",
+    "CdlUnmute",
+    "CdlSetfilter",
+    "CdlSetmode",
+    "CdlUnimplemented",
+    "CdlGetlocl",
+    "CdlGetlocp",
+    "CdlUnimplemented",
+    "CdlGettn",
+    "CdlGettd",
+    "CdlSeekl",
+    "CdlSeekp",
+    "CdlUnimplemented",
+    "CdlUnimplemented",
+    "CdlTest",
+    "CdlGetid",
+    "CdlReads",
+    "CdlUnimplemented",
+    "CdlUnimplemented",
+    "CdlReadtoc",
+    "CdlUnimplemented"
+};
 
 cdrom_cmd_t g_psx_cdrom_command_table[] = {
     cdrom_cmd_unimplemented,
@@ -148,7 +353,7 @@ uint8_t cdrom_read_rfifo(psx_cdrom_t* cdrom) {
 
 uint8_t cdrom_read_dfifo(psx_cdrom_t* cdrom) {
     if (!cdrom->dfifo_full)
-        return 0x00;
+        return 0;
 
     int sector_size_bit = cdrom->mode & MODE_SECTOR_SIZE;
 
@@ -158,6 +363,8 @@ uint8_t cdrom_read_dfifo(psx_cdrom_t* cdrom) {
     if (cdrom->dfifo_index != read_sector_size) {
         return cdrom->dfifo[offset + (cdrom->dfifo_index++)];
     } else {
+        SET_BITS(status, STAT_DRQSTS_MASK, 0);
+
         cdrom->dfifo_full = 0;
     }
 
@@ -177,17 +384,18 @@ void cdrom_write_status(psx_cdrom_t* cdrom, uint8_t value) {
 }
 
 void cdrom_write_cmd(psx_cdrom_t* cdrom, uint8_t value) {
-    cdrom->delayed_response_command = 0;
-    cdrom->command = value;
-
-    log_fatal("    Command %02x (pfifo=%02x, %02x, %02x, %02x), pfifo_index=%u",
+    log_fatal("%s(%02x) params=[%02x, %02x, %02x, %02x, %02x, %02x]",
+        g_psx_cdrom_command_names[value],
         value,
         cdrom->pfifo[0],
         cdrom->pfifo[1],
         cdrom->pfifo[2],
         cdrom->pfifo[3],
-        cdrom->pfifo_index
+        cdrom->pfifo[4],
+        cdrom->pfifo[5]
     );
+
+    cdrom->delayed_response_command = 0;
 
     g_psx_cdrom_command_table[value](cdrom);
 }
@@ -224,6 +432,7 @@ void cdrom_write_ier(psx_cdrom_t* cdrom, uint8_t value) {
 void cdrom_write_ifr(psx_cdrom_t* cdrom, uint8_t value) {
     cdrom->ifr &= ~(value & 0x7);
 
+    // Clear Parameter FIFO
     if (value & 0x40) {
         cdrom->pfifo_index = 0;
 
@@ -233,6 +442,13 @@ void cdrom_write_ifr(psx_cdrom_t* cdrom, uint8_t value) {
             (STAT_PRMEMPT_MASK | STAT_PRMWRDY_MASK)
         );
     }
+
+    // Clear Response FIFO
+    // if (value & 0x7) {
+    //     cdrom->rfifo_index = 0;
+
+    //     SET_BITS(status, STAT_RSLRRDY_MASK, 0);
+    // }
 }
 
 void cdrom_write_sminfo(psx_cdrom_t* cdrom, uint8_t value) {
@@ -314,9 +530,11 @@ uint16_t psx_cdrom_read16(psx_cdrom_t* cdrom, uint32_t offset) {
 }
 
 uint8_t psx_cdrom_read8(psx_cdrom_t* cdrom, uint32_t offset) {
-    log_fatal("CDROM read -> %s", g_psx_cdrom_read_names_table[(STAT_INDEX << 2) | offset]);
+    uint8_t data = g_psx_cdrom_read_table[(STAT_INDEX << 2) | offset](cdrom);
 
-    return g_psx_cdrom_read_table[(STAT_INDEX << 2) | offset](cdrom);
+    // log_fatal("%s (read %02x)", g_psx_cdrom_read_names_table[(STAT_INDEX << 2) | offset], data);
+
+    return data;
 }
 
 void psx_cdrom_write32(psx_cdrom_t* cdrom, uint32_t offset, uint32_t value) {
@@ -328,7 +546,7 @@ void psx_cdrom_write16(psx_cdrom_t* cdrom, uint32_t offset, uint16_t value) {
 }
 
 void psx_cdrom_write8(psx_cdrom_t* cdrom, uint32_t offset, uint8_t value) {
-    log_fatal("CDROM write -> %s (%02x)", g_psx_cdrom_write_names_table[(STAT_INDEX << 2) | offset], value);
+    // log_fatal("%s (write %02x)", g_psx_cdrom_write_names_table[(STAT_INDEX << 2) | offset], value);
 
     g_psx_cdrom_write_table[(STAT_INDEX << 2) | offset](cdrom, value);
 }
@@ -338,6 +556,13 @@ void psx_cdrom_update(psx_cdrom_t* cdrom) {
         cdrom->irq_delay -= 2;
 
         if (cdrom->irq_delay <= 0) {
+            if (cdrom->int_number) {
+                SET_BITS(ifr, IFR_INT, cdrom->int_number);
+
+                cdrom->int_number = 0;
+            }
+
+            log_fatal("CDROM INT%u", cdrom->ifr & 0x7);
             psx_ic_irq(cdrom->ic, IC_CDROM);
 
             cdrom->irq_delay = 0;

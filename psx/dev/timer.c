@@ -49,7 +49,7 @@ uint32_t psx_timer_read32(psx_timer_t* timer, uint32_t offset) {
     int index = offset >> 4;
     int reg = offset & 0xf;
 
-    log_fatal("Timer %u %s read32", index, g_psx_timer_reg_names[reg]);
+    //log_fatal("Timer %u %s read32", index, g_psx_timer_reg_names[reg]);
 
     switch (reg) {
         case 0: return timer->timer[index].counter;
@@ -70,7 +70,7 @@ uint16_t psx_timer_read16(psx_timer_t* timer, uint32_t offset) {
     int index = offset >> 4;
     int reg = offset & 0xf;
 
-    log_fatal("Timer %u %s read16", index, g_psx_timer_reg_names[reg]);
+    //log_fatal("Timer %u %s read16 %04x", index, g_psx_timer_reg_names[reg], timer->timer[index].counter);
 
     switch (reg) {
         case 0: return timer->timer[index].counter;
@@ -97,12 +97,11 @@ void psx_timer_write32(psx_timer_t* timer, uint32_t offset, uint32_t value) {
     int index = offset >> 4;
     int reg = offset & 0xf;
 
-    log_fatal("Timer %u %s write32 %08x", index, g_psx_timer_reg_names[reg], value);
+    //log_fatal("Timer %u %s write32 %08x", index, g_psx_timer_reg_names[reg], value);
 
     switch (reg) {
         case 0: {
             timer->timer[index].counter = value;
-            timer->f_counter[index] = value;
         } return;
         case 4: {
             timer->timer[index].mode = value;
@@ -124,14 +123,15 @@ void psx_timer_write16(psx_timer_t* timer, uint32_t offset, uint16_t value) {
     switch (reg) {
         case 0: {
             timer->timer[index].counter = value;
-            timer->f_counter[index] = value;
         } return;
         case 4: {
             timer->timer[index].mode = value;
             timer->timer[index].mode |= 0x400;
             timer->timer[index].irq_fired = 0;
         } return;
-        case 8: timer->timer[index].target = value; return;
+        case 8: {
+            timer->timer[index].target = value;
+        } return;
     }
 
     log_fatal("Unhandled 16-bit TIMER write at offset %08x (%02x)", offset, value);
@@ -142,7 +142,8 @@ void psx_timer_write8(psx_timer_t* timer, uint32_t offset, uint8_t value) {
 }
 
 void timer_update_timer0(psx_timer_t* timer, int cyc) {
-    T0_PREV = T0_COUNTER;
+    int reached_target = ((uint32_t)T0_COUNTER + cyc) >= T0_TARGET;
+    int reached_max = ((uint32_t)T0_COUNTER + cyc) >= 0xffff;
 
     // Dotclock unsupported
     // if (T0_MODE & 0x100)
@@ -151,9 +152,6 @@ void timer_update_timer0(psx_timer_t* timer, int cyc) {
         T0_COUNTER += cyc;
 
     int can_fire_irq = (T0_MODE & MODE_IRQRMD) || !T0_IRQ_FIRED;
-
-    int reached_target = (T0_PREV <= T0_TARGET) && (T0_COUNTER >= T0_TARGET);
-    int reached_max = (T0_PREV <= 0xffff) && (T0_COUNTER >= 0xffff);
 
     int target_irq = reached_target && (T0_MODE & MODE_TGTIRQ);
     int max_irq = reached_max && (T0_MODE & MODE_MAXIRQ);
@@ -185,16 +183,20 @@ void timer_update_timer0(psx_timer_t* timer, int cyc) {
 }
 
 void timer_update_timer1(psx_timer_t* timer, int cyc) {
-    T1_PREV = T1_COUNTER;
+    int reached_target, reached_max;
 
-    // Hblank increment is done in handler
-    if ((!T1_PAUSED) && !(T1_MODE & 0x100))
-        T1_COUNTER += cyc;
+    if (T1_MODE & 0x100) {
+        reached_target = T1_COUNTER == T1_TARGET;
+        reached_max = T1_COUNTER == 0xffff;
+    } else {
+        reached_target = ((uint32_t)T1_COUNTER + cyc) >= T1_TARGET;
+        reached_max = ((uint32_t)T1_COUNTER + cyc) >= 0xffff;
 
+        if (!T1_PAUSED)
+            T1_COUNTER += cyc;
+    }
+    
     int can_fire_irq = (T1_MODE & MODE_IRQRMD) || !T1_IRQ_FIRED;
-
-    int reached_target = (T1_PREV <= T1_TARGET) && (T1_COUNTER >= T1_TARGET);
-    int reached_max = (T1_PREV <= 0xffff) && (T1_COUNTER >= 0xffff);
 
     int target_irq = reached_target && (T1_MODE & MODE_TGTIRQ);
     int max_irq = reached_max && (T1_MODE & MODE_MAXIRQ);
@@ -214,14 +216,12 @@ void timer_update_timer1(psx_timer_t* timer, int cyc) {
 
         timer->timer[0].irq_fired = 1;
 
-        psx_ic_irq(timer->ic, IC_TIMER0);
+        psx_ic_irq(timer->ic, IC_TIMER1);
     }
 
     if (T1_MODE & MODE_RESETC) {
         if (reached_target)
             T1_COUNTER -= T1_TARGET;
-    } else {
-        T1_COUNTER -= 0xffff;
     }
 }
 
