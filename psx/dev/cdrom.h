@@ -17,6 +17,42 @@
 #define CD_SECTOR_SIZE 0x930
 #define CD_SECTORS_PER_SECOND 75
 
+#define CD_STATE_CMD   0
+#define CD_STATE_RESP1 1
+#define CD_STATE_RESP2 2
+#define CD_STATE_ERROR 3
+
+#define CDL_NONE        0x00
+#define CDL_GETSTAT     0x01
+#define CDL_SETLOC      0x02
+#define CDL_PLAY        0x03
+#define CDL_FORWARD     0x04
+#define CDL_BACKWARD    0x05
+#define CDL_READN       0x06
+#define CDL_MOTORON     0x07
+#define CDL_STOP        0x08
+#define CDL_PAUSE       0x09
+#define CDL_INIT        0x0a
+#define CDL_MUTE        0x0b
+#define CDL_DEMUTE      0x0c
+#define CDL_SETFILTER   0x0d
+#define CDL_SETMODE     0x0e
+#define CDL_GETPARAM    0x0f
+#define CDL_GETLOCL     0x10
+#define CDL_GETLOCP     0x11
+#define CDL_SETSESSION  0x12
+#define CDL_GETTN       0x13
+#define CDL_GETTD       0x14
+#define CDL_SEEKL       0x15
+#define CDL_SEEKP       0x16
+#define CDL_TEST        0x19
+#define CDL_GETID       0x1a
+#define CDL_READS       0x1b
+#define CDL_RESET       0x1c
+#define CDL_GETQ        0x1d
+#define CDL_READTOC     0x1e
+#define CDL_ERROR       0x1f
+
 #define STAT_INDEX_MASK   0x3
 #define STAT_ADPBUSY_MASK 0x4
 #define STAT_PRMEMPT_MASK 0x8
@@ -116,9 +152,11 @@ typedef struct {
 
     int irq_delay;
     uint8_t command;
-    uint8_t delayed_response_command;
+    uint8_t delayed_command;
     uint8_t int_number;
+    int state;
     int delayed_response;
+    int spin_delay;
 
     const char* path;
     FILE* disc;
