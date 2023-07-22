@@ -30,6 +30,8 @@ typedef struct {
     dma_channel_t pio;
     dma_channel_t otc;
 
+    int cdrom_irq_delay;
+
     uint32_t dpcr;
     uint32_t dicr;
 } psx_dma_t;
@@ -51,6 +53,7 @@ void psx_dma_write32(psx_dma_t*, uint32_t, uint32_t);
 void psx_dma_write16(psx_dma_t*, uint32_t, uint16_t);
 void psx_dma_write8(psx_dma_t*, uint32_t, uint8_t);
 void psx_dma_destroy(psx_dma_t*);
+void psx_dma_update(psx_dma_t*, int);
 
 typedef void (*psx_dma_do_fn_t)(psx_dma_t*);
 

@@ -231,17 +231,17 @@ void psx_dma_do_gpu(psx_dma_t* dma) {
 
     g_psx_dma_gpu_table[CHCR_SYNC(gpu)](dma);
 
-    if (dma->dicr & 0x00040000) {
-        dma->dicr |= 0x04000000;
+    // if (dma->dicr & 0x00040000) {
+    //     dma->dicr |= 0x04000000;
 
-        if ((dma->dicr & 0x8000) || ((dma->dicr & 0x800000) && (dma->dicr & 0x7f000000))) {
-            dma->dicr |= 0x80000000;
+    //     if ((dma->dicr & 0x8000) || ((dma->dicr & 0x800000) && (dma->dicr & 0x7f000000))) {
+    //         dma->dicr |= 0x80000000;
 
-            psx_ic_irq(dma->ic, IC_DMA);
-        } else {
-            dma->dicr &= 0x7fffffff;
-        }
-    }
+    //         psx_ic_irq(dma->ic, IC_DMA);
+    //     } else {
+    //         dma->dicr &= 0x7fffffff;
+    //     }
+    // }
 
     // Clear BCR and CHCR trigger and busy bits
     dma->gpu.chcr &= ~(CHCR_BUSY_MASK | CHCR_TRIG_MASK);
@@ -261,6 +261,14 @@ void psx_dma_do_cdrom(psx_dma_t* dma) {
     );
 
     uint32_t size = BCR_SIZE(cdrom) * BCR_BCNT(cdrom);
+
+    if (!size) {
+        log_fatal("0 sized CDROM DMA");
+
+        exit(1);
+    }
+
+    dma->cdrom_irq_delay = size * 24;
 
     if (!CHCR_TDIR(cdrom)) {
         for (int i = 0; i < size; i++) {
@@ -283,18 +291,6 @@ void psx_dma_do_cdrom(psx_dma_t* dma) {
     dma->cdrom.chcr = 0;
     //dma->otc.chcr &= ~(CHCR_BUSY_MASK | CHCR_TRIG_MASK);
     dma->cdrom.bcr = 0;
-
-    if (dma->dicr & 0x00400000) {
-        dma->dicr |= 0x40000000;
-
-        if ((dma->dicr & 0x8000) || ((dma->dicr & 0x800000) && (dma->dicr & 0x7f000000))) {
-            dma->dicr |= 0x80000000;
-
-            psx_ic_irq(dma->ic, IC_DMA);
-        } else {
-            dma->dicr &= 0x7fffffff;
-        }
-    }
 }
 
 void psx_dma_do_spu(psx_dma_t* dma) {
@@ -330,15 +326,39 @@ void psx_dma_do_otc(psx_dma_t* dma) {
     //dma->otc.chcr &= ~(CHCR_BUSY_MASK | CHCR_TRIG_MASK);
     dma->otc.bcr = 0;
 
-    if (dma->dicr & 0x00400000) {
-        dma->dicr |= 0x40000000;
+    // if (dma->dicr & 0x00400000) {
+    //     dma->dicr |= 0x40000000;
 
-        if ((dma->dicr & 0x8000) || ((dma->dicr & 0x800000) && (dma->dicr & 0x7f000000))) {
-            dma->dicr |= 0x80000000;
+    //     if ((dma->dicr & 0x8000) || ((dma->dicr & 0x800000) && (dma->dicr & 0x7f000000))) {
+    //         dma->dicr |= 0x80000000;
 
-            psx_ic_irq(dma->ic, IC_DMA);
-        } else {
-            dma->dicr &= 0x7fffffff;
+    //         psx_ic_irq(dma->ic, IC_DMA);
+    //     } else {
+    //         dma->dicr &= 0x7fffffff;
+    //     }
+    // }
+}
+
+void psx_dma_update(psx_dma_t* dma, int cyc) {
+    if (dma->cdrom_irq_delay) {
+        dma->cdrom_irq_delay -= cyc;
+
+        if (dma->cdrom_irq_delay <= 0) {
+            if (dma->dicr & 0x00400000) {
+                dma->dicr |= 0x40000000;
+
+                if ((dma->dicr & 0x8000) || ((dma->dicr & 0x800000) && (dma->dicr & 0x7f000000))) {
+                    dma->dicr |= 0x80000000;
+
+                    log_fatal("DMA IRQ!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+
+                    psx_ic_irq(dma->ic, IC_DMA);
+                } else {
+                    dma->dicr &= 0x7fffffff;
+                }
+            }
+
+            dma->cdrom_irq_delay = 0;
         }
     }
 }

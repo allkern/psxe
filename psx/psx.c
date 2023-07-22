@@ -30,6 +30,7 @@ void psx_update(psx_t* psx) {
     psx_gpu_update(psx->gpu, psx->cpu->last_cycles);
     psx_pad_update(psx->pad, psx->cpu->last_cycles);
     psx_timer_update(psx->timer, psx->cpu->last_cycles);
+    psx_dma_update(psx->dma, psx->cpu->last_cycles);
 }
 
 void psx_run_frame(psx_t* psx) {
