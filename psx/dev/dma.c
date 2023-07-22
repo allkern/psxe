@@ -99,25 +99,15 @@ void psx_dma_write32(psx_dma_t* dma, uint32_t offset, uint32_t value) {
         switch (offset) {
             case 0x70: log_error("DMA control write %08x", value); dma->dpcr = value; break;
             case 0x74: {
-                value &= 0x7fffffff;
+                // IRQ signal is read-only
+                value &= ~DICR_IRQSI;
 
-                uint32_t irqf = (dma->dicr >> 24) & 0x7f;
-                uint32_t irqfr = (value >> 24) & 0x7f;
+                // Reset flags
+                dma->dicr &= ~(value & DICR_FLAGS);
 
-                dma->dicr &= ~0x7f000000;
-
-                irqf &= ~irqfr;
-                irqf &= 0x7f;
-
-                dma->dicr |= irqf << 24;
-
-                if (dma->dicr & 0x00008000) {
-                    dma->dicr |= 0x80000000;
-
-                    psx_ic_irq(dma->ic, IC_DMA);
-                }
-                
-                log_error("DMA irqc    write %08x irqfr=%08x", value, irqfr);
+                // Write other fields
+                dma->dicr &= DICR_FLAGS;
+                dma->dicr |= value & (~DICR_FLAGS);
             } break;
 
             default: {
@@ -130,7 +120,9 @@ void psx_dma_write32(psx_dma_t* dma, uint32_t offset, uint32_t value) {
 void psx_dma_write16(psx_dma_t* dma, uint32_t offset, uint16_t value) {
     switch (offset) {
         default: {
-            log_error("Unhandled 16-bit DMA write at offset %08x (%04x)", offset, value);
+            log_fatal("Unhandled 16-bit DMA write at offset %08x (%04x)", offset, value);
+
+            exit(1);
         } break;
     }
 }
@@ -138,7 +130,9 @@ void psx_dma_write16(psx_dma_t* dma, uint32_t offset, uint16_t value) {
 void psx_dma_write8(psx_dma_t* dma, uint32_t offset, uint8_t value) {
     switch (offset) {
         default: {
-            log_error("Unhandled 8-bit DMA write at offset %08x (%02x)", offset, value);
+            log_fatal("Unhandled 8-bit DMA write at offset %08x (%02x)", offset, value);
+
+            exit(1);
         } break;
     }
 }
@@ -260,6 +254,13 @@ void psx_dma_do_cdrom(psx_dma_t* dma) {
         BCR_SIZE(cdrom)
     );
 
+    log_fatal("DICR: force=%u, en=%02x, irqen=%u, flags=%02x",
+        (dma->dicr >> 15) & 1,
+        (dma->dicr >> 16) & 0x7f,
+        (dma->dicr >> 23) & 1,
+        (dma->dicr >> 24) & 0x7f
+    );
+
     uint32_t size = BCR_SIZE(cdrom) * BCR_BCNT(cdrom);
 
     if (!size) {
@@ -325,18 +326,6 @@ void psx_dma_do_otc(psx_dma_t* dma) {
     dma->otc.chcr = 0;
     //dma->otc.chcr &= ~(CHCR_BUSY_MASK | CHCR_TRIG_MASK);
     dma->otc.bcr = 0;
-
-    // if (dma->dicr & 0x00400000) {
-    //     dma->dicr |= 0x40000000;
-
-    //     if ((dma->dicr & 0x8000) || ((dma->dicr & 0x800000) && (dma->dicr & 0x7f000000))) {
-    //         dma->dicr |= 0x80000000;
-
-    //         psx_ic_irq(dma->ic, IC_DMA);
-    //     } else {
-    //         dma->dicr &= 0x7fffffff;
-    //     }
-    // }
 }
 
 void psx_dma_update(psx_dma_t* dma, int cyc) {
@@ -344,23 +333,25 @@ void psx_dma_update(psx_dma_t* dma, int cyc) {
         dma->cdrom_irq_delay -= cyc;
 
         if (dma->cdrom_irq_delay <= 0) {
-            if (dma->dicr & 0x00400000) {
-                dma->dicr |= 0x40000000;
-
-                if ((dma->dicr & 0x8000) || ((dma->dicr & 0x800000) && (dma->dicr & 0x7f000000))) {
-                    dma->dicr |= 0x80000000;
-
-                    log_fatal("DMA IRQ!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-
-                    psx_ic_irq(dma->ic, IC_DMA);
-                } else {
-                    dma->dicr &= 0x7fffffff;
-                }
-            }
+            if (dma->dicr & DICR_DMA3EN)
+                dma->dicr |= DICR_DMA3FL;
 
             dma->cdrom_irq_delay = 0;
         }
     }
+
+    int prev_irq_signal = (dma->dicr & DICR_IRQSI) != 0;
+    int irq_on_flags = (dma->dicr & DICR_IRQEN) != 0;
+    int force_irq = (dma->dicr & DICR_FORCE) != 0;
+    int irq = (dma->dicr & DICR_FLAGS) != 0;
+
+    int irq_signal = force_irq || (irq && irq_on_flags);
+
+    if (irq_signal && !prev_irq_signal)
+        psx_ic_irq(dma->ic, IC_DMA);
+    
+    dma->dicr &= ~DICR_IRQSI;
+    dma->dicr |= irq_signal << 31;
 }
 
 void psx_dma_destroy(psx_dma_t* dma) {

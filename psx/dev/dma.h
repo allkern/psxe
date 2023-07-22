@@ -105,7 +105,34 @@ typedef void (*psx_dma_do_fn_t)(psx_dma_t*);
 #define BCR_SIZE(c) (dma->c.bcr & 0xffff)
 #define BCR_BCNT(c) ((dma->c.bcr >> 16) & 0xffff)
 
-#define DICR_FIRQ 0x00008000
-#define DICR_IRQE 0x00000000
+/*
+  0-5   Unknown  (read/write-able)
+  6-14  Not used (always zero)
+  15    Force IRQ (sets bit31)                        (0=None, 1=Force Bit31=1)
+  16-22 IRQ Enable setting bit24-30 upon DMA0..DMA6    (0=None, 1=Enable)
+  23    IRQ Enable setting bit31 when bit24-30=nonzero (0=None, 1=Enable)
+  24-30 IRQ Flags for DMA0..DMA6    (Write 1 to reset) (0=None, 1=IRQ)
+  31    IRQ Signal (0-to-1 triggers 1F801070h.bit3)    (0=None, 1=IRQ) (R)
+*/
+
+#define DICR_FORCE 0x00008000
+#define DICR_FLGEN 0x007f0000
+#define DICR_IRQEN 0x00800000
+#define DICR_FLAGS 0x7f000000
+#define DICR_IRQSI 0x80000000
+#define DICR_DMA0EN 0x00010000
+#define DICR_DMA1EN 0x00020000
+#define DICR_DMA2EN 0x00040000
+#define DICR_DMA3EN 0x00080000
+#define DICR_DMA4EN 0x00100000
+#define DICR_DMA5EN 0x00200000
+#define DICR_DMA6EN 0x00400000
+#define DICR_DMA0FL 0x01000000
+#define DICR_DMA1FL 0x02000000
+#define DICR_DMA2FL 0x04000000
+#define DICR_DMA3FL 0x08000000
+#define DICR_DMA4FL 0x10000000
+#define DICR_DMA5FL 0x20000000
+#define DICR_DMA6FL 0x40000000
 
 #endif
