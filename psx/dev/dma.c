@@ -225,18 +225,6 @@ void psx_dma_do_gpu(psx_dma_t* dma) {
 
     g_psx_dma_gpu_table[CHCR_SYNC(gpu)](dma);
 
-    // if (dma->dicr & 0x00040000) {
-    //     dma->dicr |= 0x04000000;
-
-    //     if ((dma->dicr & 0x8000) || ((dma->dicr & 0x800000) && (dma->dicr & 0x7f000000))) {
-    //         dma->dicr |= 0x80000000;
-
-    //         psx_ic_irq(dma->ic, IC_DMA);
-    //     } else {
-    //         dma->dicr &= 0x7fffffff;
-    //     }
-    // }
-
     // Clear BCR and CHCR trigger and busy bits
     dma->gpu.chcr &= ~(CHCR_BUSY_MASK | CHCR_TRIG_MASK);
     dma->gpu.bcr = 0;
@@ -295,11 +283,59 @@ void psx_dma_do_cdrom(psx_dma_t* dma) {
 }
 
 void psx_dma_do_spu(psx_dma_t* dma) {
-    log_error("SPU DMA channel unimplemented"); exit(1);
+    if (!CHCR_BUSY(spu))
+        return;
+    
+    log_fatal("SPU DMA transfer: madr=%08x, dir=%s, sync=%s (%u), step=%s, size=%x",
+        dma->spu.madr,
+        CHCR_TDIR(spu) ? "to device" : "to RAM",
+        g_psx_dma_sync_type_name_table[CHCR_SYNC(spu)], CHCR_SYNC(spu),
+        CHCR_STEP(spu) ? "decrementing" : "incrementing",
+        BCR_SIZE(spu)
+    );
+
+    log_fatal("DICR: force=%u, en=%02x, irqen=%u, flags=%02x",
+        (dma->dicr >> 15) & 1,
+        (dma->dicr >> 16) & 0x7f,
+        (dma->dicr >> 23) & 1,
+        (dma->dicr >> 24) & 0x7f
+    );
+
+    uint32_t size = BCR_SIZE(spu) * BCR_BCNT(spu);
+
+    if (!size) {
+        log_fatal("0 sized SPU DMA");
+
+        exit(1);
+    }
+
+    dma->spu_irq_delay = size * 4;
+
+    if (!CHCR_TDIR(spu)) {
+        for (int i = 0; i < size; i++) {
+            uint32_t data = 0;
+            
+            data |= psx_bus_read8(dma->bus, 0x1f801802) << 0;
+            data |= psx_bus_read8(dma->bus, 0x1f801802) << 8;
+            data |= psx_bus_read8(dma->bus, 0x1f801802) << 16;
+            data |= psx_bus_read8(dma->bus, 0x1f801802) << 24;
+
+            psx_bus_write32(dma->bus, dma->spu.madr, data);
+
+            dma->spu.madr += CHCR_STEP(spu) ? -4 : 4;
+        }
+    } else {
+        log_fatal("Invalid SPU DMA transfer direction");
+    }
+    
+    // Clear BCR and CHCR trigger and busy bits
+    dma->spu.chcr = 0;
+    //dma->otc.chcr &= ~(CHCR_BUSY_MASK | CHCR_TRIG_MASK);
+    dma->spu.bcr = 0;
 }
 
 void psx_dma_do_pio(psx_dma_t* dma) {
-    log_error("PIO DMA channel unimplemented"); exit(1);
+    log_fatal("PIO DMA channel unimplemented"); exit(1);
 }
 
 void psx_dma_do_otc(psx_dma_t* dma) {
@@ -337,6 +373,17 @@ void psx_dma_update(psx_dma_t* dma, int cyc) {
                 dma->dicr |= DICR_DMA3FL;
 
             dma->cdrom_irq_delay = 0;
+        }
+    }
+
+    if (dma->spu_irq_delay) {
+        dma->spu_irq_delay -= cyc;
+
+        if (dma->spu_irq_delay <= 0) {
+            if (dma->dicr & DICR_DMA4EN)
+                dma->dicr |= DICR_DMA4FL;
+
+            dma->spu_irq_delay = 0;
         }
     }
 

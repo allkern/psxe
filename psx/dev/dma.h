@@ -31,6 +31,7 @@ typedef struct {
     dma_channel_t otc;
 
     int cdrom_irq_delay;
+    int spu_irq_delay;
 
     uint32_t dpcr;
     uint32_t dicr;
