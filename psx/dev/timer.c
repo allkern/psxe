@@ -177,8 +177,6 @@ void timer_update_timer0(psx_timer_t* timer, int cyc) {
     if (T0_MODE & MODE_RESETC) {
         if (reached_target)
             T0_COUNTER -= T0_TARGET;
-    } else {
-        T0_COUNTER -= 0xffff;
     }
 }
 

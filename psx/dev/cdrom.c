@@ -401,14 +401,26 @@ void cdrom_cmd_getid(psx_cdrom_t* cdrom) {
 
         case CD_STATE_RESP2: {
             SET_BITS(ifr, IFR_INT, 2);
-            RESP_PUSH(0x41);
-            RESP_PUSH(0x45);
-            RESP_PUSH(0x43);
-            RESP_PUSH(0x53);
-            RESP_PUSH(0x00);
-            RESP_PUSH(0x20);
-            RESP_PUSH(0x00);
-            RESP_PUSH(0x02);
+
+            if (cdrom->disc) {
+                RESP_PUSH(0x41);
+                RESP_PUSH(0x45);
+                RESP_PUSH(0x43);
+                RESP_PUSH(0x53);
+                RESP_PUSH(0x00);
+                RESP_PUSH(0x20);
+                RESP_PUSH(0x00);
+                RESP_PUSH(0x02);
+            } else {
+                RESP_PUSH(0x00);
+                RESP_PUSH(0x00);
+                RESP_PUSH(0x00);
+                RESP_PUSH(0x00);
+                RESP_PUSH(0x00);
+                RESP_PUSH(0x00);
+                RESP_PUSH(0x40);
+                RESP_PUSH(0x08);
+            }
 
             cdrom->state = CD_STATE_CMD;
             cdrom->delayed_command = CDL_NONE;
