@@ -78,6 +78,7 @@ struct psx_gpu_t {
     uint32_t c0_addr;
     int c0_xsiz, c0_ysiz;
     int c0_tsiz;
+    int gp1_10h_req;
 
     // GPU state
     uint32_t state;

@@ -32,6 +32,8 @@ typedef struct {
 
     int cdrom_irq_delay;
     int spu_irq_delay;
+    int gpu_irq_delay;
+    int otc_irq_delay;
 
     uint32_t dpcr;
     uint32_t dicr;

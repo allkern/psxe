@@ -306,8 +306,58 @@ void cdrom_cmd_setmode(psx_cdrom_t* cdrom) {
 }
 void cdrom_cmd_getlocl(psx_cdrom_t* cdrom) { log_fatal("getlocl: Unimplemented"); exit(1); }
 void cdrom_cmd_getlocp(psx_cdrom_t* cdrom) { log_fatal("getlocp: Unimplemented"); exit(1); }
-void cdrom_cmd_gettn(psx_cdrom_t* cdrom) { log_fatal("gettn: Unimplemented"); exit(1); }
-void cdrom_cmd_gettd(psx_cdrom_t* cdrom) { log_fatal("gettd: Unimplemented"); exit(1); }
+void cdrom_cmd_gettn(psx_cdrom_t* cdrom) {
+    switch (cdrom->state) {
+        case CD_STATE_CMD: {
+            if (cdrom->pfifo_index) {
+                log_fatal("CdlGetTN: Expected exactly 0 parameters");
+
+                return;
+            }
+
+            cdrom->irq_delay = DELAY_1MS;
+            cdrom->delayed_command = CDL_GETTN;
+            cdrom->state = CD_STATE_RESP1;
+        } break;
+
+        case CD_STATE_RESP1: {
+            SET_BITS(ifr, IFR_INT, IFR_INT3);
+            RESP_PUSH(0x14);
+            RESP_PUSH(0x01);
+            RESP_PUSH(cdrom->stat);
+
+            cdrom->delayed_command = CDL_NONE;
+            cdrom->state = CD_STATE_CMD;
+        } break;
+    }
+}
+void cdrom_cmd_gettd(psx_cdrom_t* cdrom) {
+    switch (cdrom->state) {
+        case CD_STATE_CMD: {
+            if (cdrom->pfifo_index != 1) {
+                log_fatal("CdlGetTD: Expected exactly 0 parameters");
+
+                return;
+            }
+
+            int track = PFIFO_POP;
+
+            cdrom->irq_delay = DELAY_1MS;
+            cdrom->delayed_command = CDL_GETTD;
+            cdrom->state = CD_STATE_RESP1;
+        } break;
+
+        case CD_STATE_RESP1: {
+            SET_BITS(ifr, IFR_INT, IFR_INT3);
+            RESP_PUSH(0x14);
+            RESP_PUSH(0x01);
+            RESP_PUSH(cdrom->stat);
+
+            cdrom->delayed_command = CDL_NONE;
+            cdrom->state = CD_STATE_CMD;
+        } break;
+    }
+}
 void cdrom_cmd_seekl(psx_cdrom_t* cdrom) {
     switch (cdrom->state) {
         case CD_STATE_CMD: {
@@ -427,7 +477,58 @@ void cdrom_cmd_getid(psx_cdrom_t* cdrom) {
         } break;
     }
 }
-void cdrom_cmd_reads(psx_cdrom_t* cdrom) { log_fatal("reads: Unimplemented"); exit(1); }
+void cdrom_cmd_reads(psx_cdrom_t* cdrom) {
+    switch (cdrom->state) {
+        case CD_STATE_CMD: {
+            log_fatal("CdlReadS: CD_STATE_CMD");
+            cdrom->irq_delay = DELAY_1MS;
+            cdrom->state = CD_STATE_RESP1;
+            cdrom->delayed_command = CDL_READS;
+        } break;
+
+        case CD_STATE_RESP1: {
+            log_fatal("CdlReadS: CD_STATE_RESP1");
+
+            SET_BITS(ifr, IFR_INT, 3);
+            RESP_PUSH(GETSTAT_MOTOR);
+
+            fseek(cdrom->disc, cdrom->seek_offset, 0);
+
+            int double_speed = cdrom->mode & MODE_SPEED;
+
+            cdrom->irq_delay = double_speed ? READ_DOUBLE_DELAY : READ_SINGLE_DELAY;
+            cdrom->state = CD_STATE_RESP2;
+            cdrom->delayed_command = CDL_READS;
+
+            if (cdrom->spin_delay) {
+                cdrom->irq_delay += cdrom->spin_delay;
+                cdrom->spin_delay = 0;
+            }
+        } break;
+
+        case CD_STATE_RESP2: {
+            log_fatal("CdlReadS: CD_STATE_RESP2");
+
+            SET_BITS(ifr, IFR_INT, 1);
+            RESP_PUSH(GETSTAT_MOTOR | GETSTAT_READ);
+
+            log_fatal("Reading data from disc. offset=%02x:%02x:%02x (%08x, tellg=%08x)",
+                cdrom->seek_mm, cdrom->seek_ss, cdrom->seek_sect,
+                cdrom->seek_offset, ftell(cdrom->disc)
+            );
+
+            cdrom->dfifo_index = 0;
+
+            fread(cdrom->dfifo, 1, CD_SECTOR_SIZE, cdrom->disc);
+
+            int double_speed = cdrom->mode & MODE_SPEED;
+
+            cdrom->irq_delay = double_speed ? READ_DOUBLE_DELAY : READ_SINGLE_DELAY;
+            cdrom->state = CD_STATE_CMD;
+            cdrom->delayed_command = CDL_NONE;
+        } break;
+    }
+}
 void cdrom_cmd_readtoc(psx_cdrom_t* cdrom) { log_fatal("readtoc: Unimplemented"); exit(1); }
 
 typedef void (*cdrom_cmd_t)(psx_cdrom_t*);

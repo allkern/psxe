@@ -39,12 +39,22 @@ void psxi_sda_write(void* udata, uint16_t data) {
                 sda->tx_data = 0xff;
                 sda->state = SDA_STATE_WFR;
             }
+
+            // Memory card access
+            if (data == 0x81) {
+                sda->tx_data_ready = 1;
+                sda->tx_data = 0xff;
+                sda->state = SDA_STATE_WFR;
+            }
         } break;
 
         case SDA_STATE_WFR: {
             if (data == 'B') {
                 sda->tx_data = sda->model;
                 sda->state = SDA_STATE_TX_IDH;
+            } else if (data == 'R') {
+                sda->tx_data = 0xff;
+                sda->state = SDA_STATE_WFR;
             }
         } break;
 

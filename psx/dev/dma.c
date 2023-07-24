@@ -106,8 +106,11 @@ void psx_dma_write32(psx_dma_t* dma, uint32_t offset, uint32_t value) {
                 dma->dicr &= ~(value & DICR_FLAGS);
 
                 // Write other fields
-                dma->dicr &= DICR_FLAGS;
+                uint32_t flags = dma->dicr & DICR_FLAGS;
+
+                dma->dicr &= ~DICR_FLAGS;
                 dma->dicr |= value & (~DICR_FLAGS);
+                dma->dicr |= flags;
             } break;
 
             default: {
@@ -122,7 +125,7 @@ void psx_dma_write16(psx_dma_t* dma, uint32_t offset, uint16_t value) {
         default: {
             log_fatal("Unhandled 16-bit DMA write at offset %08x (%04x)", offset, value);
 
-            exit(1);
+            //exit(1);
         } break;
     }
 }
@@ -132,7 +135,7 @@ void psx_dma_write8(psx_dma_t* dma, uint32_t offset, uint8_t value) {
         default: {
             log_fatal("Unhandled 8-bit DMA write at offset %08x (%02x)", offset, value);
 
-            exit(1);
+            //exit(1);
         } break;
     }
 }
@@ -152,6 +155,8 @@ void psx_dma_do_gpu_linked(psx_dma_t* dma) {
     uint32_t size = hdr >> 24;
     uint32_t addr = dma->gpu.madr;
 
+    int count = 0;
+
     while (true) {
         while (size--) {
             addr = (addr + (CHCR_STEP(gpu) ? -4 : 4)) & 0x1ffffc;
@@ -161,6 +166,8 @@ void psx_dma_do_gpu_linked(psx_dma_t* dma) {
 
             // Write to GP0
             psx_bus_write32(dma->bus, 0x1f801810, cmd);
+
+            dma->gpu_irq_delay++;
         }
 
         addr = hdr & 0xffffff;
@@ -195,6 +202,8 @@ void psx_dma_do_gpu_request(psx_dma_t* dma) {
             dma->gpu.madr += CHCR_STEP(gpu) ? -4 : 4;
         }
     }
+
+    dma->gpu_irq_delay = size;
 }
 
 void psx_dma_do_gpu_burst(psx_dma_t* dma) {
@@ -249,7 +258,7 @@ void psx_dma_do_cdrom(psx_dma_t* dma) {
         (dma->dicr >> 24) & 0x7f
     );
 
-    uint32_t size = BCR_SIZE(cdrom) * BCR_BCNT(cdrom);
+    uint32_t size = BCR_SIZE(cdrom);
 
     if (!size) {
         log_fatal("0 sized CDROM DMA");
@@ -310,23 +319,6 @@ void psx_dma_do_spu(psx_dma_t* dma) {
     }
 
     dma->spu_irq_delay = size * 4;
-
-    if (!CHCR_TDIR(spu)) {
-        for (int i = 0; i < size; i++) {
-            uint32_t data = 0;
-            
-            data |= psx_bus_read8(dma->bus, 0x1f801802) << 0;
-            data |= psx_bus_read8(dma->bus, 0x1f801802) << 8;
-            data |= psx_bus_read8(dma->bus, 0x1f801802) << 16;
-            data |= psx_bus_read8(dma->bus, 0x1f801802) << 24;
-
-            psx_bus_write32(dma->bus, dma->spu.madr, data);
-
-            dma->spu.madr += CHCR_STEP(spu) ? -4 : 4;
-        }
-    } else {
-        log_fatal("Invalid SPU DMA transfer direction");
-    }
     
     // Clear BCR and CHCR trigger and busy bits
     dma->spu.chcr = 0;
@@ -358,6 +350,8 @@ void psx_dma_do_otc(psx_dma_t* dma) {
         dma->otc.madr -= 4;
     }
 
+    dma->otc_irq_delay = BCR_SIZE(otc);
+
     // Clear BCR and CHCR trigger and busy bits
     dma->otc.chcr = 0;
     //dma->otc.chcr &= ~(CHCR_BUSY_MASK | CHCR_TRIG_MASK);
@@ -366,25 +360,31 @@ void psx_dma_do_otc(psx_dma_t* dma) {
 
 void psx_dma_update(psx_dma_t* dma, int cyc) {
     if (dma->cdrom_irq_delay) {
-        dma->cdrom_irq_delay -= cyc;
+        if (dma->dicr & DICR_DMA3EN)
+            dma->dicr |= DICR_DMA3FL;
 
-        if (dma->cdrom_irq_delay <= 0) {
-            if (dma->dicr & DICR_DMA3EN)
-                dma->dicr |= DICR_DMA3FL;
-
-            dma->cdrom_irq_delay = 0;
-        }
+        dma->cdrom_irq_delay = 0;
     }
 
     if (dma->spu_irq_delay) {
-        dma->spu_irq_delay -= cyc;
+        if (dma->dicr & DICR_DMA4EN)
+            dma->dicr |= DICR_DMA4FL;
+        
+        dma->spu_irq_delay = 0;
+    }
 
-        if (dma->spu_irq_delay <= 0) {
-            if (dma->dicr & DICR_DMA4EN)
-                dma->dicr |= DICR_DMA4FL;
+    if (dma->gpu_irq_delay) {
+        if (dma->dicr & DICR_DMA2EN)
+                dma->dicr |= DICR_DMA2FL;
 
-            dma->spu_irq_delay = 0;
-        }
+        dma->gpu_irq_delay = 0;
+    }
+
+    if (dma->otc_irq_delay) {
+        if (dma->dicr & DICR_DMA6EN)
+            dma->dicr |= DICR_DMA6FL;
+
+        dma->otc_irq_delay = 0;
     }
 
     int prev_irq_signal = (dma->dicr & DICR_IRQSI) != 0;
