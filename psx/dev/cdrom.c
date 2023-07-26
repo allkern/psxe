@@ -67,7 +67,7 @@ void cdrom_cmd_error(psx_cdrom_t* cdrom) {
     cdrom->state = CD_STATE_CMD;
 }
 void cdrom_cmd_unimplemented(psx_cdrom_t* cdrom) {
-    log_fatal("Unimplemented CDROM command");
+    log_fatal("Unimplemented CDROM command (%u)", cdrom->command);
 
     exit(1);
 }
@@ -666,6 +666,7 @@ void cdrom_write_cmd(psx_cdrom_t* cdrom, uint8_t value) {
         cdrom->pfifo[5]
     );
 
+    cdrom->command = value;
     cdrom->state = CD_STATE_CMD;
     cdrom->delayed_command = CDL_NONE;
 
