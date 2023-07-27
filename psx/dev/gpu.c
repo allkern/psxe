@@ -92,7 +92,7 @@ uint32_t psx_gpu_read32(psx_gpu_t* gpu, uint32_t offset) {
 }
 
 uint16_t psx_gpu_read16(psx_gpu_t* gpu, uint32_t offset) {
-     log_fatal("Unhandled 16-bit GPU read at offset %08x", offset);
+    log_fatal("Unhandled 16-bit GPU read at offset %08x", offset);
 
     exit(1);
 }
@@ -101,8 +101,6 @@ uint8_t psx_gpu_read8(psx_gpu_t* gpu, uint32_t offset) {
     log_fatal("Unhandled 8-bit GPU read at offset %08x", offset);
 
     exit(1);
-
-    return 0x0;
 }
 
 int min(int x0, int x1) {
@@ -459,11 +457,11 @@ void gpu_cmd_a0(psx_gpu_t* gpu) {
 
                 //log_set_quiet(0);
 
-                log_fatal("pos=(%u, %u), siz=(%u, %u), tsiz=%08x, addr=%08x",
-                    gpu->xpos, gpu->ypos,
-                    gpu->xsiz, gpu->ysiz,
-                    gpu->tsiz, gpu->addr
-                );
+                // log_fatal("pos=(%u, %u), siz=(%u, %u), tsiz=%08x, addr=%08x",
+                //     gpu->xpos, gpu->ypos,
+                //     gpu->xsiz, gpu->ysiz,
+                //     gpu->tsiz, gpu->addr
+                // );
 
                 // system("pause > nul");
 
@@ -722,6 +720,18 @@ void gpu_cmd_64(psx_gpu_t* gpu) {
                 uint32_t tpx = gpu->texp_x;
                 uint32_t tpy = gpu->texp_y;
 
+                // log_set_quiet(0);
+
+                // log_fatal("v0=(%u, %u), v0t=(%u, %u), clut=(%04x, %u, %u), siz=(%u, %u), texp=(%u, %u)",
+                //     gpu->v0.x, gpu->v0.y,
+                //     gpu->v0.tx, gpu->v0.ty,
+                //     gpu->pal, gpu->clut_x, gpu->clut_y,
+                //     w, h,
+                //     tpx, tpy
+                // );
+
+                // log_set_quiet(1);
+
                 gpu_render_textured_rectangle(gpu, gpu->v0, w, h, tpx, tpy);
 
                 gpu->state = GPU_STATE_RECV_CMD;
@@ -888,6 +898,7 @@ void psx_gpu_update_cmd(psx_gpu_t* gpu) {
         case 0x64: gpu_cmd_64(gpu); break;
         case 0x65: gpu_cmd_64(gpu); break;
         case 0x66: gpu_cmd_64(gpu); break;
+        case 0x67: gpu_cmd_64(gpu); break;
         case 0x68: gpu_cmd_68(gpu); break;
         case 0x80: gpu_cmd_80(gpu); break;
         case 0xa0: gpu_cmd_a0(gpu); break;
@@ -898,6 +909,17 @@ void psx_gpu_update_cmd(psx_gpu_t* gpu) {
             gpu->texp_x = (gpu->gpustat & 0xf) << 6;
             gpu->texp_y = (gpu->gpustat & 0x10) << 4;
             gpu->texp_d = (gpu->gpustat >> 7) & 0x3;
+
+            log_set_quiet(0);
+
+            log_fatal("gpustat=%08x, texp=(%u, %u), cmd=%08x",
+                gpu->gpustat,
+                (gpu->gpustat & 0xf) << 6,
+                (gpu->gpustat & 0x10) << 4,
+                gpu->buf[0]
+            );
+
+            log_set_quiet(1);
         } break;
         case 0xe2: {
             gpu->texw_mx = (gpu->buf[0] >> 0 ) & 0x1f;
@@ -973,9 +995,9 @@ void psx_gpu_write32(psx_gpu_t* gpu, uint32_t offset, uint32_t value) {
                 case 0x10: {
                     gpu->gp1_10h_req = value & 7;
 
-                    // log_set_quiet(0);
-                    // log_fatal("GP1(10h) %u !!!!!!!!!!!!!!!!!", value & 7);
-                    // log_set_quiet(1);
+                    log_set_quiet(0);
+                    log_fatal("GP1(10h) %u !!!!!!!!!!!!!!!!!", value & 7);
+                    log_set_quiet(1);
                 } break;
             }
 
