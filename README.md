@@ -23,7 +23,7 @@ Here's a list of what's currently implemented:
 - All CPU instructions, excluding GTE
 - Several GPU registers
 - GPU commands used by the BIOS
-- Some CDROM commands (`Test`, `Getstat`)
+- Most CDROM commands
 - CPU quirks (Branch, Load delay slots)
 - Bus structure
 - OTC DMA (Burst), GPU DMA (Request, Linked)
