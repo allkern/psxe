@@ -26,7 +26,7 @@ Here's a list of what's currently implemented:
 - Most CDROM commands
 - CPU quirks (Branch, Load delay slots)
 - Bus structure
-- OTC DMA (Burst), GPU DMA (Request, Linked)
+- OTC DMA (Burst), GPU DMA (Request, Linked), CDROM DMA (Burst)
 
 ## Building
 Building the emulator should be easy, just use the scripts provided in this repo.
