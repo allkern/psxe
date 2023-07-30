@@ -22,7 +22,7 @@ Other BIOSes aren't currently supported, though I've only tested `SCPH1000.bin` 
 Here's a list of what's currently implemented:
 - All CPU instructions, excluding GTE
 - Several GPU registers
-- GPU commands used by the BIOS
+- A bunch of GPU commands
 - Most CDROM commands
 - CPU quirks (Branch, Load delay slots)
 - Bus structure
