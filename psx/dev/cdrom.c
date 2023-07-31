@@ -59,6 +59,8 @@ static const uint8_t g_psx_cdrom_btoi_table[] = {
 };
 
 void cdrom_cmd_error(psx_cdrom_t* cdrom) {
+    log_fatal("CD error!");
+
     SET_BITS(ifr, IFR_INT, IFR_INT5);
     RESP_PUSH(cdrom->stat);
     RESP_PUSH(0x20);
@@ -600,7 +602,10 @@ cdrom_cmd_t g_psx_cdrom_command_table[] = {
     cdrom_cmd_unimplemented,
     cdrom_cmd_unimplemented,
     cdrom_cmd_readtoc,
-    cdrom_cmd_unimplemented
+
+    // Actually an unimplemented command, we use this
+    // index for CD error handling
+    cdrom_cmd_error
 };
 
 typedef uint8_t (*psx_cdrom_read_function_t)(psx_cdrom_t*);
