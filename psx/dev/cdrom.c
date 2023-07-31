@@ -64,7 +64,7 @@ void cdrom_cmd_error(psx_cdrom_t* cdrom) {
     RESP_PUSH(0x20);
 
     cdrom->delayed_command = CDL_NONE;
-    cdrom->state = CD_STATE_CMD;
+    cdrom->state = CD_STATE_RECV_CMD;
 }
 void cdrom_cmd_unimplemented(psx_cdrom_t* cdrom) {
     log_fatal("Unimplemented CDROM command (%u)", cdrom->command);
@@ -73,7 +73,7 @@ void cdrom_cmd_unimplemented(psx_cdrom_t* cdrom) {
 }
 void cdrom_cmd_getstat(psx_cdrom_t* cdrom) {
     switch (cdrom->state) {
-        case CD_STATE_CMD: {
+        case CD_STATE_RECV_CMD: {
             if (cdrom->pfifo_index) {
                 log_fatal("CdlGetStat: Expected exactly 0 parameters");
 
@@ -82,22 +82,22 @@ void cdrom_cmd_getstat(psx_cdrom_t* cdrom) {
 
             cdrom->irq_delay = DELAY_1MS;
             cdrom->delayed_command = CDL_GETSTAT;
-            cdrom->state = CD_STATE_RESP1;
+            cdrom->state = CD_STATE_SEND_RESP1;
         } break;
 
-        case CD_STATE_RESP1: {
+        case CD_STATE_SEND_RESP1: {
             cdrom->delayed_command = CDL_NONE;
 
             SET_BITS(ifr, IFR_INT, IFR_INT3);
             RESP_PUSH(cdrom->stat);
 
-            cdrom->state = CD_STATE_CMD;
+            cdrom->state = CD_STATE_RECV_CMD;
         } break;
     }
 }
 void cdrom_cmd_setloc(psx_cdrom_t* cdrom) {
     switch (cdrom->state) {
-        case CD_STATE_CMD: {
+        case CD_STATE_RECV_CMD: {
             if (cdrom->pfifo_index != 3) {
                 log_fatal("CdlSetloc: Expected exactly 3 parameters, got %u instead",
                     cdrom->pfifo_index
@@ -108,7 +108,7 @@ void cdrom_cmd_setloc(psx_cdrom_t* cdrom) {
 
             cdrom->irq_delay = DELAY_1MS;
             cdrom->delayed_command = CDL_SETLOC;
-            cdrom->state = CD_STATE_RESP1;
+            cdrom->state = CD_STATE_SEND_RESP1;
 
             cdrom->seek_sect = cdrom_btoi(PFIFO_POP);
             cdrom->seek_ss = cdrom_btoi(PFIFO_POP);
@@ -128,27 +128,27 @@ void cdrom_cmd_setloc(psx_cdrom_t* cdrom) {
             );
         } break;
 
-        case CD_STATE_RESP1: {
+        case CD_STATE_SEND_RESP1: {
             cdrom->delayed_command = CDL_NONE;
 
             SET_BITS(ifr, IFR_INT, IFR_INT3);
             RESP_PUSH(cdrom->stat);
 
-            cdrom->state = CD_STATE_CMD;
+            cdrom->state = CD_STATE_RECV_CMD;
         } break;
     }
 }
 void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
     switch (cdrom->state) {
-        case CD_STATE_CMD: {
-            log_fatal("CdlReadN: CD_STATE_CMD");
+        case CD_STATE_RECV_CMD: {
+            log_fatal("CdlReadN: CD_STATE_RECV_CMD");
             cdrom->irq_delay = DELAY_1MS;
-            cdrom->state = CD_STATE_RESP1;
+            cdrom->state = CD_STATE_SEND_RESP1;
             cdrom->delayed_command = CDL_READN;
         } break;
 
-        case CD_STATE_RESP1: {
-            log_fatal("CdlReadN: CD_STATE_RESP1");
+        case CD_STATE_SEND_RESP1: {
+            log_fatal("CdlReadN: CD_STATE_SEND_RESP1");
 
             SET_BITS(ifr, IFR_INT, 3);
             RESP_PUSH(GETSTAT_MOTOR);
@@ -158,7 +158,7 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
             int double_speed = cdrom->mode & MODE_SPEED;
 
             cdrom->irq_delay = double_speed ? READ_DOUBLE_DELAY : READ_SINGLE_DELAY;
-            cdrom->state = CD_STATE_RESP2;
+            cdrom->state = CD_STATE_SEND_RESP2;
             cdrom->delayed_command = CDL_READN;
 
             if (cdrom->spin_delay) {
@@ -167,8 +167,8 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
             }
         } break;
 
-        case CD_STATE_RESP2: {
-            log_fatal("CdlReadN: CD_STATE_RESP2");
+        case CD_STATE_SEND_RESP2: {
+            log_fatal("CdlReadN: CD_STATE_SEND_RESP2");
 
             SET_BITS(ifr, IFR_INT, 1);
             RESP_PUSH(GETSTAT_MOTOR | GETSTAT_READ);
@@ -185,7 +185,7 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
             int double_speed = cdrom->mode & MODE_SPEED;
 
             cdrom->irq_delay = double_speed ? READ_DOUBLE_DELAY : READ_SINGLE_DELAY;
-            cdrom->state = CD_STATE_RESP2;
+            cdrom->state = CD_STATE_SEND_RESP2;
             cdrom->delayed_command = CDL_READN;
         } break;
     }
@@ -193,61 +193,61 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
 void cdrom_cmd_stop(psx_cdrom_t* cdrom) { log_fatal("stop: Unimplemented"); exit(1); }
 void cdrom_cmd_pause(psx_cdrom_t* cdrom) {
     switch (cdrom->state) {
-        case CD_STATE_CMD: {
+        case CD_STATE_RECV_CMD: {
             cdrom->irq_delay = DELAY_1MS;
-            cdrom->state = CD_STATE_RESP1;
+            cdrom->state = CD_STATE_SEND_RESP1;
             cdrom->delayed_command = CDL_PAUSE;
         } break;
 
-        case CD_STATE_RESP1: {
+        case CD_STATE_SEND_RESP1: {
             SET_BITS(ifr, IFR_INT, 3);
             RESP_PUSH(GETSTAT_MOTOR | GETSTAT_READ);
 
             int double_speed = cdrom->mode & MODE_SPEED;
 
             cdrom->irq_delay = DELAY_1MS * (double_speed ? 70 : 35);
-            cdrom->state = CD_STATE_RESP2;
+            cdrom->state = CD_STATE_SEND_RESP2;
             cdrom->delayed_command = CDL_PAUSE;
         } break;
 
-        case CD_STATE_RESP2: {
+        case CD_STATE_SEND_RESP2: {
             SET_BITS(ifr, IFR_INT, 2);
             RESP_PUSH(GETSTAT_MOTOR);
 
-            cdrom->state = CD_STATE_CMD;
+            cdrom->state = CD_STATE_RECV_CMD;
             cdrom->delayed_command = CDL_NONE;
         } break;
     }
 }
 void cdrom_cmd_init(psx_cdrom_t* cdrom) {
     switch (cdrom->state) {
-        case CD_STATE_CMD: {
+        case CD_STATE_RECV_CMD: {
             cdrom->irq_delay = DELAY_1MS;
-            cdrom->state = CD_STATE_RESP1;
+            cdrom->state = CD_STATE_SEND_RESP1;
             cdrom->delayed_command = CDL_INIT;
         } break;
 
-        case CD_STATE_RESP1: {
+        case CD_STATE_SEND_RESP1: {
             SET_BITS(ifr, IFR_INT, 3);
             RESP_PUSH(cdrom->stat);
 
             cdrom->irq_delay = DELAY_1MS;
-            cdrom->state = CD_STATE_RESP2;
+            cdrom->state = CD_STATE_SEND_RESP2;
             cdrom->delayed_command = CDL_INIT;
         } break;
 
-        case CD_STATE_RESP2: {
+        case CD_STATE_SEND_RESP2: {
             SET_BITS(ifr, IFR_INT, 2);
             RESP_PUSH(cdrom->stat);
 
-            cdrom->state = CD_STATE_CMD;
+            cdrom->state = CD_STATE_RECV_CMD;
             cdrom->delayed_command = CDL_NONE;
         } break;
     }
 }
 void cdrom_cmd_unmute(psx_cdrom_t* cdrom) {
     switch (cdrom->state) {
-        case CD_STATE_CMD: {
+        case CD_STATE_RECV_CMD: {
             if (cdrom->pfifo_index) {
                 log_fatal("CdlGetStat: Expected exactly 0 parameters");
 
@@ -256,22 +256,22 @@ void cdrom_cmd_unmute(psx_cdrom_t* cdrom) {
 
             cdrom->irq_delay = DELAY_1MS;
             cdrom->delayed_command = CDL_DEMUTE;
-            cdrom->state = CD_STATE_RESP1;
+            cdrom->state = CD_STATE_SEND_RESP1;
         } break;
 
-        case CD_STATE_RESP1: {
+        case CD_STATE_SEND_RESP1: {
             SET_BITS(ifr, IFR_INT, IFR_INT3);
             RESP_PUSH(cdrom->stat);
 
             cdrom->delayed_command = CDL_NONE;
-            cdrom->state = CD_STATE_CMD;
+            cdrom->state = CD_STATE_RECV_CMD;
         } break;
     }
 }
 void cdrom_cmd_setfilter(psx_cdrom_t* cdrom) { log_fatal("setfilter: Unimplemented"); exit(1); }
 void cdrom_cmd_setmode(psx_cdrom_t* cdrom) {
     switch (cdrom->state) {
-        case CD_STATE_CMD: {
+        case CD_STATE_RECV_CMD: {
             if (cdrom->pfifo_index != 1) {
                 log_fatal("CdlSetmode: Expected exactly 1 parameter");
 
@@ -291,16 +291,16 @@ void cdrom_cmd_setmode(psx_cdrom_t* cdrom) {
 
             cdrom->irq_delay = DELAY_1MS;
             cdrom->delayed_command = CDL_SETMODE;
-            cdrom->state = CD_STATE_RESP1;
+            cdrom->state = CD_STATE_SEND_RESP1;
         } break;
 
-        case CD_STATE_RESP1: {
+        case CD_STATE_SEND_RESP1: {
             cdrom->delayed_command = CDL_NONE;
     
             SET_BITS(ifr, IFR_INT, IFR_INT3);
             RESP_PUSH(cdrom->stat);
 
-            cdrom->state = CD_STATE_CMD;
+            cdrom->state = CD_STATE_RECV_CMD;
         } break;
     }
 }
@@ -308,7 +308,7 @@ void cdrom_cmd_getlocl(psx_cdrom_t* cdrom) { log_fatal("getlocl: Unimplemented")
 void cdrom_cmd_getlocp(psx_cdrom_t* cdrom) { log_fatal("getlocp: Unimplemented"); exit(1); }
 void cdrom_cmd_gettn(psx_cdrom_t* cdrom) {
     switch (cdrom->state) {
-        case CD_STATE_CMD: {
+        case CD_STATE_RECV_CMD: {
             if (cdrom->pfifo_index) {
                 log_fatal("CdlGetTN: Expected exactly 0 parameters");
 
@@ -317,23 +317,23 @@ void cdrom_cmd_gettn(psx_cdrom_t* cdrom) {
 
             cdrom->irq_delay = DELAY_1MS;
             cdrom->delayed_command = CDL_GETTN;
-            cdrom->state = CD_STATE_RESP1;
+            cdrom->state = CD_STATE_SEND_RESP1;
         } break;
 
-        case CD_STATE_RESP1: {
+        case CD_STATE_SEND_RESP1: {
             SET_BITS(ifr, IFR_INT, IFR_INT3);
             RESP_PUSH(0x14);
             RESP_PUSH(0x01);
             RESP_PUSH(cdrom->stat);
 
             cdrom->delayed_command = CDL_NONE;
-            cdrom->state = CD_STATE_CMD;
+            cdrom->state = CD_STATE_RECV_CMD;
         } break;
     }
 }
 void cdrom_cmd_gettd(psx_cdrom_t* cdrom) {
     switch (cdrom->state) {
-        case CD_STATE_CMD: {
+        case CD_STATE_RECV_CMD: {
             if (cdrom->pfifo_index != 1) {
                 log_fatal("CdlGetTD: Expected exactly 0 parameters");
 
@@ -344,25 +344,25 @@ void cdrom_cmd_gettd(psx_cdrom_t* cdrom) {
 
             cdrom->irq_delay = DELAY_1MS;
             cdrom->delayed_command = CDL_GETTD;
-            cdrom->state = CD_STATE_RESP1;
+            cdrom->state = CD_STATE_SEND_RESP1;
         } break;
 
-        case CD_STATE_RESP1: {
+        case CD_STATE_SEND_RESP1: {
             SET_BITS(ifr, IFR_INT, IFR_INT3);
             RESP_PUSH(0x14);
             RESP_PUSH(0x01);
             RESP_PUSH(cdrom->stat);
 
             cdrom->delayed_command = CDL_NONE;
-            cdrom->state = CD_STATE_CMD;
+            cdrom->state = CD_STATE_RECV_CMD;
         } break;
     }
 }
 void cdrom_cmd_seekl(psx_cdrom_t* cdrom) {
     switch (cdrom->state) {
-        case CD_STATE_CMD: {
+        case CD_STATE_RECV_CMD: {
             cdrom->irq_delay = DELAY_1MS;
-            cdrom->state = CD_STATE_RESP1;
+            cdrom->state = CD_STATE_SEND_RESP1;
             cdrom->delayed_command = CDL_SEEKL;
 
             log_fatal("seekl: Seeking to address %08x", cdrom->seek_offset);
@@ -370,20 +370,20 @@ void cdrom_cmd_seekl(psx_cdrom_t* cdrom) {
             fseek(cdrom->disc, cdrom->seek_offset, 0);
         } break;
 
-        case CD_STATE_RESP1: {
+        case CD_STATE_SEND_RESP1: {
             SET_BITS(ifr, IFR_INT, 3);
             RESP_PUSH(cdrom->stat);
 
             cdrom->irq_delay = DELAY_1MS;
-            cdrom->state = CD_STATE_RESP2;
+            cdrom->state = CD_STATE_SEND_RESP2;
             cdrom->delayed_command = CDL_SEEKL;
         } break;
 
-        case CD_STATE_RESP2: {
+        case CD_STATE_SEND_RESP2: {
             SET_BITS(ifr, IFR_INT, 2);
             RESP_PUSH(cdrom->stat);
 
-            cdrom->state = CD_STATE_CMD;
+            cdrom->state = CD_STATE_RECV_CMD;
             cdrom->delayed_command = CDL_NONE;
         } break;
     }
@@ -391,7 +391,7 @@ void cdrom_cmd_seekl(psx_cdrom_t* cdrom) {
 void cdrom_cmd_seekp(psx_cdrom_t* cdrom) { log_fatal("seekp: Unimplemented"); exit(1); }
 void cdrom_cmd_test(psx_cdrom_t* cdrom) {
     switch (cdrom->state) {
-        case CD_STATE_CMD: {
+        case CD_STATE_RECV_CMD: {
             if (cdrom->pfifo_index != 1) {
                 log_fatal("CdlTest: Expected exactly 1 parameter");
 
@@ -406,10 +406,10 @@ void cdrom_cmd_test(psx_cdrom_t* cdrom) {
 
             cdrom->irq_delay = DELAY_1MS;
             cdrom->delayed_command = CDL_TEST;
-            cdrom->state = CD_STATE_RESP1;
+            cdrom->state = CD_STATE_SEND_RESP1;
         } break;
 
-        case CD_STATE_RESP1: {
+        case CD_STATE_SEND_RESP1: {
             cdrom->delayed_command = CDL_NONE;
     
             SET_BITS(ifr, IFR_INT, IFR_INT3);
@@ -418,13 +418,13 @@ void cdrom_cmd_test(psx_cdrom_t* cdrom) {
             RESP_PUSH(0x13);
             RESP_PUSH(0x03);
 
-            cdrom->state = CD_STATE_CMD;
+            cdrom->state = CD_STATE_RECV_CMD;
         } break;
     }
 }
 void cdrom_cmd_getid(psx_cdrom_t* cdrom) {
     switch (cdrom->state) {
-        case CD_STATE_CMD: {
+        case CD_STATE_RECV_CMD: {
             if (cdrom->pfifo_index) {
                 log_fatal("CdlGetID: Expected exactly 0 parameters");
 
@@ -436,20 +436,20 @@ void cdrom_cmd_getid(psx_cdrom_t* cdrom) {
             }
 
             cdrom->irq_delay = DELAY_1MS;
-            cdrom->state = CD_STATE_RESP1;
+            cdrom->state = CD_STATE_SEND_RESP1;
             cdrom->delayed_command = CDL_GETID;
         } break;
 
-        case CD_STATE_RESP1: {
+        case CD_STATE_SEND_RESP1: {
             SET_BITS(ifr, IFR_INT, 3);
             RESP_PUSH(GETSTAT_MOTOR);
 
             cdrom->irq_delay = DELAY_1MS;
-            cdrom->state = CD_STATE_RESP2;
+            cdrom->state = CD_STATE_SEND_RESP2;
             cdrom->delayed_command = CDL_GETID;
         } break;
 
-        case CD_STATE_RESP2: {
+        case CD_STATE_SEND_RESP2: {
             SET_BITS(ifr, IFR_INT, 2);
 
             if (cdrom->disc) {
@@ -472,22 +472,22 @@ void cdrom_cmd_getid(psx_cdrom_t* cdrom) {
                 RESP_PUSH(0x08);
             }
 
-            cdrom->state = CD_STATE_CMD;
+            cdrom->state = CD_STATE_RECV_CMD;
             cdrom->delayed_command = CDL_NONE;
         } break;
     }
 }
 void cdrom_cmd_reads(psx_cdrom_t* cdrom) {
     switch (cdrom->state) {
-        case CD_STATE_CMD: {
-            log_fatal("CdlReadS: CD_STATE_CMD");
+        case CD_STATE_RECV_CMD: {
+            log_fatal("CdlReadS: CD_STATE_RECV_CMD");
             cdrom->irq_delay = DELAY_1MS;
-            cdrom->state = CD_STATE_RESP1;
+            cdrom->state = CD_STATE_SEND_RESP1;
             cdrom->delayed_command = CDL_READS;
         } break;
 
-        case CD_STATE_RESP1: {
-            log_fatal("CdlReadS: CD_STATE_RESP1");
+        case CD_STATE_SEND_RESP1: {
+            log_fatal("CdlReadS: CD_STATE_SEND_RESP1");
 
             SET_BITS(ifr, IFR_INT, 3);
             RESP_PUSH(GETSTAT_MOTOR);
@@ -497,7 +497,7 @@ void cdrom_cmd_reads(psx_cdrom_t* cdrom) {
             int double_speed = cdrom->mode & MODE_SPEED;
 
             cdrom->irq_delay = double_speed ? READ_DOUBLE_DELAY : READ_SINGLE_DELAY;
-            cdrom->state = CD_STATE_RESP2;
+            cdrom->state = CD_STATE_SEND_RESP2;
             cdrom->delayed_command = CDL_READS;
 
             if (cdrom->spin_delay) {
@@ -506,8 +506,8 @@ void cdrom_cmd_reads(psx_cdrom_t* cdrom) {
             }
         } break;
 
-        case CD_STATE_RESP2: {
-            log_fatal("CdlReadS: CD_STATE_RESP2");
+        case CD_STATE_SEND_RESP2: {
+            log_fatal("CdlReadS: CD_STATE_SEND_RESP2");
 
             SET_BITS(ifr, IFR_INT, 1);
             RESP_PUSH(GETSTAT_MOTOR | GETSTAT_READ);
@@ -524,7 +524,7 @@ void cdrom_cmd_reads(psx_cdrom_t* cdrom) {
             int double_speed = cdrom->mode & MODE_SPEED;
 
             cdrom->irq_delay = double_speed ? READ_DOUBLE_DELAY : READ_SINGLE_DELAY;
-            cdrom->state = CD_STATE_CMD;
+            cdrom->state = CD_STATE_RECV_CMD;
             cdrom->delayed_command = CDL_NONE;
         } break;
     }
@@ -670,7 +670,7 @@ void cdrom_write_cmd(psx_cdrom_t* cdrom, uint8_t value) {
     );
 
     cdrom->command = value;
-    cdrom->state = CD_STATE_CMD;
+    cdrom->state = CD_STATE_RECV_CMD;
     cdrom->delayed_command = CDL_NONE;
 
     g_psx_cdrom_command_table[value](cdrom);

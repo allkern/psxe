@@ -17,10 +17,12 @@
 #define CD_SECTOR_SIZE 0x930
 #define CD_SECTORS_PER_SECOND 75
 
-#define CD_STATE_CMD   0
-#define CD_STATE_RESP1 1
-#define CD_STATE_RESP2 2
-#define CD_STATE_ERROR 3
+enum {
+    CD_STATE_RECV_CMD,
+    CD_STATE_SEND_RESP1,
+    CD_STATE_SEND_RESP2,
+    CD_STATE_ERROR
+};
 
 #define CDL_NONE        0x00
 #define CDL_GETSTAT     0x01
