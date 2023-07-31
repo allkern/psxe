@@ -60,9 +60,10 @@ static const uint8_t g_psx_cdrom_btoi_table[] = {
 
 void cdrom_cmd_error(psx_cdrom_t* cdrom) {
     SET_BITS(ifr, IFR_INT, IFR_INT5);
-    RESP_PUSH(cdrom->stat);
-    RESP_PUSH(0x20);
+    RESP_PUSH(cdrom->error);
+    RESP_PUSH(GETSTAT_MOTOR | cdrom->error_flags);
 
+    cdrom->pfifo_index = 0;
     cdrom->delayed_command = CDL_NONE;
     cdrom->state = CD_STATE_RECV_CMD;
 }
@@ -76,6 +77,12 @@ void cdrom_cmd_getstat(psx_cdrom_t* cdrom) {
         case CD_STATE_RECV_CMD: {
             if (cdrom->pfifo_index) {
                 log_fatal("CdlGetStat: Expected exactly 0 parameters");
+
+                cdrom->irq_delay = DELAY_1MS;
+                cdrom->delayed_command = CDL_ERROR;
+                cdrom->state = CD_STATE_ERROR;
+                cdrom->error = ERR_PCOUNT;
+                cdrom->error_flags = GETSTAT_ERROR;
 
                 return;
             }
@@ -102,6 +109,12 @@ void cdrom_cmd_setloc(psx_cdrom_t* cdrom) {
                 log_fatal("CdlSetloc: Expected exactly 3 parameters, got %u instead",
                     cdrom->pfifo_index
                 );
+
+                cdrom->irq_delay = DELAY_1MS;
+                cdrom->delayed_command = CDL_ERROR;
+                cdrom->state = CD_STATE_ERROR;
+                cdrom->error = ERR_PCOUNT;
+                cdrom->error_flags = GETSTAT_ERROR;
 
                 return;
             }
@@ -249,7 +262,13 @@ void cdrom_cmd_unmute(psx_cdrom_t* cdrom) {
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
             if (cdrom->pfifo_index) {
-                log_fatal("CdlGetStat: Expected exactly 0 parameters");
+                log_fatal("CdlUnmute: Expected exactly 0 parameters");
+
+                cdrom->irq_delay = DELAY_1MS;
+                cdrom->delayed_command = CDL_ERROR;
+                cdrom->state = CD_STATE_ERROR;
+                cdrom->error = ERR_PCOUNT;
+                cdrom->error_flags = GETSTAT_ERROR;
 
                 return;
             }
@@ -278,6 +297,8 @@ void cdrom_cmd_setmode(psx_cdrom_t* cdrom) {
                 cdrom->irq_delay = DELAY_1MS;
                 cdrom->delayed_command = CDL_ERROR;
                 cdrom->state = CD_STATE_ERROR;
+                cdrom->error = ERR_PCOUNT;
+                cdrom->error_flags = GETSTAT_ERROR;
 
                 return;
             }
@@ -312,6 +333,12 @@ void cdrom_cmd_gettn(psx_cdrom_t* cdrom) {
             if (cdrom->pfifo_index) {
                 log_fatal("CdlGetTN: Expected exactly 0 parameters");
 
+                cdrom->irq_delay = DELAY_1MS;
+                cdrom->delayed_command = CDL_ERROR;
+                cdrom->state = CD_STATE_ERROR;
+                cdrom->error = ERR_PCOUNT;
+                cdrom->error_flags = GETSTAT_ERROR;
+
                 return;
             }
 
@@ -336,6 +363,12 @@ void cdrom_cmd_gettd(psx_cdrom_t* cdrom) {
         case CD_STATE_RECV_CMD: {
             if (cdrom->pfifo_index != 1) {
                 log_fatal("CdlGetTD: Expected exactly 0 parameters");
+
+                cdrom->irq_delay = DELAY_1MS;
+                cdrom->delayed_command = CDL_ERROR;
+                cdrom->state = CD_STATE_ERROR;
+                cdrom->error = ERR_PCOUNT;
+                cdrom->error_flags = GETSTAT_ERROR;
 
                 return;
             }
@@ -395,11 +428,22 @@ void cdrom_cmd_test(psx_cdrom_t* cdrom) {
             if (cdrom->pfifo_index != 1) {
                 log_fatal("CdlTest: Expected exactly 1 parameter");
 
+                cdrom->irq_delay = DELAY_1MS;
+                cdrom->delayed_command = CDL_ERROR;
+                cdrom->state = CD_STATE_ERROR;
+                cdrom->error = ERR_PCOUNT;
+                cdrom->error_flags = GETSTAT_ERROR;
+
                 return;
             }
 
             if (PFIFO_POP != 0x20) {
                 log_fatal("CdlTest: Unhandled subcommand");
+
+                cdrom->irq_delay = DELAY_1MS;
+                cdrom->delayed_command = CDL_ERROR;
+                cdrom->state = CD_STATE_ERROR;
+                cdrom->error = ERR_INVSUBF;
 
                 return;
             }
@@ -431,6 +475,8 @@ void cdrom_cmd_getid(psx_cdrom_t* cdrom) {
                 cdrom->irq_delay = DELAY_1MS;
                 cdrom->delayed_command = CDL_ERROR;
                 cdrom->state = CD_STATE_ERROR;
+                cdrom->error = ERR_PCOUNT;
+                cdrom->error_flags = GETSTAT_ERROR;
 
                 return;
             }
@@ -720,13 +766,6 @@ void cdrom_write_ifr(psx_cdrom_t* cdrom, uint8_t value) {
             (STAT_PRMEMPT_MASK | STAT_PRMWRDY_MASK)
         );
     }
-
-    // Clear Response FIFO
-    // if (value & 0x7) {
-    //     cdrom->rfifo_index = 0;
-
-    //     SET_BITS(status, STAT_RSLRRDY_MASK, 0);
-    // }
 }
 
 void cdrom_write_sminfo(psx_cdrom_t* cdrom, uint8_t value) {

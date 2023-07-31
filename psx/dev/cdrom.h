@@ -119,6 +119,27 @@ enum {
 #define REQ_BFWR 0x40
 #define REQ_BFRD 0x80
 
+/*
+  ___These values appear in the FIRST response; with stat.bit0 set___
+  10h - Invalid Sub_function (for command 19h), or invalid parameter value
+  20h - Wrong number of parameters
+  40h - Invalid command
+  80h - Cannot respond yet (eg. required info was not yet read from disk yet)
+           (namely, TOC not-yet-read or so)
+           (also appears if no disk inserted at all)
+  ___These values appear in the SECOND response; with stat.bit2 set___
+  04h - Seek failed (when trying to use SeekL on Audio CDs)
+  ___These values appear even if no command was sent; with stat.bit2 set___
+  08h - Drive door became opened
+*/
+
+#define ERR_INVSUBF 0x10
+#define ERR_PCOUNT  0x20
+#define ERR_INVALID 0x40
+#define ERR_BUSY    0x80
+#define ERR_SEEK    0x04
+#define ERR_LIDOPEN 0x08
+
 typedef struct {
     uint32_t io_base, io_size;
 
@@ -159,6 +180,8 @@ typedef struct {
     int state;
     int delayed_response;
     int spin_delay;
+    uint8_t error;
+    uint8_t error_flags;
 
     const char* path;
     FILE* disc;
