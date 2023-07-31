@@ -59,8 +59,6 @@ static const uint8_t g_psx_cdrom_btoi_table[] = {
 };
 
 void cdrom_cmd_error(psx_cdrom_t* cdrom) {
-    log_fatal("CD error!");
-
     SET_BITS(ifr, IFR_INT, IFR_INT5);
     RESP_PUSH(cdrom->stat);
     RESP_PUSH(0x20);
@@ -444,7 +442,7 @@ void cdrom_cmd_getid(psx_cdrom_t* cdrom) {
 
         case CD_STATE_RESP1: {
             SET_BITS(ifr, IFR_INT, 3);
-            RESP_PUSH(cdrom->stat);
+            RESP_PUSH(GETSTAT_MOTOR);
 
             cdrom->irq_delay = DELAY_1MS;
             cdrom->state = CD_STATE_RESP2;
