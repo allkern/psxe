@@ -23,6 +23,9 @@ uint8_t cdrom_btoi(uint8_t b) {
     return ((b >> 4) * 10) + (b & 0xf);
 }
 
+// #define BTOI(b) cdrom_btoi(b)
+#define BTOI(b) g_psx_cdrom_btoi_table[b]
+
 static const uint8_t g_psx_cdrom_btoi_table[] = {
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
     0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
@@ -123,9 +126,9 @@ void cdrom_cmd_setloc(psx_cdrom_t* cdrom) {
             cdrom->delayed_command = CDL_SETLOC;
             cdrom->state = CD_STATE_SEND_RESP1;
 
-            cdrom->seek_sect = cdrom_btoi(PFIFO_POP);
-            cdrom->seek_ss = cdrom_btoi(PFIFO_POP);
-            cdrom->seek_mm = cdrom_btoi(PFIFO_POP);
+            cdrom->seek_sect = BTOI(PFIFO_POP);
+            cdrom->seek_ss = BTOI(PFIFO_POP);
+            cdrom->seek_mm = BTOI(PFIFO_POP);
 
             // Account for 2 second gap
             uint32_t seconds = (cdrom->seek_mm * 60) + cdrom->seek_ss - 2;
