@@ -12,11 +12,11 @@ A simple and portable Sony PlayStation emulator and emulation library written in
 ![Ubuntu](https://github.com/allkern/psx/actions/workflows/ubuntu.yml/badge.svg)
 
 ## Running
-You can just download the latest automated build for your platform on Releases. If your system isn't supported, you can easily build the emulator from source, instructions on "Building" below.
+You can download the latest automated build for your platform on Releases. If your system isn't supported, you can easily build the emulator from source, instructions on "Building" below.
 
-In order to run the emulator, you will need a BIOS file, `SCPH1001.bin` specifically, you can either get it from the internet or [dump it from your own console](https://www.youtube.com/watch?v=u8eHp0COcBo). Just put it in the same directory where the executable is located. I will write a CLI parser really soon though, you will be able to just specify the location of the BIOS or a search folder.
+In order to run the emulator, you will need a BIOS file. You can either get it from the internet or [dump it from your own console](https://www.youtube.com/watch?v=u8eHp0COcBo).
 
-Other BIOSes aren't currently supported, though I've only tested `SCPH1000.bin` so far.
+Use the `-b` or `--bios` setting to configure the BIOS file.
 
 ## Progress
 Here's a list of what's currently implemented:
