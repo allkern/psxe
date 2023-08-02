@@ -297,8 +297,7 @@ void cdrom_cmd_setfilter(psx_cdrom_t* cdrom) {
                 return;
             }
 
-            PFIFO_POP;
-            PFIFO_POP;
+            cdrom->pfifo_index = 0;
 
             cdrom->irq_delay = DELAY_1MS;
             cdrom->delayed_command = CDL_SETFILTER;

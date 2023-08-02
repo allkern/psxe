@@ -37,6 +37,7 @@ void psx_load_exe(psx_t*, const char*);
 void psx_update(psx_t*);
 void psx_run_frame(psx_t*);
 void* psx_get_display_buffer(psx_t*);
+void* psx_get_vram(psx_t*);
 uint32_t psx_get_display_width(psx_t*);
 uint32_t psx_get_display_height(psx_t*);
 uint32_t psx_get_display_format(psx_t*);

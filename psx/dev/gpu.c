@@ -944,6 +944,14 @@ void psx_gpu_write32(psx_gpu_t* gpu, uint32_t offset, uint32_t value) {
             switch (cmd) {
                 case 0x04: {
                 } break;
+                case 0x05: {
+                    gpu->disp_x = value & 0x3ff;
+                    gpu->disp_y = (value >> 10) & 0x1ff;
+                } break;
+                case 0x06: {
+                    gpu->disp_x1 = value & 0xfff;
+                    gpu->disp_x2 = (value >> 12) & 0xfff;
+                } break;
                 case 0x08:
                     gpu->display_mode = value & 0xffffff;
 

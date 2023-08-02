@@ -107,6 +107,8 @@ struct psx_gpu_t {
 
     // Display area
     uint32_t disp_x, disp_y;
+    uint32_t disp_x1, disp_x2;
+    uint32_t disp_y1, disp_y2;
 
     // Timing and IRQs
     float cycles;

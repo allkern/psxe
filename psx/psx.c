@@ -48,12 +48,20 @@ void* psx_get_display_buffer(psx_t* psx) {
     return psx_gpu_get_display_buffer(psx->gpu);
 }
 
+void* psx_get_vram(psx_t* psx) {
+    return psx->gpu->vram;
+}
+
 uint32_t psx_get_display_width(psx_t* psx) {
     static int dmode_hres_table[] = {
         256, 320, 512, 640
     };
 
-    return dmode_hres_table[psx->gpu->display_mode & 0x3];
+    if (psx->gpu->display_mode & 0x40) {
+        return 368;
+    } else {
+        return dmode_hres_table[psx->gpu->display_mode & 0x3];
+    }
 }
 
 uint32_t psx_get_display_height(psx_t* psx) {

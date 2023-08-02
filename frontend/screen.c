@@ -95,7 +95,8 @@ void psxe_screen_toggle_debug_mode(psxe_screen_t* screen) {
 }
 
 void psxe_screen_update(psxe_screen_t* screen) {
-    void* display_buf = psx_get_display_buffer(screen->psx);
+    void* display_buf = screen->debug_mode ?
+        psx_get_vram(screen->psx) : psx_get_display_buffer(screen->psx);
 
     SDL_UpdateTexture(screen->texture, NULL, display_buf, PSX_GPU_FB_STRIDE);
     SDL_RenderCopy(screen->renderer, screen->texture, NULL, NULL);
