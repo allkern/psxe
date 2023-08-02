@@ -282,7 +282,39 @@ void cdrom_cmd_unmute(psx_cdrom_t* cdrom) {
         } break;
     }
 }
-void cdrom_cmd_setfilter(psx_cdrom_t* cdrom) { log_fatal("setfilter: Unimplemented"); exit(1); }
+void cdrom_cmd_setfilter(psx_cdrom_t* cdrom) {
+    switch (cdrom->state) {
+        case CD_STATE_RECV_CMD: {
+            if (cdrom->pfifo_index != 2) {
+                log_fatal("CdlSetfilter: Expected exactly 2 parameter");
+
+                cdrom->irq_delay = DELAY_1MS;
+                cdrom->delayed_command = CDL_ERROR;
+                cdrom->state = CD_STATE_ERROR;
+                cdrom->error = ERR_PCOUNT;
+                cdrom->error_flags = GETSTAT_ERROR;
+
+                return;
+            }
+
+            PFIFO_POP;
+            PFIFO_POP;
+
+            cdrom->irq_delay = DELAY_1MS;
+            cdrom->delayed_command = CDL_SETFILTER;
+            cdrom->state = CD_STATE_SEND_RESP1;
+        } break;
+
+        case CD_STATE_SEND_RESP1: {
+            cdrom->delayed_command = CDL_NONE;
+    
+            SET_BITS(ifr, IFR_INT, IFR_INT3);
+            RESP_PUSH(cdrom->stat);
+
+            cdrom->state = CD_STATE_RECV_CMD;
+        } break;
+    }
+}
 void cdrom_cmd_setmode(psx_cdrom_t* cdrom) {
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
