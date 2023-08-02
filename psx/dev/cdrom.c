@@ -11,14 +11,6 @@
 
 #define PFIFO_POP (cdrom->pfifo[--cdrom->pfifo_index])
 
-#define SEND_INT1(delay) cdrom->int_number = IFR_INT1; cdrom->irq_delay = delay;
-#define SEND_INT2(delay) cdrom->int_number = IFR_INT2; cdrom->irq_delay = delay;
-#define SEND_INT3(delay) cdrom->int_number = IFR_INT3; cdrom->irq_delay = delay;
-#define SEND_INT4(delay) cdrom->int_number = IFR_INT4; cdrom->irq_delay = delay;
-#define SEND_INT5(delay) cdrom->int_number = IFR_INT5; cdrom->irq_delay = delay;
-#define SEND_INT6(delay) cdrom->int_number = IFR_INT6; cdrom->irq_delay = delay;
-#define SEND_INT7(delay) cdrom->int_number = IFR_INT7; cdrom->irq_delay = delay;
-
 uint8_t cdrom_btoi(uint8_t b) {
     return ((b >> 4) * 10) + (b & 0xf);
 }
