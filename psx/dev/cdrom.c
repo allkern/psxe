@@ -158,7 +158,7 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
         case CD_STATE_SEND_RESP1: {
             log_fatal("CdlReadN: CD_STATE_SEND_RESP1");
 
-            SET_BITS(ifr, IFR_INT, 3);
+            SET_BITS(ifr, IFR_INT, IFR_INT3);
             RESP_PUSH(GETSTAT_MOTOR);
 
             fseek(cdrom->disc, cdrom->seek_offset, 0);
@@ -178,7 +178,7 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
         case CD_STATE_SEND_RESP2: {
             log_fatal("CdlReadN: CD_STATE_SEND_RESP2");
 
-            SET_BITS(ifr, IFR_INT, 1);
+            SET_BITS(ifr, IFR_INT, IFR_INT1);
             RESP_PUSH(GETSTAT_MOTOR | GETSTAT_READ);
 
             log_fatal("Reading data from disc. offset=%02x:%02x:%02x (%08x, tellg=%08x)",
