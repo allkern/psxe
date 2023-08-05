@@ -20,13 +20,15 @@ Use the `-b` or `--bios` setting to configure the BIOS file.
 
 ## Progress
 Here's a list of what's currently implemented:
-- All CPU instructions, excluding GTE
-- Several GPU registers
-- A bunch of GPU commands
-- Most CDROM commands
-- CPU quirks (Branch, Load delay slots)
-- Bus structure
-- OTC DMA (Burst), GPU DMA (Request, Linked), CDROM DMA (Burst)
+
+<img src="https://github.com/allkern/psxe/assets/15825466/199c20e4-4e7e-4d0a-a033-eda347034ed5" width="12" height="12"/> CPU </br>
+<img src="https://github.com/allkern/psxe/assets/15825466/199c20e4-4e7e-4d0a-a033-eda347034ed5" width="12" height="12"/> DMA </br>
+<img src="https://github.com/allkern/psxe/assets/15825466/0ed1fe97-de2f-47de-bb30-82286e6c5fa0" width="12" height="12"/> GPU </br>
+<img src="https://github.com/allkern/psxe/assets/15825466/0ed1fe97-de2f-47de-bb30-82286e6c5fa0" width="12" height="12"/> CDROM </br>
+<img src="https://github.com/allkern/psxe/assets/15825466/0ed1fe97-de2f-47de-bb30-82286e6c5fa0" width="12" height="12"/> Timers </br>
+<img src="https://github.com/allkern/psxe/assets/15825466/66bf03b1-ef39-46a1-9c73-ddd00cfaf9c2" width="12" height="12"/> MDEC </br>
+<img src="https://github.com/allkern/psxe/assets/15825466/66bf03b1-ef39-46a1-9c73-ddd00cfaf9c2" width="12" height="12"/> SPU </br>
+<img src="https://github.com/allkern/psxe/assets/15825466/66bf03b1-ef39-46a1-9c73-ddd00cfaf9c2" width="12" height="12"/> GTE </br>
 
 ## Building
 Building the emulator should be easy, just use the scripts provided in this repo.
