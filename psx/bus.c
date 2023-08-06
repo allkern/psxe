@@ -58,6 +58,7 @@ uint32_t psx_bus_read32(psx_bus_t* bus, uint32_t addr) {
     HANDLE_READ(timer, 32);
     HANDLE_READ(cdrom, 32);
     HANDLE_READ(pad, 32);
+    HANDLE_READ(mdec, 32);
 
     log_warn("Unhandled 32-bit read from %08x:%08x", vaddr, addr);
 
@@ -89,6 +90,7 @@ uint16_t psx_bus_read16(psx_bus_t* bus, uint32_t addr) {
     HANDLE_READ(timer, 16);
     HANDLE_READ(cdrom, 16);
     HANDLE_READ(pad, 16);
+    HANDLE_READ(mdec, 16);
 
     log_warn("Unhandled 16-bit read from %08x:%08x", vaddr, addr);
 
@@ -116,6 +118,7 @@ uint8_t psx_bus_read8(psx_bus_t* bus, uint32_t addr) {
     HANDLE_READ(timer, 8);
     HANDLE_READ(cdrom, 8);
     HANDLE_READ(pad, 8);
+    HANDLE_READ(mdec, 8);
 
     log_warn("Unhandled 8-bit read from %08x:%08x", vaddr, addr);
 
@@ -147,6 +150,7 @@ void psx_bus_write32(psx_bus_t* bus, uint32_t addr, uint32_t value) {
     HANDLE_WRITE(timer, 32);
     HANDLE_WRITE(cdrom, 32);
     HANDLE_WRITE(pad, 32);
+    HANDLE_WRITE(mdec, 32);
 
     log_warn("Unhandled 32-bit write to %08x:%08x (%08x)", vaddr, addr, value);
 }
@@ -176,6 +180,7 @@ void psx_bus_write16(psx_bus_t* bus, uint32_t addr, uint16_t value) {
     HANDLE_WRITE(timer, 16);
     HANDLE_WRITE(cdrom, 16);
     HANDLE_WRITE(pad, 16);
+    HANDLE_WRITE(mdec, 16);
 
     log_warn("Unhandled 16-bit write to %08x:%08x (%04x)", vaddr, addr, value);
 }
@@ -201,6 +206,7 @@ void psx_bus_write8(psx_bus_t* bus, uint32_t addr, uint8_t value) {
     HANDLE_WRITE(timer, 8);
     HANDLE_WRITE(cdrom, 8);
     HANDLE_WRITE(pad, 8);
+    HANDLE_WRITE(mdec, 8);
 
     log_warn("Unhandled 8-bit write to %08x:%08x (%02x)", vaddr, addr, value);
 }
@@ -259,6 +265,10 @@ void psx_bus_init_cdrom(psx_bus_t* bus, psx_cdrom_t* cdrom) {
 
 void psx_bus_init_pad(psx_bus_t* bus, psx_pad_t* pad) {
     bus->pad = pad;
+}
+
+void psx_bus_init_pad(psx_bus_t* bus, psx_mdec_t* mdec) {
+    bus->mdec = mdec;
 }
 
 uint32_t psx_bus_get_access_cycles(psx_bus_t* bus) {
