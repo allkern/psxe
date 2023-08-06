@@ -14,6 +14,7 @@ jobs:
         fetch-depth: 0
     - name: Install SDL2
       run: |
+           sudo apt update
            sudo apt install libsdl2-dev
     - name: Build PSXE
       run: |
