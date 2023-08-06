@@ -147,8 +147,28 @@ const char* g_psx_dma_sync_type_name_table[] = {
     "reserved"
 };
 
-void psx_dma_do_mdec_in(psx_dma_t* dma) { log_error("MDEC_IN DMA channel unimplemented"); }
-void psx_dma_do_mdec_out(psx_dma_t* dma) { log_error("MDEC_OUT DMA channel unimplemented"); }
+void psx_dma_do_mdec_in(psx_dma_t* dma) {
+    if (!CHCR_BUSY(mdec_in))
+        return;
+
+    for (int i = 0; i < BCR_SIZE(mdec_in); i++) {
+        uint32_t data = psx_bus_read32(dma->bus, dma->gpu.madr);
+
+        psx_bus_write32(dma->bus, 0x1f801820, data);
+
+        dma->gpu.madr += CHCR_STEP(mdec_in) ? -4 : 4;
+    }
+
+    dma->mdec_in.chcr &= ~(CHCR_BUSY_MASK | CHCR_TRIG_MASK);
+    dma->mdec_in.bcr = 0;
+}
+
+void psx_dma_do_mdec_out(psx_dma_t* dma) {
+    if (!CHCR_BUSY(mdec_out))
+        return;
+
+    log_fatal("MDEC_OUT DMA channel unimplemented");
+}
 
 void psx_dma_do_gpu_linked(psx_dma_t* dma) {
     uint32_t hdr = psx_bus_read32(dma->bus, dma->gpu.madr);
@@ -224,13 +244,13 @@ void psx_dma_do_gpu(psx_dma_t* dma) {
     if (!CHCR_BUSY(gpu))
         return;
 
-    log_error("GPU DMA transfer: madr=%08x, dir=%s, sync=%s (%u), step=%s, size=%x",
-        dma->gpu.madr,
-        CHCR_TDIR(gpu) ? "to device" : "to RAM",
-        g_psx_dma_sync_type_name_table[CHCR_SYNC(gpu)], CHCR_SYNC(gpu),
-        CHCR_STEP(gpu) ? "decrementing" : "incrementing",
-        BCR_SIZE(gpu)
-    );
+    // log_error("GPU DMA transfer: madr=%08x, dir=%s, sync=%s (%u), step=%s, size=%x",
+    //     dma->gpu.madr,
+    //     CHCR_TDIR(gpu) ? "to device" : "to RAM",
+    //     g_psx_dma_sync_type_name_table[CHCR_SYNC(gpu)], CHCR_SYNC(gpu),
+    //     CHCR_STEP(gpu) ? "decrementing" : "incrementing",
+    //     BCR_SIZE(gpu)
+    // );
 
     g_psx_dma_gpu_table[CHCR_SYNC(gpu)](dma);
 
@@ -243,20 +263,20 @@ void psx_dma_do_cdrom(psx_dma_t* dma) {
     if (!CHCR_BUSY(cdrom))
         return;
     
-    log_fatal("CDROM DMA transfer: madr=%08x, dir=%s, sync=%s (%u), step=%s, size=%x",
-        dma->cdrom.madr,
-        CHCR_TDIR(cdrom) ? "to device" : "to RAM",
-        g_psx_dma_sync_type_name_table[CHCR_SYNC(cdrom)], CHCR_SYNC(cdrom),
-        CHCR_STEP(cdrom) ? "decrementing" : "incrementing",
-        BCR_SIZE(cdrom)
-    );
+    // log_fatal("CDROM DMA transfer: madr=%08x, dir=%s, sync=%s (%u), step=%s, size=%x",
+    //     dma->cdrom.madr,
+    //     CHCR_TDIR(cdrom) ? "to device" : "to RAM",
+    //     g_psx_dma_sync_type_name_table[CHCR_SYNC(cdrom)], CHCR_SYNC(cdrom),
+    //     CHCR_STEP(cdrom) ? "decrementing" : "incrementing",
+    //     BCR_SIZE(cdrom)
+    // );
 
-    log_fatal("DICR: force=%u, en=%02x, irqen=%u, flags=%02x",
-        (dma->dicr >> 15) & 1,
-        (dma->dicr >> 16) & 0x7f,
-        (dma->dicr >> 23) & 1,
-        (dma->dicr >> 24) & 0x7f
-    );
+    // log_fatal("DICR: force=%u, en=%02x, irqen=%u, flags=%02x",
+    //     (dma->dicr >> 15) & 1,
+    //     (dma->dicr >> 16) & 0x7f,
+    //     (dma->dicr >> 23) & 1,
+    //     (dma->dicr >> 24) & 0x7f
+    // );
 
     uint32_t size = BCR_SIZE(cdrom);
 
@@ -295,20 +315,20 @@ void psx_dma_do_spu(psx_dma_t* dma) {
     if (!CHCR_BUSY(spu))
         return;
     
-    log_fatal("SPU DMA transfer: madr=%08x, dir=%s, sync=%s (%u), step=%s, size=%x",
-        dma->spu.madr,
-        CHCR_TDIR(spu) ? "to device" : "to RAM",
-        g_psx_dma_sync_type_name_table[CHCR_SYNC(spu)], CHCR_SYNC(spu),
-        CHCR_STEP(spu) ? "decrementing" : "incrementing",
-        BCR_SIZE(spu)
-    );
+    // log_fatal("SPU DMA transfer: madr=%08x, dir=%s, sync=%s (%u), step=%s, size=%x",
+    //     dma->spu.madr,
+    //     CHCR_TDIR(spu) ? "to device" : "to RAM",
+    //     g_psx_dma_sync_type_name_table[CHCR_SYNC(spu)], CHCR_SYNC(spu),
+    //     CHCR_STEP(spu) ? "decrementing" : "incrementing",
+    //     BCR_SIZE(spu)
+    // );
 
-    log_fatal("DICR: force=%u, en=%02x, irqen=%u, flags=%02x",
-        (dma->dicr >> 15) & 1,
-        (dma->dicr >> 16) & 0x7f,
-        (dma->dicr >> 23) & 1,
-        (dma->dicr >> 24) & 0x7f
-    );
+    // log_fatal("DICR: force=%u, en=%02x, irqen=%u, flags=%02x",
+    //     (dma->dicr >> 15) & 1,
+    //     (dma->dicr >> 16) & 0x7f,
+    //     (dma->dicr >> 23) & 1,
+    //     (dma->dicr >> 24) & 0x7f
+    // );
 
     uint32_t size = BCR_SIZE(spu) * BCR_BCNT(spu);
 
@@ -334,13 +354,13 @@ void psx_dma_do_otc(psx_dma_t* dma) {
     if (!CHCR_TRIG(otc))
         return;
 
-    log_error("OTC DMA transfer: madr=%08x, dir=%s, sync=%s, step=%s, size=%x",
-        dma->otc.madr,
-        CHCR_TDIR(otc) ? "to device" : "to RAM",
-        CHCR_SYNC(otc) ? "other" : "burst",
-        CHCR_STEP(otc) ? "decrementing" : "incrementing",
-        BCR_SIZE(otc)
-    );
+    // log_error("OTC DMA transfer: madr=%08x, dir=%s, sync=%s, step=%s, size=%x",
+    //     dma->otc.madr,
+    //     CHCR_TDIR(otc) ? "to device" : "to RAM",
+    //     CHCR_SYNC(otc) ? "other" : "burst",
+    //     CHCR_STEP(otc) ? "decrementing" : "incrementing",
+    //     BCR_SIZE(otc)
+    // );
 
     for (int i = BCR_SIZE(otc); i > 0; i--) {
         uint32_t addr = (i != 1) ? (dma->otc.madr - 4) : 0xffffff;

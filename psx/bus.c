@@ -267,7 +267,7 @@ void psx_bus_init_pad(psx_bus_t* bus, psx_pad_t* pad) {
     bus->pad = pad;
 }
 
-void psx_bus_init_pad(psx_bus_t* bus, psx_mdec_t* mdec) {
+void psx_bus_init_mdec(psx_bus_t* bus, psx_mdec_t* mdec) {
     bus->mdec = mdec;
 }
 
