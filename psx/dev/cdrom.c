@@ -91,7 +91,7 @@ void cdrom_cmd_getstat(psx_cdrom_t* cdrom) {
             cdrom->delayed_command = CDL_NONE;
 
             SET_BITS(ifr, IFR_INT, IFR_INT3);
-            RESP_PUSH(cdrom->stat);
+            RESP_PUSH(GETSTAT_MOTOR);
 
             cdrom->state = CD_STATE_RECV_CMD;
         } break;
