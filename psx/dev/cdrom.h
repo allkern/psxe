@@ -182,6 +182,7 @@ typedef struct {
     int spin_delay;
     uint8_t error;
     uint8_t error_flags;
+    int read_ongoing;
 
     const char* path;
     FILE* disc;

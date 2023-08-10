@@ -114,9 +114,11 @@ void cdrom_cmd_setloc(psx_cdrom_t* cdrom) {
                 return;
             }
 
-            cdrom->irq_delay = DELAY_1MS;
-            cdrom->delayed_command = CDL_SETLOC;
-            cdrom->state = CD_STATE_SEND_RESP1;
+            if (!cdrom->read_ongoing) {
+                cdrom->irq_delay = DELAY_1MS;
+                cdrom->delayed_command = CDL_SETLOC;
+                cdrom->state = CD_STATE_SEND_RESP1;
+            }
 
             cdrom->seek_sect = BTOI(PFIFO_POP);
             cdrom->seek_ss = BTOI(PFIFO_POP);
@@ -176,6 +178,8 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
         } break;
 
         case CD_STATE_SEND_RESP2: {
+            cdrom->read_ongoing = 1;
+
             log_fatal("CdlReadN: CD_STATE_SEND_RESP2");
 
             SET_BITS(ifr, IFR_INT, IFR_INT1);
@@ -202,6 +206,8 @@ void cdrom_cmd_stop(psx_cdrom_t* cdrom) { log_fatal("stop: Unimplemented"); exit
 void cdrom_cmd_pause(psx_cdrom_t* cdrom) {
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
+            cdrom->read_ongoing = 0;
+
             cdrom->irq_delay = DELAY_1MS;
             cdrom->state = CD_STATE_SEND_RESP1;
             cdrom->delayed_command = CDL_PAUSE;
