@@ -77,6 +77,7 @@ cd psx
 
 ## Acknowledgements
 This project uses external open source code that can be found on the following GitHub repos:
+- argparse.c: https://github.com/cofyc/argparse
 - log.c (slightly modified): https://github.com/rxi/log.c
 - tomlc99: https://github.com/cktan/tomlc99
 
