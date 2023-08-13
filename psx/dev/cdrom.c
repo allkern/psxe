@@ -416,7 +416,7 @@ void cdrom_cmd_gettd(psx_cdrom_t* cdrom) {
             SET_BITS(ifr, IFR_INT, IFR_INT3);
             RESP_PUSH(0x14);
             RESP_PUSH(0x01);
-            RESP_PUSH(cdrom->stat);
+            RESP_PUSH(GETSTAT_MOTOR);
 
             cdrom->delayed_command = CDL_NONE;
             cdrom->state = CD_STATE_RECV_CMD;
@@ -437,7 +437,7 @@ void cdrom_cmd_seekl(psx_cdrom_t* cdrom) {
 
         case CD_STATE_SEND_RESP1: {
             SET_BITS(ifr, IFR_INT, 3);
-            RESP_PUSH(cdrom->stat);
+            RESP_PUSH(GETSTAT_MOTOR);
 
             cdrom->irq_delay = DELAY_1MS;
             cdrom->state = CD_STATE_SEND_RESP2;
@@ -446,7 +446,7 @@ void cdrom_cmd_seekl(psx_cdrom_t* cdrom) {
 
         case CD_STATE_SEND_RESP2: {
             SET_BITS(ifr, IFR_INT, 2);
-            RESP_PUSH(cdrom->stat);
+            RESP_PUSH(GETSTAT_MOTOR);
 
             cdrom->state = CD_STATE_RECV_CMD;
             cdrom->delayed_command = CDL_NONE;
