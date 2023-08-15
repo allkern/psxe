@@ -148,7 +148,6 @@ typedef struct {
     uint8_t status;
     uint8_t ifr;
     uint8_t ier;
-    uint8_t request;
 
     uint8_t pfifo[16];
     uint8_t rfifo[16];

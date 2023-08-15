@@ -763,9 +763,7 @@ void cdrom_write_pfifo(psx_cdrom_t* cdrom, uint8_t value) {
 }
 
 void cdrom_write_req(psx_cdrom_t* cdrom, uint8_t value) {
-    cdrom->request = value;
-
-    if (cdrom->request & REQ_BFRD) {
+    if (value & REQ_BFRD) {
         SET_BITS(status, STAT_DRQSTS_MASK, STAT_DRQSTS_MASK);
 
         cdrom->dfifo_full = 1;
