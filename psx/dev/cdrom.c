@@ -927,9 +927,7 @@ void psx_cdrom_open(psx_cdrom_t* cdrom, const char* path) {
     if (!cdrom->disc) {
         log_fatal("Couldn't open disc image \"%s\"", path);
 
-        cdrom->stat |= GETSTAT_TRAYOPEN;
-
-        return;
+        exit(1);
     }
 
     fseek(cdrom->disc, 0, 0);
