@@ -20,9 +20,8 @@ int main(int argc, const char* argv[]) {
 
     psx_cdrom_t* cdrom = psx_get_cdrom(psx);
 
-    if (cfg->cd_path) {
+    if (cfg->cd_path)
         psx_cdrom_open(cdrom, cfg->cd_path);
-    }
 
     psxe_screen_t* screen = psxe_screen_create();
     psxe_screen_init(screen, psx);
