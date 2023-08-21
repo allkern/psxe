@@ -68,6 +68,8 @@ void cdrom_cmd_unimplemented(psx_cdrom_t* cdrom) {
     exit(1);
 }
 void cdrom_cmd_getstat(psx_cdrom_t* cdrom) {
+    cdrom->delayed_command = CDL_NONE;
+
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
             if (cdrom->pfifo_index) {
@@ -91,7 +93,7 @@ void cdrom_cmd_getstat(psx_cdrom_t* cdrom) {
             cdrom->delayed_command = CDL_NONE;
 
             SET_BITS(ifr, IFR_INT, IFR_INT3);
-            RESP_PUSH(GETSTAT_MOTOR);
+            RESP_PUSH(GETSTAT_MOTOR | (cdrom->disc ? 0 : GETSTAT_TRAYOPEN));
 
             cdrom->state = CD_STATE_RECV_CMD;
         } break;
@@ -149,6 +151,8 @@ void cdrom_cmd_setloc(psx_cdrom_t* cdrom) {
     }
 }
 void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
+    cdrom->delayed_command = CDL_NONE;
+
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
             log_fatal("CdlReadN: CD_STATE_RECV_CMD");
@@ -204,6 +208,8 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
 }
 void cdrom_cmd_stop(psx_cdrom_t* cdrom) { log_fatal("stop: Unimplemented"); exit(1); }
 void cdrom_cmd_pause(psx_cdrom_t* cdrom) {
+    cdrom->delayed_command = CDL_NONE;
+
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
             cdrom->read_ongoing = 0;
@@ -234,6 +240,8 @@ void cdrom_cmd_pause(psx_cdrom_t* cdrom) {
     }
 }
 void cdrom_cmd_init(psx_cdrom_t* cdrom) {
+    cdrom->delayed_command = CDL_NONE;
+
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
             cdrom->irq_delay = DELAY_1MS;
@@ -260,6 +268,8 @@ void cdrom_cmd_init(psx_cdrom_t* cdrom) {
     }
 }
 void cdrom_cmd_unmute(psx_cdrom_t* cdrom) {
+    cdrom->delayed_command = CDL_NONE;
+
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
             if (cdrom->pfifo_index) {
@@ -289,6 +299,8 @@ void cdrom_cmd_unmute(psx_cdrom_t* cdrom) {
     }
 }
 void cdrom_cmd_setfilter(psx_cdrom_t* cdrom) {
+    cdrom->delayed_command = CDL_NONE;
+
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
             if (cdrom->pfifo_index != 2) {
@@ -321,6 +333,8 @@ void cdrom_cmd_setfilter(psx_cdrom_t* cdrom) {
     }
 }
 void cdrom_cmd_setmode(psx_cdrom_t* cdrom) {
+    cdrom->delayed_command = CDL_NONE;
+
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
             if (cdrom->pfifo_index != 1) {
@@ -360,6 +374,8 @@ void cdrom_cmd_setmode(psx_cdrom_t* cdrom) {
 void cdrom_cmd_getlocl(psx_cdrom_t* cdrom) { log_fatal("getlocl: Unimplemented"); exit(1); }
 void cdrom_cmd_getlocp(psx_cdrom_t* cdrom) { log_fatal("getlocp: Unimplemented"); exit(1); }
 void cdrom_cmd_gettn(psx_cdrom_t* cdrom) {
+    cdrom->delayed_command = CDL_NONE;
+
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
             if (cdrom->pfifo_index) {
@@ -391,6 +407,8 @@ void cdrom_cmd_gettn(psx_cdrom_t* cdrom) {
     }
 }
 void cdrom_cmd_gettd(psx_cdrom_t* cdrom) {
+    cdrom->delayed_command = CDL_NONE;
+
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
             if (cdrom->pfifo_index != 1) {
@@ -424,6 +442,8 @@ void cdrom_cmd_gettd(psx_cdrom_t* cdrom) {
     }
 }
 void cdrom_cmd_seekl(psx_cdrom_t* cdrom) {
+    cdrom->delayed_command = CDL_NONE;
+
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
             cdrom->irq_delay = DELAY_1MS;
@@ -455,6 +475,8 @@ void cdrom_cmd_seekl(psx_cdrom_t* cdrom) {
 }
 void cdrom_cmd_seekp(psx_cdrom_t* cdrom) { log_fatal("seekp: Unimplemented"); exit(1); }
 void cdrom_cmd_test(psx_cdrom_t* cdrom) {
+    cdrom->delayed_command = CDL_NONE;
+
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
             if (cdrom->pfifo_index != 1) {
@@ -499,6 +521,8 @@ void cdrom_cmd_test(psx_cdrom_t* cdrom) {
     }
 }
 void cdrom_cmd_getid(psx_cdrom_t* cdrom) {
+    cdrom->delayed_command = CDL_NONE;
+
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
             if (cdrom->pfifo_index) {
@@ -556,6 +580,8 @@ void cdrom_cmd_getid(psx_cdrom_t* cdrom) {
     }
 }
 void cdrom_cmd_reads(psx_cdrom_t* cdrom) {
+    cdrom->delayed_command = CDL_NONE;
+
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
             log_fatal("CdlReadS: CD_STATE_RECV_CMD");
@@ -749,7 +775,6 @@ void cdrom_write_cmd(psx_cdrom_t* cdrom, uint8_t value) {
 
     cdrom->command = value;
     cdrom->state = CD_STATE_RECV_CMD;
-    cdrom->delayed_command = CDL_NONE;
 
     g_psx_cdrom_command_table[value](cdrom);
 }

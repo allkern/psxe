@@ -35,9 +35,8 @@ void psx_exe_load(psx_cpu_t* cpu, const char* path) {
         cpu->r[30] = cpu->r[29];
     }
 
-    log_fatal("PC=%08x SP=%08x (%08x) GP=%08x", cpu->pc, cpu->r[29], hdr.ispb, cpu->r[28]);
-
     log_info("Loaded PS-X EXE file \"%s\"", path);
+    log_fatal("PC=%08x SP=%08x (%08x) GP=%08x", cpu->pc, cpu->r[29], hdr.ispb, cpu->r[28]);
 
     fclose(file);
 }
