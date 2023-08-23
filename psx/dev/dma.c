@@ -10,6 +10,18 @@ psx_dma_t* psx_dma_create() {
     return (psx_dma_t*)malloc(sizeof(psx_dma_t));
 }
 
+const uint32_t g_psx_dma_ctrl_hw_1_table[] = {
+    0x00000000, 0x00000000, 0x00000000,
+    0x00000000, 0x00000000, 0x00000000,
+    0x00000002
+};
+
+const uint32_t g_psx_dma_ctrl_hw_0_table[] = {
+    0x71770703, 0x71770703, 0x71770703,
+    0x71770703, 0x71770703, 0x71770703,
+    0x50000002
+};
+
 const psx_dma_do_fn_t g_psx_dma_do_table[] = {
     psx_dma_do_mdec_in,
     psx_dma_do_mdec_out,
@@ -32,17 +44,22 @@ void psx_dma_init(psx_dma_t* dma, psx_bus_t* bus, psx_ic_t* ic) {
     dma->ic = ic;
 
     dma->dpcr = 0x07654321;
-    dma->otc.chcr = 0x00000002;
 }
 
 uint32_t psx_dma_read32(psx_dma_t* dma, uint32_t offset) {
     if (offset < 0x70) {
         int channel = (offset >> 4) & 0x7;
         int reg = (offset >> 2) & 0x3;
+        uint32_t cr = CR(channel, reg);
 
-        log_error("DMA channel %u register %u (%08x) read %08x", channel, reg, PSX_DMAR_BEGIN + offset, (CR(channel, reg)));
+        if (reg == 2) {
+            cr |= g_psx_dma_ctrl_hw_1_table[channel];
+            cr &= g_psx_dma_ctrl_hw_0_table[channel];
+        }
+
+        log_error("DMA channel %u register %u (%08x) read %08x", channel, reg, PSX_DMAR_BEGIN + offset, cr);
         
-        return CR(channel, reg);
+        return cr;
     } else {
         switch (offset) {
             case 0x70: log_error("DMA control read %08x", dma->dpcr); return dma->dpcr;
@@ -92,9 +109,8 @@ void psx_dma_write32(psx_dma_t* dma, uint32_t offset, uint32_t value) {
 
         log_error("DMA channel %u register %u write (%08x) %08x", channel, reg, PSX_DMAR_BEGIN + offset, value);
 
-        if (reg == 2) {
+        if (reg == 2)
             g_psx_dma_do_table[channel](dma);
-        }
     } else {
         switch (offset) {
             case 0x70: log_error("DMA control write %08x", value); dma->dpcr = value; break;
@@ -351,10 +367,22 @@ void psx_dma_do_pio(psx_dma_t* dma) {
 }
 
 void psx_dma_do_otc(psx_dma_t* dma) {
-    if (!CHCR_TRIG(otc))
+    if ((!(dma->dpcr & DPCR_DMA6EN)) || (!CHCR_TRIG(otc)) || (!CHCR_BUSY(otc)))
         return;
+    
+    log_fatal("OTC DMA transfer: madr=%08x, dir=%s, sync=%s, step=%s, size=%x",
+        dma->otc.madr,
+        CHCR_TDIR(otc) ? "to device" : "to RAM",
+        CHCR_SYNC(otc) ? "other" : "burst",
+        CHCR_STEP(otc) ? "decrementing" : "incrementing",
+        BCR_SIZE(otc)
+    );
 
-    for (int i = BCR_SIZE(otc); i > 0; i--) {
+    uint32_t size = BCR_SIZE(otc);
+
+    if (!size) size = 0x10000;
+
+    for (int i = size; i > 0; i--) {
         uint32_t addr = (i != 1) ? (dma->otc.madr - 4) : 0xffffff;
 
         psx_bus_write32(dma->bus, dma->otc.madr, addr & 0xffffff);
@@ -387,7 +415,7 @@ void psx_dma_update(psx_dma_t* dma, int cyc) {
 
     if (dma->gpu_irq_delay) {
         if (dma->dicr & DICR_DMA2EN)
-                dma->dicr |= DICR_DMA2FL;
+            dma->dicr |= DICR_DMA2FL;
 
         dma->gpu_irq_delay = 0;
     }

@@ -61,6 +61,33 @@ void psx_dma_update(psx_dma_t*, int);
 typedef void (*psx_dma_do_fn_t)(psx_dma_t*);
 
 /*
+  0-2   DMA0, MDECin  Priority      (0..7; 0=Highest, 7=Lowest)
+  3     DMA0, MDECin  Master Enable (0=Disable, 1=Enable)
+  4-6   DMA1, MDECout Priority      (0..7; 0=Highest, 7=Lowest)
+  7     DMA1, MDECout Master Enable (0=Disable, 1=Enable)
+  8-10  DMA2, GPU     Priority      (0..7; 0=Highest, 7=Lowest)
+  11    DMA2, GPU     Master Enable (0=Disable, 1=Enable)
+  12-14 DMA3, CDROM   Priority      (0..7; 0=Highest, 7=Lowest)
+  15    DMA3, CDROM   Master Enable (0=Disable, 1=Enable)
+  16-18 DMA4, SPU     Priority      (0..7; 0=Highest, 7=Lowest)
+  19    DMA4, SPU     Master Enable (0=Disable, 1=Enable)
+  20-22 DMA5, PIO     Priority      (0..7; 0=Highest, 7=Lowest)
+  23    DMA5, PIO     Master Enable (0=Disable, 1=Enable)
+  24-26 DMA6, OTC     Priority      (0..7; 0=Highest, 7=Lowest)
+  27    DMA6, OTC     Master Enable (0=Disable, 1=Enable)
+  28-30 Unknown, Priority Offset or so? (R/W)
+  31    Unknown, no effect? (R/W)
+*/
+
+#define DPCR_DMA0EN 0x00000008
+#define DPCR_DMA1EN 0x00000080
+#define DPCR_DMA2EN 0x00000800
+#define DPCR_DMA3EN 0x00008000
+#define DPCR_DMA4EN 0x00080000
+#define DPCR_DMA5EN 0x00800000
+#define DPCR_DMA6EN 0x08000000
+
+/*
   0       Transfer Direction    (0=To Main RAM, 1=From Main RAM)
   1       Memory Address Step   (0=Forward;+4, 1=Backward;-4)
   2-7     Not used              (always zero)
