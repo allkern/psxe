@@ -208,17 +208,6 @@ void plotLine(psx_gpu_t* gpu, int x0, int y0, int x1, int y1, uint16_t color) {
 
 void gpu_render_flat_line(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, uint32_t color) {
     plotLine(gpu, v0.x, v0.y, v1.x, v1.y, color);
-    // double l = 640.0;
-
-    // for (double p = 0.0; p < 1.0; p += 1.0 / l) {
-    //     unsigned int ax = (v0.x * p) + (v1.x * (1.0f - p));
-    //     unsigned int ay = (v0.y * p) + (v1.y * (1.0f - p));
-
-    //     if ((ax > 1024) || (ay > 512))
-    //         continue;
-
-    //     gpu->vram[ax + (ay * 1024)] = color;
-    // }
 }
 
 void gpu_render_flat_rectangle(psx_gpu_t* gpu, vertex_t v, uint32_t w, uint32_t h, uint32_t color) {
@@ -631,6 +620,49 @@ void gpu_cmd_2c(psx_gpu_t* gpu) {
 }
 
 // Monochrome Opaque Quadrilateral
+void gpu_cmd_24(psx_gpu_t* gpu) {
+    switch (gpu->state) {
+        case GPU_STATE_RECV_CMD: {
+            gpu->state = GPU_STATE_RECV_ARGS;
+            gpu->cmd_args_remaining = 6;
+        } break;
+
+        case GPU_STATE_RECV_ARGS: {
+            if (!gpu->cmd_args_remaining) {
+                gpu->state = GPU_STATE_RECV_DATA;
+
+                uint32_t texp = gpu->buf[4] >> 16;
+                gpu->color = gpu->buf[0] & 0xffffff;
+                gpu->pal   = gpu->buf[2] >> 16;
+                gpu->v0.tx = gpu->buf[2] & 0xff;
+                gpu->v0.ty = (gpu->buf[2] >> 8) & 0xff;
+                gpu->v1.tx = gpu->buf[4] & 0xff;
+                gpu->v1.ty = (gpu->buf[4] >> 8) & 0xff;
+                gpu->v2.tx = gpu->buf[6] & 0xff;
+                gpu->v2.ty = (gpu->buf[6] >> 8) & 0xff;
+                gpu->v0.x = gpu->buf[1] & 0xffff;
+                gpu->v0.y = gpu->buf[1] >> 16;
+                gpu->v1.x = gpu->buf[3] & 0xffff;
+                gpu->v1.y = gpu->buf[3] >> 16;
+                gpu->v2.x = gpu->buf[5] & 0xffff;
+                gpu->v2.y = gpu->buf[5] >> 16;
+
+                gpu->clut_x = (gpu->pal & 0x3f) << 4;
+                gpu->clut_y = (gpu->pal >> 6) & 0x1ff;
+
+                uint32_t tpx = (texp & 0xf) << 6;
+                uint32_t tpy = (texp & 0x10) << 4;
+                int depth = (texp >> 7) & 0x3;
+
+                gpu_render_textured_triangle(gpu, gpu->v0, gpu->v1, gpu->v2, tpx, tpy, depth);
+
+                gpu->state = GPU_STATE_RECV_CMD;
+            }
+        } break;
+    }
+}
+
+// Monochrome Opaque Quadrilateral
 void gpu_cmd_2d(psx_gpu_t* gpu) {
     switch (gpu->state) {
         case GPU_STATE_RECV_CMD: {
@@ -706,6 +738,69 @@ void gpu_cmd_64(psx_gpu_t* gpu) {
                 uint32_t tpy = gpu->texp_y;
 
                 gpu_render_textured_rectangle(gpu, gpu->v0, w, h, tpx, tpy);
+
+                gpu->state = GPU_STATE_RECV_CMD;
+            }
+        } break;
+    }
+}
+
+void gpu_cmd_7c(psx_gpu_t* gpu) {
+    switch (gpu->state) {
+        case GPU_STATE_RECV_CMD: {
+            gpu->state = GPU_STATE_RECV_ARGS;
+            gpu->cmd_args_remaining = 2;
+        } break;
+
+        case GPU_STATE_RECV_ARGS: {
+            if (!gpu->cmd_args_remaining) {
+                gpu->state = GPU_STATE_RECV_DATA;
+
+                gpu->color = gpu->buf[0] & 0xffffff;
+                gpu->v0.x  = gpu->buf[1] & 0xffff;
+                gpu->v0.y  = gpu->buf[1] >> 16;
+                gpu->v0.tx = gpu->buf[2] & 0xff;
+                gpu->v0.ty = (gpu->buf[2] >> 8) & 0xff;
+                gpu->pal   = gpu->buf[2] >> 16;
+
+                uint32_t w = 16;
+                uint32_t h = 16;
+
+                gpu->clut_x = (gpu->pal & 0x3f) << 4;
+                gpu->clut_y = (gpu->pal >> 6) & 0x1ff;
+
+                uint32_t tpx = gpu->texp_x;
+                uint32_t tpy = gpu->texp_y;
+
+                gpu_render_textured_rectangle(gpu, gpu->v0, w, h, tpx, tpy);
+
+                gpu->state = GPU_STATE_RECV_CMD;
+            }
+        } break;
+    }
+}
+
+void gpu_cmd_60(psx_gpu_t* gpu) {
+    switch (gpu->state) {
+        case GPU_STATE_RECV_CMD: {
+            gpu->state = GPU_STATE_RECV_ARGS;
+            gpu->cmd_args_remaining = 2;
+        } break;
+
+        case GPU_STATE_RECV_ARGS: {
+            if (!gpu->cmd_args_remaining) {
+                gpu->state = GPU_STATE_RECV_DATA;
+
+                gpu->color = gpu->buf[0] & 0xffffff;
+                gpu->v0.x  = gpu->buf[1] & 0xffff;
+                gpu->v0.y  = gpu->buf[1] >> 16;
+                gpu->xsiz  = gpu->buf[2] & 0xffff;
+                gpu->ysiz  = gpu->buf[2] >> 16;
+
+                gpu->v0.x += gpu->off_x;
+                gpu->v0.y += gpu->off_y;
+
+                gpu_render_flat_rectangle(gpu, gpu->v0, gpu->xsiz, gpu->ysiz, gpu_to_bgr555(gpu->color));
 
                 gpu->state = GPU_STATE_RECV_CMD;
             }
@@ -859,6 +954,10 @@ void psx_gpu_update_cmd(psx_gpu_t* gpu) {
         case 0x00: /* nop */ break;
         case 0x01: /* Cache clear */ break;
         case 0x02: gpu_cmd_02(gpu); break;
+        case 0x24: gpu_cmd_24(gpu); break;
+        case 0x25: gpu_cmd_24(gpu); break;
+        case 0x26: gpu_cmd_24(gpu); break;
+        case 0x27: gpu_cmd_24(gpu); break;
         case 0x28: gpu_cmd_28(gpu); break;
         case 0x2c: gpu_cmd_2d(gpu); break;
         case 0x2d: gpu_cmd_2d(gpu); break;
@@ -868,11 +967,17 @@ void psx_gpu_update_cmd(psx_gpu_t* gpu) {
         case 0x32: gpu_cmd_30(gpu); break;
         case 0x38: gpu_cmd_38(gpu); break;
         case 0x40: gpu_cmd_40(gpu); break;
+        case 0x60: gpu_cmd_60(gpu); break;
+        case 0x62: gpu_cmd_60(gpu); break;
         case 0x64: gpu_cmd_64(gpu); break;
         case 0x65: gpu_cmd_64(gpu); break;
         case 0x66: gpu_cmd_64(gpu); break;
         case 0x67: gpu_cmd_64(gpu); break;
         case 0x68: gpu_cmd_68(gpu); break;
+        case 0x7c: gpu_cmd_7c(gpu); break;
+        case 0x7d: gpu_cmd_7c(gpu); break;
+        case 0x7e: gpu_cmd_7c(gpu); break;
+        case 0x7f: gpu_cmd_7c(gpu); break;
         case 0x80: gpu_cmd_80(gpu); break;
         case 0xa0: gpu_cmd_a0(gpu); break;
         case 0xc0: gpu_cmd_c0(gpu); break;
@@ -904,7 +1009,11 @@ void psx_gpu_update_cmd(psx_gpu_t* gpu) {
         case 0xe6: {
             /* To-do: Implement mask bit thing */
         } break;
-        default: log_fatal("Unhandled GP0(%02Xh)", gpu->buf[0] >> 24); break;
+        default: {
+            log_set_quiet(0);
+            log_fatal("Unhandled GP0(%02Xh)", gpu->buf[0] >> 24);
+            log_set_quiet(1);
+        } break;
     }
 }
 
