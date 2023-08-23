@@ -572,6 +572,54 @@ void gpu_cmd_38(psx_gpu_t* gpu) {
 }
 
 // Monochrome Opaque Quadrilateral
+void gpu_cmd_3c(psx_gpu_t* gpu) {
+    switch (gpu->state) {
+        case GPU_STATE_RECV_CMD: {
+            gpu->state = GPU_STATE_RECV_ARGS;
+            gpu->cmd_args_remaining = 11;
+        } break;
+
+        case GPU_STATE_RECV_ARGS: {
+            if (!gpu->cmd_args_remaining) {
+                gpu->state = GPU_STATE_RECV_DATA;
+
+                uint32_t texp = gpu->buf[5] >> 16;
+                gpu->color = gpu->buf[0] & 0xffffff;
+                gpu->pal   = gpu->buf[2] >> 16;
+                gpu->v0.tx = gpu->buf[2] & 0xff;
+                gpu->v0.ty = (gpu->buf[2] >> 8) & 0xff;
+                gpu->v1.tx = gpu->buf[5] & 0xff;
+                gpu->v1.ty = (gpu->buf[5] >> 8) & 0xff;
+                gpu->v2.tx = gpu->buf[8] & 0xff;
+                gpu->v2.ty = (gpu->buf[8] >> 8) & 0xff;
+                gpu->v3.tx = gpu->buf[11] & 0xff;
+                gpu->v3.ty = (gpu->buf[11] >> 8) & 0xff;
+                gpu->v0.x = gpu->buf[1] & 0xffff;
+                gpu->v0.y = gpu->buf[1] >> 16;
+                gpu->v1.x = gpu->buf[4] & 0xffff;
+                gpu->v1.y = gpu->buf[4] >> 16;
+                gpu->v2.x = gpu->buf[7] & 0xffff;
+                gpu->v2.y = gpu->buf[7] >> 16;
+                gpu->v3.x = gpu->buf[10] & 0xffff;
+                gpu->v3.y = gpu->buf[10] >> 16;
+
+                gpu->clut_x = (gpu->pal & 0x3f) << 4;
+                gpu->clut_y = (gpu->pal >> 6) & 0x1ff;
+
+                uint32_t tpx = (texp & 0xf) << 6;
+                uint32_t tpy = (texp & 0x10) << 4;
+                uint32_t depth = (texp >> 7) & 0x3;
+
+                gpu_render_textured_triangle(gpu, gpu->v0, gpu->v1, gpu->v2, tpx, tpy, depth);
+                gpu_render_textured_triangle(gpu, gpu->v1, gpu->v2, gpu->v3, tpx, tpy, depth);
+
+                gpu->state = GPU_STATE_RECV_CMD;
+            }
+        } break;
+    }
+}
+
+// Monochrome Opaque Quadrilateral
 void gpu_cmd_2c(psx_gpu_t* gpu) {
     switch (gpu->state) {
         case GPU_STATE_RECV_CMD: {
@@ -966,6 +1014,8 @@ void psx_gpu_update_cmd(psx_gpu_t* gpu) {
         case 0x30: gpu_cmd_30(gpu); break;
         case 0x32: gpu_cmd_30(gpu); break;
         case 0x38: gpu_cmd_38(gpu); break;
+        case 0x3c: gpu_cmd_3c(gpu); break;
+        case 0x3e: gpu_cmd_3c(gpu); break;
         case 0x40: gpu_cmd_40(gpu); break;
         case 0x60: gpu_cmd_60(gpu); break;
         case 0x62: gpu_cmd_60(gpu); break;
@@ -1010,9 +1060,7 @@ void psx_gpu_update_cmd(psx_gpu_t* gpu) {
             /* To-do: Implement mask bit thing */
         } break;
         default: {
-            log_set_quiet(0);
             log_fatal("Unhandled GP0(%02Xh)", gpu->buf[0] >> 24);
-            log_set_quiet(1);
         } break;
     }
 }
