@@ -354,14 +354,6 @@ void psx_dma_do_otc(psx_dma_t* dma) {
     if (!CHCR_TRIG(otc))
         return;
 
-    // log_error("OTC DMA transfer: madr=%08x, dir=%s, sync=%s, step=%s, size=%x",
-    //     dma->otc.madr,
-    //     CHCR_TDIR(otc) ? "to device" : "to RAM",
-    //     CHCR_SYNC(otc) ? "other" : "burst",
-    //     CHCR_STEP(otc) ? "decrementing" : "incrementing",
-    //     BCR_SIZE(otc)
-    // );
-
     for (int i = BCR_SIZE(otc); i > 0; i--) {
         uint32_t addr = (i != 1) ? (dma->otc.madr - 4) : 0xffffff;
 
