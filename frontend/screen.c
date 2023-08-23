@@ -6,11 +6,17 @@ uint16_t screen_get_button(SDL_Keycode k) {
     if (k == SDLK_w     ) return PSXI_SW_SDA_TRIANGLE;
     if (k == SDLK_d     ) return PSXI_SW_SDA_CIRCLE;
     if (k == SDLK_RETURN) return PSXI_SW_SDA_START;
-    if (k == SDLK_q     ) return PSXI_SW_SDA_SELECT;
+    if (k == SDLK_s     ) return PSXI_SW_SDA_SELECT;
     if (k == SDLK_UP    ) return PSXI_SW_SDA_PAD_UP;
     if (k == SDLK_DOWN  ) return PSXI_SW_SDA_PAD_DOWN;
     if (k == SDLK_LEFT  ) return PSXI_SW_SDA_PAD_LEFT;
     if (k == SDLK_RIGHT ) return PSXI_SW_SDA_PAD_RIGHT;
+    if (k == SDLK_q     ) return PSXI_SW_SDA_L1;
+    if (k == SDLK_e     ) return PSXI_SW_SDA_R1;
+    if (k == SDLK_1     ) return PSXI_SW_SDA_L2;
+    if (k == SDLK_3     ) return PSXI_SW_SDA_R2;
+    if (k == SDLK_z     ) return PSXI_SW_SDA_L3;
+    if (k == SDLK_c     ) return PSXI_SW_SDA_R3;
 
     return 0;
 }
