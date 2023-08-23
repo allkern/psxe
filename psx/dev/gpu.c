@@ -828,6 +828,41 @@ void gpu_cmd_7c(psx_gpu_t* gpu) {
     }
 }
 
+void gpu_cmd_74(psx_gpu_t* gpu) {
+    switch (gpu->state) {
+        case GPU_STATE_RECV_CMD: {
+            gpu->state = GPU_STATE_RECV_ARGS;
+            gpu->cmd_args_remaining = 2;
+        } break;
+
+        case GPU_STATE_RECV_ARGS: {
+            if (!gpu->cmd_args_remaining) {
+                gpu->state = GPU_STATE_RECV_DATA;
+
+                gpu->color = gpu->buf[0] & 0xffffff;
+                gpu->v0.x  = gpu->buf[1] & 0xffff;
+                gpu->v0.y  = gpu->buf[1] >> 16;
+                gpu->v0.tx = gpu->buf[2] & 0xff;
+                gpu->v0.ty = (gpu->buf[2] >> 8) & 0xff;
+                gpu->pal   = gpu->buf[2] >> 16;
+
+                uint32_t w = 8;
+                uint32_t h = 8;
+
+                gpu->clut_x = (gpu->pal & 0x3f) << 4;
+                gpu->clut_y = (gpu->pal >> 6) & 0x1ff;
+
+                uint32_t tpx = gpu->texp_x;
+                uint32_t tpy = gpu->texp_y;
+
+                gpu_render_textured_rectangle(gpu, gpu->v0, w, h, tpx, tpy);
+
+                gpu->state = GPU_STATE_RECV_CMD;
+            }
+        } break;
+    }
+}
+
 void gpu_cmd_60(psx_gpu_t* gpu) {
     switch (gpu->state) {
         case GPU_STATE_RECV_CMD: {
@@ -1007,6 +1042,7 @@ void psx_gpu_update_cmd(psx_gpu_t* gpu) {
         case 0x26: gpu_cmd_24(gpu); break;
         case 0x27: gpu_cmd_24(gpu); break;
         case 0x28: gpu_cmd_28(gpu); break;
+        case 0x2a: gpu_cmd_28(gpu); break;
         case 0x2c: gpu_cmd_2d(gpu); break;
         case 0x2d: gpu_cmd_2d(gpu); break;
         case 0x2e: gpu_cmd_2d(gpu); break;
@@ -1024,6 +1060,10 @@ void psx_gpu_update_cmd(psx_gpu_t* gpu) {
         case 0x66: gpu_cmd_64(gpu); break;
         case 0x67: gpu_cmd_64(gpu); break;
         case 0x68: gpu_cmd_68(gpu); break;
+        case 0x74: gpu_cmd_74(gpu); break;
+        case 0x75: gpu_cmd_74(gpu); break;
+        case 0x76: gpu_cmd_74(gpu); break;
+        case 0x77: gpu_cmd_74(gpu); break;
         case 0x7c: gpu_cmd_7c(gpu); break;
         case 0x7d: gpu_cmd_7c(gpu); break;
         case 0x7e: gpu_cmd_7c(gpu); break;
