@@ -247,6 +247,7 @@ void cdrom_cmd_init(psx_cdrom_t* cdrom) {
             cdrom->irq_delay = DELAY_1MS;
             cdrom->state = CD_STATE_SEND_RESP1;
             cdrom->delayed_command = CDL_INIT;
+            cdrom->read_ongoing = 0;
         } break;
 
         case CD_STATE_SEND_RESP1: {
