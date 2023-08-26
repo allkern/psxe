@@ -15,6 +15,7 @@ gcc -I"`"$($PSX_DIR)`"" `
     "psx\*.c" `
     "psx\dev\*.c" `
     "psx\input\*.c" `
+    "psx\disc\*.c" `
     "frontend\*.c" `
     -o "bin\psxe.exe" `
     -DREP_VERSION="`"$($VERSION_TAG)`"" `
