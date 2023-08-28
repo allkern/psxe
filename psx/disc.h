@@ -17,9 +17,9 @@ typedef struct {
     uint8_t f;
 } msf_t;
 
-typedef int (*disc_seek_t)(msf_t);
-typedef int (*disc_read_sector_t)(void*);
-typedef int (*disc_get_track_t)(msf_t*, int);
+typedef int (*disc_seek_t)(void*, msf_t);
+typedef int (*disc_read_sector_t)(void*, void*);
+typedef int (*disc_get_track_t)(void*, msf_t*, int);
 
 typedef struct {
     void* udata;

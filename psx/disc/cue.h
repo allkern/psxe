@@ -63,6 +63,7 @@ typedef struct {
     int type;
     void* buf;
     msf_t index[2];
+    msf_t disc_offset;
     size_t size;
 } cue_track_t;
 
@@ -73,14 +74,16 @@ typedef struct {
     char c;
     int error;
     FILE* file;
-    int numtracks;
+    int num_tracks;
     cue_track_t** track;
     char* current_file;
+    uint32_t seek_offset;
 } psxd_cue_t;
 
 psxd_cue_t* psxd_cue_create();
 void psxd_cue_init(psxd_cue_t*, int);
-void psxd_cue_load(psxd_cue_t*, const char*);
+void psxd_cue_parse(psxd_cue_t*, const char*);
+void psxd_cue_load(psxd_cue_t*);
 void psxd_cue_init_disc(psxd_cue_t*, psx_disc_t*);
 void psxd_cue_destroy(psxd_cue_t*);
 

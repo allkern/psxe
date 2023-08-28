@@ -24,13 +24,13 @@ psx_disc_t* psx_disc_create() {
 }
 
 int psx_disc_seek(psx_disc_t* disc, msf_t msf) {
-    return disc->seek_func(msf);
+    return disc->seek_func(disc->udata, msf);
 }
 
 int psx_disc_read_sector(psx_disc_t* disc, void* buf) {
-    return disc->read_sector_func(buf);
+    return disc->read_sector_func(disc->udata, buf);
 }
 
 int psx_disc_get_track(psx_disc_t* disc, msf_t* msf, int track) {
-    return disc->get_track_func(msf, track);
+    return disc->get_track_func(disc->udata, msf, track);
 }

@@ -13,6 +13,9 @@
 #include "../disc.h"
 #include "../log.h"
 
+#define CUE_SECTOR_SIZE 0x930
+#define CUE_SECTORS_PER_SECOND 75
+
 static const char* g_psxd_cue_tokens[] = {
     "4CH",
     "AIFF",
@@ -54,12 +57,12 @@ static const char* g_psxd_cue_tokens[] = {
         ERROR_OUT(PE_UNEXPECTED_TOKEN);
 
 void cue_add_track(psxd_cue_t* cue) {
-    ++cue->numtracks;
+    ++cue->num_tracks;
 
-    cue->track = realloc(cue->track, cue->numtracks * sizeof(cue_track_t*));
-    cue->track[cue->numtracks - 1] = malloc(sizeof(cue_track_t));
+    cue->track = realloc(cue->track, cue->num_tracks * sizeof(cue_track_t*));
+    cue->track[cue->num_tracks - 1] = malloc(sizeof(cue_track_t));
 
-    memset(cue->track[cue->numtracks - 1], 0, sizeof(cue_track_t));
+    memset(cue->track[cue->num_tracks - 1], 0, sizeof(cue_track_t));
 }
 
 void cue_ignore_whitespace(psxd_cue_t* cue) {
@@ -191,29 +194,6 @@ int cue_parse(psxd_cue_t* cue, FILE* file) {
     if (cue_parse_string(cue))
         return cue->error;
 
-    // Open file, get size and seek to 0
-    FILE* trackfile = fopen(cue->buf, "rb");
-
-    fseek(trackfile, 0, SEEK_END);
-
-    filesz = ftell(trackfile);
-
-    fseek(trackfile, 0, SEEK_SET);
-
-    // If we have to preload the disc image
-    // then copy data to our filebuf and close
-    // the file. Otherwise, our filebuf contains
-    // a pointer to the open FILE.
-    if (cue->preload) {
-        filebuf = malloc(filesz);
-
-        fread(filebuf, 1, filesz, trackfile);
-
-        fclose(trackfile);
-    } else {
-        filebuf = trackfile;
-    }
-
     strcpy(cue->current_file, cue->buf);
 
     EXPECT_KEYWORD(CUE_BINARY);
@@ -224,15 +204,14 @@ int cue_parse(psxd_cue_t* cue, FILE* file) {
     
     int track = atoi(cue->buf) - 1;
     
-    if (track != cue->numtracks)
+    if (track != cue->num_tracks)
         ERROR_OUT(PE_NON_SEQUENTIAL_TRACKS);
     
     cue_add_track(cue);
 
-    cue->track[track]->buf = filebuf;
-    cue->track[track]->size = filesz;
     cue->track[track]->filename = malloc(strlen(cue->current_file));
 
+    // Copy current file to track filename
     strcpy(cue->track[track]->filename, cue->current_file);
 
     if (cue_parse_keyword(cue))
@@ -289,21 +268,77 @@ void psxd_cue_init(psxd_cue_t* cue, int preload) {
     cue->current_file = malloc(CUE_BUF_SIZE);
 }
 
-void psxd_cue_load(psxd_cue_t* cue, const char* path) {
+void psxd_cue_parse(psxd_cue_t* cue, const char* path) {
     FILE* file = fopen(path, "rb");
 
     cue_parse(cue, file);
 
     if (cue->error) {
-        log_fatal("CUE error %u", cue->error);
+        log_fatal("CUE error %u");
+
+        exit(1);
     }
 }
 
-void psxd_cue_init_disc(psxd_cue_t* cue, psx_disc_t* disc) {
+void psxd_cue_load(psxd_cue_t* cue) {
+    for (int i = 0; i < cue->num_tracks; i++) {
+        cue_track_t* track = cue->track[i];
+
+        FILE* file = fopen(cue->track[i]->filename, "rb");
+
+        fseek(file, 0, SEEK_END);
+
+        track->size = ftell(file);
+
+        fseek(file, 0, SEEK_SET);
+
+        if (cue->preload) {
+            track->buf = malloc(track->size);
+
+            fread(track->buf, 1, track->size, file);
+
+            fclose(file);
+        } else {
+            track->buf = file;
+        }
+    }
+}
+
+int psxd_cue_seek(void* udata, msf_t msf) {
+    psxd_cue_t* cue = udata;
+
+    uint32_t sectors = (((msf.m * 60) + msf.s) * CUE_SECTORS_PER_SECOND) + msf.f;
+
+    cue->seek_offset = sectors * CUE_SECTOR_SIZE;
+
+    return 0;
+}
+
+int psxd_cue_read_sector(void* udata, void* buf) {
+    psxd_cue_t* cue = udata;
 
 }
 
+int psxd_cue_get_track(void* udata, msf_t* msf, int track) {
+
+}
+
+void psxd_cue_init_disc(psxd_cue_t* cue, psx_disc_t* disc) {
+    disc->udata = cue;
+    disc->seek_func = psxd_cue_seek;
+    disc->read_sector_func = psxd_cue_read_sector;
+    disc->get_track_func = psxd_cue_get_track;
+}
+
 void psxd_cue_destroy(psxd_cue_t* cue) {
+    for (int i = 0; i < cue->num_tracks; i++) {
+        if (cue->preload)
+            fclose((FILE*)cue->track[i]->buf);
+        
+        free(cue->track[i]);
+    }
+
+    free(cue->track);
     free(cue->current_file);
     free(cue->buf);
     free(cue);
