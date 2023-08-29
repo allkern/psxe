@@ -65,6 +65,15 @@ void cue_add_track(psxd_cue_t* cue) {
     memset(cue->track[cue->num_tracks - 1], 0, sizeof(cue_track_t));
 }
 
+void* cue_alloc_block(void* buf, size_t* block_size, size_t ext) {
+    *block_size += ext;
+
+    if (!buf)
+        return malloc(*block_size);
+    
+    return realloc(buf, *block_size);
+}
+
 void cue_ignore_whitespace(psxd_cue_t* cue) {
     while (isspace(cue->c))
         cue->c = fgetc(cue->file);
@@ -280,7 +289,17 @@ void psxd_cue_parse(psxd_cue_t* cue, const char* path) {
     }
 }
 
+// To-do: Rework CUE loader
+//        I want to put every track one after the other
+//        on a big buffer for absolute MSF addressing.
+//        We should also save metadata about the tracks on
+//        the CUE struct.
+
 void psxd_cue_load(psxd_cue_t* cue) {
+    size_t offset = 0;
+
+    uint8_t* buf = NULL;
+
     for (int i = 0; i < cue->num_tracks; i++) {
         cue_track_t* track = cue->track[i];
 
@@ -290,17 +309,12 @@ void psxd_cue_load(psxd_cue_t* cue) {
 
         track->size = ftell(file);
 
+        buf = cue_alloc_block(buf, offset, track->size);
+
         fseek(file, 0, SEEK_SET);
+        fread(buf + (offset - track->size), 1, track->size, file);
 
-        if (cue->preload) {
-            track->buf = malloc(track->size);
-
-            fread(track->buf, 1, track->size, file);
-
-            fclose(file);
-        } else {
-            track->buf = file;
-        }
+        fclose(file);
     }
 }
 
@@ -320,7 +334,6 @@ int psxd_cue_read_sector(void* udata, void* buf) {
 }
 
 int psxd_cue_get_track(void* udata, msf_t* msf, int track) {
-
 }
 
 void psxd_cue_init_disc(psxd_cue_t* cue, psx_disc_t* disc) {

@@ -166,7 +166,7 @@ typedef struct {
     int tray_open;
 
     // Setloc
-    uint8_t seek_ss, seek_mm, seek_sect;
+    uint8_t seek_ss, seek_mm, seek_ff;
     uint32_t seek_offset;
 
     // Setmode

@@ -12,11 +12,13 @@
 #define PFIFO_POP (cdrom->pfifo[--cdrom->pfifo_index])
 
 uint8_t cdrom_btoi(uint8_t b) {
+    if ((b >> 4) > 0x9) { log_set_quiet(0); log_fatal("BCD high nibble > 9"); log_set_quiet(1); }
+    if ((b & 0xf) > 0x9) { log_set_quiet(0); log_fatal("BCD low  nibble > 9"); log_set_quiet(1); }
     return ((b >> 4) * 10) + (b & 0xf);
 }
 
-// #define BTOI(b) cdrom_btoi(b)
-#define BTOI(b) g_psx_cdrom_btoi_table[b]
+#define BTOI(b) cdrom_btoi(b)
+//#define BTOI(b) g_psx_cdrom_btoi_table[b]
 
 static const uint8_t g_psx_cdrom_btoi_table[] = {
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
@@ -122,20 +124,14 @@ void cdrom_cmd_setloc(psx_cdrom_t* cdrom) {
                 cdrom->state = CD_STATE_SEND_RESP1;
             }
 
-            cdrom->seek_sect = BTOI(PFIFO_POP);
-            cdrom->seek_ss = BTOI(PFIFO_POP);
-            cdrom->seek_mm = BTOI(PFIFO_POP);
-
-            // Account for 2 second gap
-            uint32_t seconds = (cdrom->seek_mm * 60) + cdrom->seek_ss - 2;
-            uint32_t sectors = (seconds * CD_SECTORS_PER_SECOND) + cdrom->seek_sect;
-
-            cdrom->seek_offset = sectors * CD_SECTOR_SIZE;
+            cdrom->seek_ff = PFIFO_POP;
+            cdrom->seek_ss = PFIFO_POP;
+            cdrom->seek_mm = PFIFO_POP;
 
             log_fatal("setloc: %02u:%02u:%02u (%08x)",
                 cdrom->seek_mm,
                 cdrom->seek_ss,
-                cdrom->seek_sect,
+                cdrom->seek_ff,
                 cdrom->seek_offset
             );
         } break;
@@ -189,14 +185,30 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
             SET_BITS(ifr, IFR_INT, IFR_INT1);
             RESP_PUSH(GETSTAT_MOTOR | GETSTAT_READ);
 
-            log_fatal("Reading data from disc. offset=%02x:%02x:%02x (%08x, tellg=%08x)",
-                cdrom->seek_mm, cdrom->seek_ss, cdrom->seek_sect,
-                cdrom->seek_offset, ftell(cdrom->disc)
-            );
+            
+            // Account for 2 second gap
+            uint16_t m = BTOI(cdrom->seek_mm) * 60 * 75;
+            uint16_t s = BTOI(cdrom->seek_ss) * 75;
+            uint16_t f = BTOI(cdrom->seek_ff);
+            uint32_t t = m + s + f - 150;
+
+            // log_fatal("Reading data from disc. offset=%02x:%02x:%02x (%08x, tellg=%08x)",
+            //     cdrom->seek_mm, cdrom->seek_ss, cdrom->seek_ff,
+            //     cdrom->seek_offset, ftell(cdrom->disc)
+            // );
 
             cdrom->dfifo_index = 0;
 
+            fseek(cdrom->disc, t * CD_SECTOR_SIZE, SEEK_SET);
             fread(cdrom->dfifo, 1, CD_SECTOR_SIZE, cdrom->disc);
+
+            cdrom->seek_ff++;
+
+            if ((cdrom->seek_ff & 0xF) == 10) { cdrom->seek_ff += 0x10; cdrom->seek_ff &= 0xF0; }
+            if (cdrom->seek_ff == 0x75) { cdrom->seek_ss++; cdrom->seek_ff = 0; }
+            if ((cdrom->seek_ss & 0xF) == 10) { cdrom->seek_ss += 0x10; cdrom->seek_ss &= 0xF0; }
+            if (cdrom->seek_ss == 0x60) { cdrom->seek_mm++; cdrom->seek_ss = 0; }
+            if ((cdrom->seek_mm & 0xF) == 10) { cdrom->seek_mm += 0x10; cdrom->seek_mm &= 0xF0; }
 
             int double_speed = cdrom->mode & MODE_SPEED;
 
@@ -225,7 +237,7 @@ void cdrom_cmd_pause(psx_cdrom_t* cdrom) {
 
             int double_speed = cdrom->mode & MODE_SPEED;
 
-            cdrom->irq_delay = DELAY_1MS * (double_speed ? 70 : 35);
+            cdrom->irq_delay = DELAY_1MS * (double_speed ? 70 : 65);
             cdrom->state = CD_STATE_SEND_RESP2;
             cdrom->delayed_command = CDL_PAUSE;
         } break;
@@ -433,8 +445,8 @@ void cdrom_cmd_gettd(psx_cdrom_t* cdrom) {
 
         case CD_STATE_SEND_RESP1: {
             SET_BITS(ifr, IFR_INT, IFR_INT3);
-            RESP_PUSH(0x14);
-            RESP_PUSH(0x01);
+            RESP_PUSH(0x00);
+            RESP_PUSH(0x00);
             RESP_PUSH(GETSTAT_MOTOR);
 
             cdrom->delayed_command = CDL_NONE;
@@ -618,13 +630,13 @@ void cdrom_cmd_reads(psx_cdrom_t* cdrom) {
             RESP_PUSH(GETSTAT_MOTOR | GETSTAT_READ);
 
             log_fatal("Reading data from disc. offset=%02x:%02x:%02x (%08x, tellg=%08x)",
-                cdrom->seek_mm, cdrom->seek_ss, cdrom->seek_sect,
+                cdrom->seek_mm, cdrom->seek_ss, cdrom->seek_ff,
                 cdrom->seek_offset, ftell(cdrom->disc)
             );
 
             cdrom->dfifo_index = 0;
 
-            fread(cdrom->dfifo, 1, CD_SECTOR_SIZE, cdrom->disc);
+            //fread(cdrom->dfifo, 1, CD_SECTOR_SIZE, cdrom->disc);
 
             int double_speed = cdrom->mode & MODE_SPEED;
 
@@ -762,6 +774,7 @@ void cdrom_write_status(psx_cdrom_t* cdrom, uint8_t value) {
 }
 
 void cdrom_write_cmd(psx_cdrom_t* cdrom, uint8_t value) {
+    log_set_quiet(0);
     log_fatal("%s(%02x) %u params=[%02x, %02x, %02x, %02x, %02x, %02x]",
         g_psx_cdrom_command_names[value],
         value,
@@ -773,6 +786,7 @@ void cdrom_write_cmd(psx_cdrom_t* cdrom, uint8_t value) {
         cdrom->pfifo[4],
         cdrom->pfifo[5]
     );
+    log_set_quiet(1);
 
     cdrom->command = value;
     cdrom->state = CD_STATE_RECV_CMD;
