@@ -11,27 +11,35 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+enum {
+    DISC_ERR_TRACK_OUT_OF_BOUNDS = 1,
+    DISC_ERR_ADDR_OUT_OF_BOUNDS
+};
+
 typedef struct {
-    uint8_t m;
-    uint8_t s;
-    uint8_t f;
+    uint32_t m;
+    uint32_t s;
+    uint32_t f;
 } msf_t;
 
 typedef int (*disc_seek_t)(void*, msf_t);
 typedef int (*disc_read_sector_t)(void*, void*);
-typedef int (*disc_get_track_t)(void*, msf_t*, int);
+typedef int (*disc_get_track_addr_t)(void*, msf_t*, int);
+typedef int (*disc_get_track_count_t)(void*, int*);
 
 typedef struct {
     void* udata;
 
     disc_seek_t seek_func;
     disc_read_sector_t read_sector_func;
-    disc_get_track_t get_track_func;
+    disc_get_track_addr_t get_track_addr_func;
+    disc_get_track_count_t get_track_count_func;
 } psx_disc_t;
 
 psx_disc_t* psx_disc_create();
 int psx_disc_seek(psx_disc_t*, msf_t);
 int psx_disc_read_sector(psx_disc_t*, void*);
-int psx_disc_get_track(psx_disc_t*, msf_t*, int);
+int psx_disc_get_track_addr(psx_disc_t*, msf_t*, int);
+int psx_disc_get_track_count(psx_disc_t*, int*);
 
 #endif

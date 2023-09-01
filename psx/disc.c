@@ -31,6 +31,10 @@ int psx_disc_read_sector(psx_disc_t* disc, void* buf) {
     return disc->read_sector_func(disc->udata, buf);
 }
 
-int psx_disc_get_track(psx_disc_t* disc, msf_t* msf, int track) {
-    return disc->get_track_func(disc->udata, msf, track);
+int psx_disc_get_track_addr(psx_disc_t* disc, msf_t* msf, int track) {
+    return disc->get_track_addr_func(disc->udata, msf, track);
+}
+
+int psx_disc_get_track_count(psx_disc_t* disc, int* count) {
+    return disc->get_track_count_func(disc->udata, count);
 }

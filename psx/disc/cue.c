@@ -292,34 +292,49 @@ void psxd_cue_parse(psxd_cue_t* cue, const char* path) {
 // To-do: Rework CUE loader
 //        I want to put every track one after the other
 //        on a big buffer for absolute MSF addressing.
-//        We should also save metadata about the tracks on
+//        We should also save metadata about the tracks in
 //        the CUE struct.
 
 void psxd_cue_load(psxd_cue_t* cue) {
     size_t offset = 0;
 
-    uint8_t* buf = NULL;
+    void* buf = NULL;
 
     for (int i = 0; i < cue->num_tracks; i++) {
         cue_track_t* track = cue->track[i];
 
-        FILE* file = fopen(cue->track[i]->filename, "rb");
+        FILE* file = fopen(track->filename, "rb");
 
+        // Get track size
         fseek(file, 0, SEEK_END);
 
         track->size = ftell(file);
 
-        buf = cue_alloc_block(buf, offset, track->size);
+        // Calculate track MS(F)
+        track->disc_offset.f = offset / CUE_SECTOR_SIZE;
+        track->disc_offset.s = track->disc_offset.f / CUE_SECTORS_PER_SECOND;
+        track->disc_offset.m = track->disc_offset.s / 60;
+        track->disc_offset.s -= track->disc_offset.m * 60;
+
+        buf = cue_alloc_block(buf, &offset, track->size);
 
         fseek(file, 0, SEEK_SET);
-        fread(buf + (offset - track->size), 1, track->size, file);
+        fread((uint8_t*)buf + (offset - track->size), 1, track->size, file);
 
         fclose(file);
     }
+
+    cue->end.f = offset / CUE_SECTOR_SIZE;
+    cue->end.s = cue->end.f / CUE_SECTORS_PER_SECOND;
+    cue->end.m = cue->end.s / 60;
+    cue->end.s -= cue->end.m * 60;
+    cue->end.f -= (cue->end.m * 60) + (cue->end.s * CUE_SECTORS_PER_SECOND);
 }
 
 int psxd_cue_seek(void* udata, msf_t msf) {
     psxd_cue_t* cue = udata;
+
+    // To-do: Check for OOB seeks
 
     uint32_t sectors = (((msf.m * 60) + msf.s) * CUE_SECTORS_PER_SECOND) + msf.f;
 
@@ -331,23 +346,42 @@ int psxd_cue_seek(void* udata, msf_t msf) {
 int psxd_cue_read_sector(void* udata, void* buf) {
     psxd_cue_t* cue = udata;
 
+    memcpy(buf, &cue->buf[cue->seek_offset], CUE_SECTOR_SIZE);
+
+    return 0;
 }
 
-int psxd_cue_get_track(void* udata, msf_t* msf, int track) {
+int psxd_cue_get_track_addr(void* udata, msf_t* msf, int track) {
+    psxd_cue_t* cue = udata;
+
+    if (track > cue->num_tracks)
+        return DISC_ERR_TRACK_OUT_OF_BOUNDS;
+    
+    msf->m = cue->track[track]->disc_offset.m;
+    msf->s = cue->track[track]->disc_offset.s;
+
+    return 0;
+}
+
+int psxd_cue_get_track_count(void* udata, int* count) {
+    psxd_cue_t* cue = udata;
+
+    *count = cue->num_tracks;
+
+    return 0;
 }
 
 void psxd_cue_init_disc(psxd_cue_t* cue, psx_disc_t* disc) {
     disc->udata = cue;
     disc->seek_func = psxd_cue_seek;
     disc->read_sector_func = psxd_cue_read_sector;
-    disc->get_track_func = psxd_cue_get_track;
+    disc->get_track_addr_func = psxd_cue_get_track_addr;
+    disc->get_track_count_func = psxd_cue_get_track_count;
 }
 
 void psxd_cue_destroy(psxd_cue_t* cue) {
     for (int i = 0; i < cue->num_tracks; i++) {
-        if (cue->preload)
-            fclose((FILE*)cue->track[i]->buf);
-        
+        free(cue->track[i]->filename);
         free(cue->track[i]);
     }
 
