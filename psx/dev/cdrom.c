@@ -962,22 +962,26 @@ void psx_cdrom_update(psx_cdrom_t* cdrom) {
 }
 
 void psx_cdrom_open(psx_cdrom_t* cdrom, const char* path) {
-    cdrom->disc = fopen(path, "rb");
+    cdrom->disc = psx_disc_create();
 
-    if (!cdrom->disc) {
-        log_fatal("Couldn't open disc image \"%s\"", path);
+    // To-do: Init disc based on extension.
+    //        e.g. If file extension is .cue then init with
+    //        psxd_cue, if file extension is .bin, then init
+    //        with psxd_bin, etc.
 
-        exit(1);
-    }
+    psxd_cue_t* cue = psxd_cue_create();
 
-    fseek(cdrom->disc, 0, 0);
+    psxd_cue_init_disc(cue, cdrom->disc);
+    psxd_cue_init(cue, 0);
+    psxd_cue_parse(cue, path);
+    psxd_cue_load(cue);
 }
 
 void psx_cdrom_close(psx_cdrom_t* cdrom) {
-    if (cdrom->disc)
-        fclose(cdrom->disc);
 }
 
 void psx_cdrom_destroy(psx_cdrom_t* cdrom) {
+    psx_disc_destroy(cdrom->disc);
+
     free(cdrom);
 }

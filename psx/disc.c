@@ -38,3 +38,9 @@ int psx_disc_get_track_addr(psx_disc_t* disc, msf_t* msf, int track) {
 int psx_disc_get_track_count(psx_disc_t* disc, int* count) {
     return disc->get_track_count_func(disc->udata, count);
 }
+
+void psx_disc_destroy(psx_disc_t* disc) {
+    disc->destroy_func(disc->udata);
+
+    free(disc);
+}

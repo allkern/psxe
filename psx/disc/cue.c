@@ -377,6 +377,7 @@ void psxd_cue_init_disc(psxd_cue_t* cue, psx_disc_t* disc) {
     disc->read_sector_func = psxd_cue_read_sector;
     disc->get_track_addr_func = psxd_cue_get_track_addr;
     disc->get_track_count_func = psxd_cue_get_track_count;
+    disc->destroy_func = psxd_cue_destroy;
 }
 
 void psxd_cue_destroy(psxd_cue_t* cue) {

@@ -26,6 +26,7 @@ typedef int (*disc_seek_t)(void*, msf_t);
 typedef int (*disc_read_sector_t)(void*, void*);
 typedef int (*disc_get_track_addr_t)(void*, msf_t*, int);
 typedef int (*disc_get_track_count_t)(void*, int*);
+typedef void (*disc_destroy_t)(void*);
 
 typedef struct {
     void* udata;
@@ -34,6 +35,7 @@ typedef struct {
     disc_read_sector_t read_sector_func;
     disc_get_track_addr_t get_track_addr_func;
     disc_get_track_count_t get_track_count_func;
+    disc_destroy_t destroy_func;
 } psx_disc_t;
 
 psx_disc_t* psx_disc_create();
@@ -41,5 +43,6 @@ int psx_disc_seek(psx_disc_t*, msf_t);
 int psx_disc_read_sector(psx_disc_t*, void*);
 int psx_disc_get_track_addr(psx_disc_t*, msf_t*, int);
 int psx_disc_get_track_count(psx_disc_t*, int*);
+void psx_disc_destroy(psx_disc_t*);
 
 #endif

@@ -5,6 +5,8 @@
 #include <stdio.h>
 
 #include "ic.h"
+#include "../disc.h"
+#include "../disc/cue.h"
 
 #define DELAY_1MS (PSX_CPU_CPS / 1000)
 #define READ_SINGLE_DELAY (PSX_CPU_CPS / 75)
@@ -184,7 +186,7 @@ typedef struct {
     int read_ongoing;
 
     const char* path;
-    FILE* disc;
+    psx_disc_t* disc;
 } psx_cdrom_t;
 
 psx_cdrom_t* psx_cdrom_create();
