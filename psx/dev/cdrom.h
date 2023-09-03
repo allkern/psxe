@@ -184,6 +184,7 @@ typedef struct {
     uint8_t error;
     uint8_t error_flags;
     int read_ongoing;
+    int gettd_track;
 
     const char* path;
     psx_disc_t* disc;

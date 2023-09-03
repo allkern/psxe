@@ -11,6 +11,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include "log.h"
+
 enum {
     DISC_ERR_TRACK_OUT_OF_BOUNDS = 1,
     DISC_ERR_ADDR_OUT_OF_BOUNDS

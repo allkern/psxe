@@ -163,8 +163,6 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
             SET_BITS(ifr, IFR_INT, IFR_INT3);
             RESP_PUSH(GETSTAT_MOTOR);
 
-            fseek(cdrom->disc, cdrom->seek_offset, 0);
-
             int double_speed = cdrom->mode & MODE_SPEED;
 
             cdrom->irq_delay = double_speed ? READ_DOUBLE_DELAY : READ_SINGLE_DELAY;
@@ -184,13 +182,17 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
 
             SET_BITS(ifr, IFR_INT, IFR_INT1);
             RESP_PUSH(GETSTAT_MOTOR | GETSTAT_READ);
-
             
             // Account for 2 second gap
-            uint16_t m = BTOI(cdrom->seek_mm) * 60 * 75;
-            uint16_t s = BTOI(cdrom->seek_ss) * 75;
-            uint16_t f = BTOI(cdrom->seek_ff);
-            uint32_t t = m + s + f - 150;
+            msf_t msf;
+
+            log_fatal("CDROM seek %02x:%02x:%02x", cdrom->seek_mm, cdrom->seek_ss, cdrom->seek_ff);
+
+            msf.m = BTOI(cdrom->seek_mm);
+            msf.s = BTOI(cdrom->seek_ss);
+            msf.f = BTOI(cdrom->seek_ff);
+
+            psx_disc_seek(cdrom->disc, msf);
 
             // log_fatal("Reading data from disc. offset=%02x:%02x:%02x (%08x, tellg=%08x)",
             //     cdrom->seek_mm, cdrom->seek_ss, cdrom->seek_ff,
@@ -199,8 +201,7 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
 
             cdrom->dfifo_index = 0;
 
-            fseek(cdrom->disc, t * CD_SECTOR_SIZE, SEEK_SET);
-            fread(cdrom->dfifo, 1, CD_SECTOR_SIZE, cdrom->disc);
+            psx_disc_read_sector(cdrom->disc, cdrom->dfifo);
 
             cdrom->seek_ff++;
 
@@ -409,8 +410,12 @@ void cdrom_cmd_gettn(psx_cdrom_t* cdrom) {
         } break;
 
         case CD_STATE_SEND_RESP1: {
+            int tn;
+
+            psx_disc_get_track_count(cdrom->disc, &tn);
+
             SET_BITS(ifr, IFR_INT, IFR_INT3);
-            RESP_PUSH(0x14);
+            RESP_PUSH(tn);
             RESP_PUSH(0x01);
             RESP_PUSH(GETSTAT_MOTOR);
 
@@ -436,7 +441,7 @@ void cdrom_cmd_gettd(psx_cdrom_t* cdrom) {
                 return;
             }
 
-            int track = PFIFO_POP;
+            cdrom->gettd_track = PFIFO_POP;
 
             cdrom->irq_delay = DELAY_1MS;
             cdrom->delayed_command = CDL_GETTD;
@@ -444,9 +449,13 @@ void cdrom_cmd_gettd(psx_cdrom_t* cdrom) {
         } break;
 
         case CD_STATE_SEND_RESP1: {
+            msf_t td;
+
+            psx_disc_get_track_addr(cdrom->disc, &td, cdrom->gettd_track);
+
             SET_BITS(ifr, IFR_INT, IFR_INT3);
-            RESP_PUSH(0x00);
-            RESP_PUSH(0x00);
+            RESP_PUSH(td.m);
+            RESP_PUSH(td.s);
             RESP_PUSH(GETSTAT_MOTOR);
 
             cdrom->delayed_command = CDL_NONE;
@@ -462,10 +471,6 @@ void cdrom_cmd_seekl(psx_cdrom_t* cdrom) {
             cdrom->irq_delay = DELAY_1MS;
             cdrom->state = CD_STATE_SEND_RESP1;
             cdrom->delayed_command = CDL_SEEKL;
-
-            log_fatal("seekl: Seeking to address %08x", cdrom->seek_offset);
-
-            fseek(cdrom->disc, cdrom->seek_offset, 0);
         } break;
 
         case CD_STATE_SEND_RESP1: {
@@ -593,6 +598,10 @@ void cdrom_cmd_getid(psx_cdrom_t* cdrom) {
     }
 }
 void cdrom_cmd_reads(psx_cdrom_t* cdrom) {
+    log_fatal("reads: Unimplemented");
+
+    exit(1);
+
     cdrom->delayed_command = CDL_NONE;
 
     switch (cdrom->state) {
@@ -608,8 +617,6 @@ void cdrom_cmd_reads(psx_cdrom_t* cdrom) {
 
             SET_BITS(ifr, IFR_INT, 3);
             RESP_PUSH(GETSTAT_MOTOR);
-
-            fseek(cdrom->disc, cdrom->seek_offset, 0);
 
             int double_speed = cdrom->mode & MODE_SPEED;
 
@@ -629,10 +636,10 @@ void cdrom_cmd_reads(psx_cdrom_t* cdrom) {
             SET_BITS(ifr, IFR_INT, 1);
             RESP_PUSH(GETSTAT_MOTOR | GETSTAT_READ);
 
-            log_fatal("Reading data from disc. offset=%02x:%02x:%02x (%08x, tellg=%08x)",
-                cdrom->seek_mm, cdrom->seek_ss, cdrom->seek_ff,
-                cdrom->seek_offset, ftell(cdrom->disc)
-            );
+            // log_fatal("Reading data from disc. offset=%02x:%02x:%02x (%08x, tellg=%08x)",
+            //     cdrom->seek_mm, cdrom->seek_ss, cdrom->seek_ff,
+            //     cdrom->seek_offset, ftell(cdrom->disc)
+            // );
 
             cdrom->dfifo_index = 0;
 
@@ -774,7 +781,7 @@ void cdrom_write_status(psx_cdrom_t* cdrom, uint8_t value) {
 }
 
 void cdrom_write_cmd(psx_cdrom_t* cdrom, uint8_t value) {
-    log_set_quiet(0);
+    //log_set_quiet(0);
     log_fatal("%s(%02x) %u params=[%02x, %02x, %02x, %02x, %02x, %02x]",
         g_psx_cdrom_command_names[value],
         value,
@@ -786,7 +793,7 @@ void cdrom_write_cmd(psx_cdrom_t* cdrom, uint8_t value) {
         cdrom->pfifo[4],
         cdrom->pfifo[5]
     );
-    log_set_quiet(1);
+    //log_set_quiet(1);
 
     cdrom->command = value;
     cdrom->state = CD_STATE_RECV_CMD;
@@ -981,7 +988,8 @@ void psx_cdrom_close(psx_cdrom_t* cdrom) {
 }
 
 void psx_cdrom_destroy(psx_cdrom_t* cdrom) {
-    psx_disc_destroy(cdrom->disc);
+    if (cdrom->disc)
+        psx_disc_destroy(cdrom->disc);
 
     free(cdrom);
 }

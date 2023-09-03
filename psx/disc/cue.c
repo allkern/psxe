@@ -296,6 +296,8 @@ void psxd_cue_parse(psxd_cue_t* cue, const char* path) {
 //        the CUE struct.
 
 void psxd_cue_load(psxd_cue_t* cue) {
+    log_fatal("Loading CD image...");
+
     size_t offset = 0;
 
     void* buf = NULL;
@@ -309,6 +311,8 @@ void psxd_cue_load(psxd_cue_t* cue) {
         fseek(file, 0, SEEK_END);
 
         track->size = ftell(file);
+
+        cue->buf_size += track->size;
 
         // Calculate track MS(F)
         track->disc_offset.f = offset / CUE_SECTOR_SIZE;
@@ -328,15 +332,24 @@ void psxd_cue_load(psxd_cue_t* cue) {
     cue->end.s = cue->end.f / CUE_SECTORS_PER_SECOND;
     cue->end.m = cue->end.s / 60;
     cue->end.s -= cue->end.m * 60;
-    cue->end.f -= (cue->end.m * 60) + (cue->end.s * CUE_SECTORS_PER_SECOND);
+    cue->end.f -= ((cue->end.m * 60) + cue->end.s) * CUE_SECTORS_PER_SECOND;
+
+    log_fatal("Loaded CUE image, size=%08x, end=%02u:%02u:%02u",
+        cue->buf_size,
+        cue->end.m,
+        cue->end.s,
+        cue->end.f
+    );
 }
 
 int psxd_cue_seek(void* udata, msf_t msf) {
     psxd_cue_t* cue = udata;
 
+    log_fatal("CUE seek to %02u:%02u:%02u", msf.m, msf.s, msf.f);
+
     // To-do: Check for OOB seeks
 
-    uint32_t sectors = (((msf.m * 60) + msf.s) * CUE_SECTORS_PER_SECOND) + msf.f;
+    uint32_t sectors = (((msf.m * 60) + (msf.s - 2)) * CUE_SECTORS_PER_SECOND) + msf.f;
 
     cue->seek_offset = sectors * CUE_SECTOR_SIZE;
 
@@ -346,7 +359,7 @@ int psxd_cue_seek(void* udata, msf_t msf) {
 int psxd_cue_read_sector(void* udata, void* buf) {
     psxd_cue_t* cue = udata;
 
-    memcpy(buf, &cue->buf[cue->seek_offset], CUE_SECTOR_SIZE);
+    memcpy(buf, cue->buf + cue->seek_offset, CUE_SECTOR_SIZE);
 
     return 0;
 }

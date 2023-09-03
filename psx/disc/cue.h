@@ -78,6 +78,7 @@ typedef struct {
     cue_track_t** track;
     char* current_file;
     uint32_t seek_offset;
+    uint32_t buf_size;
     msf_t end;
 } psxd_cue_t;
 

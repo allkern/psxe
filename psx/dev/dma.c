@@ -369,14 +369,14 @@ void psx_dma_do_pio(psx_dma_t* dma) {
 void psx_dma_do_otc(psx_dma_t* dma) {
     if ((!(dma->dpcr & DPCR_DMA6EN)) || (!CHCR_TRIG(otc)) || (!CHCR_BUSY(otc)))
         return;
-    
-    log_fatal("OTC DMA transfer: madr=%08x, dir=%s, sync=%s, step=%s, size=%x",
-        dma->otc.madr,
-        CHCR_TDIR(otc) ? "to device" : "to RAM",
-        CHCR_SYNC(otc) ? "other" : "burst",
-        CHCR_STEP(otc) ? "decrementing" : "incrementing",
-        BCR_SIZE(otc)
-    );
+
+    // log_fatal("OTC DMA transfer: madr=%08x, dir=%s, sync=%s, step=%s, size=%x",
+    //     dma->otc.madr,
+    //     CHCR_TDIR(otc) ? "to device" : "to RAM",
+    //     CHCR_SYNC(otc) ? "other" : "burst",
+    //     CHCR_STEP(otc) ? "decrementing" : "incrementing",
+    //     BCR_SIZE(otc)
+    // );
 
     uint32_t size = BCR_SIZE(otc);
 

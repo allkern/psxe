@@ -73,8 +73,8 @@ int main(int argc, const char* argv[]) {
     log_fatal("pc=%08x hi=%08x lo=%08x ep=%08x", cpu->pc, cpu->hi, cpu->lo, cpu->cop0_r[COP0_EPC]);
 
     if (cfg->cd_path)
-        psx_cdrom_close(cdrom);
-
+        psx_cdrom_destroy(cdrom);
+    
     psx_input_destroy(input);
     psx_destroy(psx);
     psxi_sda_destroy(controller);
