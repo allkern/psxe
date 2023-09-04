@@ -68,9 +68,6 @@ void cue_add_track(psxd_cue_t* cue) {
 void* cue_alloc_block(void* buf, size_t* block_size, size_t ext) {
     *block_size += ext;
 
-    if (!buf)
-        return malloc(*block_size);
-    
     return realloc(buf, *block_size);
 }
 
@@ -300,8 +297,6 @@ void psxd_cue_load(psxd_cue_t* cue) {
 
     size_t offset = 0;
 
-    void* buf = NULL;
-
     for (int i = 0; i < cue->num_tracks; i++) {
         cue_track_t* track = cue->track[i];
 
@@ -320,10 +315,10 @@ void psxd_cue_load(psxd_cue_t* cue) {
         track->disc_offset.m = track->disc_offset.s / 60;
         track->disc_offset.s -= track->disc_offset.m * 60;
 
-        buf = cue_alloc_block(buf, &offset, track->size);
+        cue->buf = cue_alloc_block(cue->buf, &offset, track->size);
 
         fseek(file, 0, SEEK_SET);
-        fread((uint8_t*)buf + (offset - track->size), 1, track->size, file);
+        fread(cue->buf + (offset - track->size), 1, track->size, file);
 
         fclose(file);
     }
@@ -345,19 +340,21 @@ void psxd_cue_load(psxd_cue_t* cue) {
 int psxd_cue_seek(void* udata, msf_t msf) {
     psxd_cue_t* cue = udata;
 
-    log_fatal("CUE seek to %02u:%02u:%02u", msf.m, msf.s, msf.f);
-
     // To-do: Check for OOB seeks
 
-    uint32_t sectors = (((msf.m * 60) + (msf.s - 2)) * CUE_SECTORS_PER_SECOND) + msf.f;
+    uint32_t sectors = (((msf.m * 60) + msf.s - 2) * CUE_SECTORS_PER_SECOND) + msf.f;
 
     cue->seek_offset = sectors * CUE_SECTOR_SIZE;
+
+    log_fatal("CUE seek to %02u:%02u:%02u (%08x < %08x)", msf.m, msf.s, msf.f, cue->seek_offset, cue->buf_size);
 
     return 0;
 }
 
 int psxd_cue_read_sector(void* udata, void* buf) {
     psxd_cue_t* cue = udata;
+
+    log_fatal("Reading sector at offset %08x", cue->seek_offset);
 
     memcpy(buf, cue->buf + cue->seek_offset, CUE_SECTOR_SIZE);
 
