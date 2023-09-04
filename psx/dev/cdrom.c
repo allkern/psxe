@@ -163,6 +163,26 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
             SET_BITS(ifr, IFR_INT, IFR_INT3);
             RESP_PUSH(GETSTAT_MOTOR);
 
+            msf_t msf;
+
+            msf.m = BTOI(cdrom->seek_mm);
+            msf.s = BTOI(cdrom->seek_ss);
+            msf.f = BTOI(cdrom->seek_ff);
+
+            int err = psx_disc_seek(cdrom->disc, msf);
+
+            if (err) {
+                log_fatal("CdlReadN: Out of bounds seek");
+
+                cdrom->irq_delay = DELAY_1MS * 600;
+                cdrom->delayed_command = CDL_ERROR;
+                cdrom->state = CD_STATE_ERROR;
+                cdrom->error = ERR_INVSUBF;
+                cdrom->error_flags = GETSTAT_SEEKERROR;
+
+                return;
+            }
+
             int double_speed = cdrom->mode & MODE_SPEED;
 
             cdrom->irq_delay = double_speed ? READ_DOUBLE_DELAY : READ_SINGLE_DELAY;
@@ -180,27 +200,13 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
 
             log_fatal("CdlReadN: CD_STATE_SEND_RESP2");
 
-            SET_BITS(ifr, IFR_INT, IFR_INT1);
-            RESP_PUSH(GETSTAT_MOTOR | GETSTAT_READ);
-            
-            // Account for 2 second gap
             msf_t msf;
-
-            log_fatal("CDROM seek %02x:%02x:%02x", cdrom->seek_mm, cdrom->seek_ss, cdrom->seek_ff);
 
             msf.m = BTOI(cdrom->seek_mm);
             msf.s = BTOI(cdrom->seek_ss);
             msf.f = BTOI(cdrom->seek_ff);
 
             psx_disc_seek(cdrom->disc, msf);
-
-            // log_fatal("Reading data from disc. offset=%02x:%02x:%02x (%08x, tellg=%08x)",
-            //     cdrom->seek_mm, cdrom->seek_ss, cdrom->seek_ff,
-            //     cdrom->seek_offset, ftell(cdrom->disc)
-            // );
-
-            cdrom->dfifo_index = 0;
-
             psx_disc_read_sector(cdrom->disc, cdrom->dfifo);
 
             cdrom->seek_ff++;
@@ -216,6 +222,10 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
             cdrom->irq_delay = double_speed ? READ_DOUBLE_DELAY : READ_SINGLE_DELAY;
             cdrom->state = CD_STATE_SEND_RESP2;
             cdrom->delayed_command = CDL_READN;
+            cdrom->dfifo_index = 0;
+
+            SET_BITS(ifr, IFR_INT, IFR_INT1);
+            RESP_PUSH(GETSTAT_MOTOR | GETSTAT_READ);
         } break;
     }
 }
