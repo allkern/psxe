@@ -348,6 +348,9 @@ int psxd_cue_seek(void* udata, msf_t msf) {
 
     log_fatal("CUE seek to %02u:%02u:%02u (%08x < %08x)", msf.m, msf.s, msf.f, cue->seek_offset, cue->buf_size);
 
+    if (cue->seek_offset >= cue->buf_size)
+        return DISC_ERR_ADDR_OUT_OF_BOUNDS;
+
     return 0;
 }
 
