@@ -17,6 +17,10 @@ uint8_t cdrom_btoi(uint8_t b) {
     return ((b >> 4) * 10) + (b & 0xf);
 }
 
+uint8_t cdrom_itob(int i) {
+    return i + (6 * (i / 10));
+}
+
 #define BTOI(b) cdrom_btoi(b)
 //#define BTOI(b) g_psx_cdrom_btoi_table[b]
 
@@ -463,9 +467,15 @@ void cdrom_cmd_gettd(psx_cdrom_t* cdrom) {
 
             psx_disc_get_track_addr(cdrom->disc, &td, cdrom->gettd_track);
 
+            log_fatal("GetTD track=%u, addr=%02u:%02u (%02x:%02x)",
+                cdrom->gettd_track,
+                td.m, td.s,
+                cdrom_itob(td.m), cdrom_itob(td.s)
+            );
+
             SET_BITS(ifr, IFR_INT, IFR_INT3);
-            RESP_PUSH(td.m);
-            RESP_PUSH(td.s);
+            RESP_PUSH(cdrom_itob(td.s));
+            RESP_PUSH(cdrom_itob(td.m));
             RESP_PUSH(GETSTAT_MOTOR);
 
             cdrom->delayed_command = CDL_NONE;

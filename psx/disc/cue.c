@@ -56,6 +56,26 @@ static const char* g_psxd_cue_tokens[] = {
     if (cue_get_keyword(cue) != kw) \
         ERROR_OUT(PE_UNEXPECTED_TOKEN);
 
+void msf_adjust(msf_t* msf) {
+    if (msf->f > 75) {
+        int s = msf->f / CUE_SECTORS_PER_SECOND;
+
+        msf->s += s;
+        msf->f -= CUE_SECTORS_PER_SECOND * s;
+    }
+
+    if (msf->s > 60) {
+        int m = msf->s / 60;
+
+        msf->m += m;
+        msf->s -= 60 * m;
+    }
+}
+
+uint32_t msf_to_address(msf_t msf) {
+    return (((msf.m * 60) * 75) + (msf.s * 75) + msf.f) * CUE_SECTOR_SIZE;
+}
+
 void cue_add_track(psxd_cue_t* cue) {
     ++cue->num_tracks;
 
@@ -302,10 +322,13 @@ void psxd_cue_load(psxd_cue_t* cue) {
 
         FILE* file = fopen(track->filename, "rb");
 
+        uint32_t data_offset = msf_to_address(track->index[1]);
+
         // Get track size
         fseek(file, 0, SEEK_END);
 
-        track->size = ftell(file);
+        // Account for index 1 offset
+        track->size = ftell(file) - data_offset;
 
         cue->buf_size += track->size;
 
@@ -314,10 +337,13 @@ void psxd_cue_load(psxd_cue_t* cue) {
         track->disc_offset.s = track->disc_offset.f / CUE_SECTORS_PER_SECOND;
         track->disc_offset.m = track->disc_offset.s / 60;
         track->disc_offset.s -= track->disc_offset.m * 60;
+        track->disc_offset.s += 2;
+
+        msf_adjust(&track->disc_offset);
 
         cue->buf = cue_alloc_block(cue->buf, &offset, track->size);
 
-        fseek(file, 0, SEEK_SET);
+        fseek(file, data_offset, SEEK_SET);
         fread(cue->buf + (offset - track->size), 1, track->size, file);
 
         fclose(file);
@@ -328,6 +354,9 @@ void psxd_cue_load(psxd_cue_t* cue) {
     cue->end.m = cue->end.s / 60;
     cue->end.s -= cue->end.m * 60;
     cue->end.f -= ((cue->end.m * 60) + cue->end.s) * CUE_SECTORS_PER_SECOND;
+    cue->end.s += 2;
+
+    msf_adjust(&cue->end);
 
     log_fatal("Loaded CUE image, size=%08x, end=%02u:%02u:%02u",
         cue->buf_size,
@@ -367,11 +396,18 @@ int psxd_cue_read_sector(void* udata, void* buf) {
 int psxd_cue_get_track_addr(void* udata, msf_t* msf, int track) {
     psxd_cue_t* cue = udata;
 
+    if (!track) {
+        msf->m = cue->end.m;
+        msf->s = cue->end.s;
+
+        return 0;
+    }
+
     if (track > cue->num_tracks)
         return DISC_ERR_TRACK_OUT_OF_BOUNDS;
     
-    msf->m = cue->track[track]->disc_offset.m;
-    msf->s = cue->track[track]->disc_offset.s;
+    msf->m = cue->track[track - 1]->disc_offset.m;
+    msf->s = cue->track[track - 1]->disc_offset.s;
 
     return 0;
 }
