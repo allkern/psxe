@@ -7,9 +7,8 @@
 #ifndef CUE_H
 #define CUE_H
 
-#define CUE_BUF_SIZE 256
-
 #include "../disc.h"
+#include "../msf.h"
 
 #include <stdlib.h>
 #include <stdint.h>
@@ -77,15 +76,15 @@ typedef struct {
     int num_tracks;
     cue_track_t** track;
     char* current_file;
+    char* directory;
     uint32_t seek_offset;
     uint32_t buf_size;
     msf_t end;
 } psxd_cue_t;
 
 psxd_cue_t* psxd_cue_create();
-void psxd_cue_init(psxd_cue_t*, int);
-void psxd_cue_parse(psxd_cue_t*, const char*);
-void psxd_cue_load(psxd_cue_t*);
+void psxd_cue_init(psxd_cue_t*);
+int psxd_cue_load(psxd_cue_t*, const char*);
 void psxd_cue_init_disc(psxd_cue_t*, psx_disc_t*);
 void psxd_cue_destroy(psxd_cue_t*);
 

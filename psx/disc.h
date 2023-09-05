@@ -12,17 +12,12 @@
 #include <stdio.h>
 
 #include "log.h"
+#include "msf.h"
 
 enum {
     DISC_ERR_TRACK_OUT_OF_BOUNDS = 1,
     DISC_ERR_ADDR_OUT_OF_BOUNDS
 };
-
-typedef struct {
-    uint32_t m;
-    uint32_t s;
-    uint32_t f;
-} msf_t;
 
 typedef int (*disc_seek_t)(void*, msf_t);
 typedef int (*disc_read_sector_t)(void*, void*);

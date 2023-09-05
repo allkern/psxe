@@ -7,6 +7,8 @@
 #include "ic.h"
 #include "../disc.h"
 #include "../disc/cue.h"
+#include "../disc/bin.h"
+#include "../msf.h"
 
 #define DELAY_1MS (PSX_CPU_CPS / 1000)
 #define READ_SINGLE_DELAY (PSX_CPU_CPS / 75)
@@ -15,9 +17,6 @@
 #define PSX_CDROM_BEGIN 0x1f801800
 #define PSX_CDROM_SIZE  0x4
 #define PSX_CDROM_END   0x1f801803
-
-#define CD_SECTOR_SIZE 0x930
-#define CD_SECTORS_PER_SECOND 75
 
 enum {
     CD_STATE_RECV_CMD,
@@ -201,7 +200,6 @@ void psx_cdrom_write8(psx_cdrom_t*, uint32_t, uint8_t);
 void psx_cdrom_update(psx_cdrom_t*);
 void psx_cdrom_destroy(psx_cdrom_t*);
 void psx_cdrom_open(psx_cdrom_t*, const char*);
-void psx_cdrom_close(psx_cdrom_t*);
 
 /*
   Command          Parameters      Response(s)

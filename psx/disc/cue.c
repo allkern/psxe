@@ -10,11 +10,19 @@
 #include <ctype.h>
 
 #include "cue.h"
-#include "../disc.h"
 #include "../log.h"
 
-#define CUE_SECTOR_SIZE 0x930
-#define CUE_SECTORS_PER_SECOND 75
+#define CUE_BUF_SIZE 256
+
+static const char* g_psxd_cue_errors[] = {
+    "PE_NO_ERROR",
+    "PE_EXPECTED_KEYWORD",
+    "PE_EXPECTED_STRING",
+    "PE_EXPECTED_NUMBER",
+    "PE_EXPECTED_COLON",
+    "PE_NON_SEQUENTIAL_TRACKS",
+    "PE_UNEXPECTED_TOKEN"
+};
 
 static const char* g_psxd_cue_tokens[] = {
     "4CH",
@@ -55,26 +63,6 @@ static const char* g_psxd_cue_tokens[] = {
         return cue->error; \
     if (cue_get_keyword(cue) != kw) \
         ERROR_OUT(PE_UNEXPECTED_TOKEN);
-
-void msf_adjust(msf_t* msf) {
-    if (msf->f > 75) {
-        int s = msf->f / CUE_SECTORS_PER_SECOND;
-
-        msf->s += s;
-        msf->f -= CUE_SECTORS_PER_SECOND * s;
-    }
-
-    if (msf->s > 60) {
-        int m = msf->s / 60;
-
-        msf->m += m;
-        msf->s -= 60 * m;
-    }
-}
-
-uint32_t msf_to_address(msf_t msf) {
-    return (((msf.m * 60) * 75) + (msf.s * 75) + msf.f) * CUE_SECTOR_SIZE;
-}
 
 void cue_add_track(psxd_cue_t* cue) {
     ++cue->num_tracks;
@@ -285,78 +273,117 @@ psxd_cue_t* psxd_cue_create() {
     return (psxd_cue_t*)malloc(sizeof(psxd_cue_t));
 }
 
-void psxd_cue_init(psxd_cue_t* cue, int preload) {
+void psxd_cue_init(psxd_cue_t* cue) {
     memset(cue, 0, sizeof(psxd_cue_t));
 
     cue->buf = malloc(CUE_BUF_SIZE);
     cue->ptr = cue->buf;
-    cue->preload = preload;
     cue->current_file = malloc(CUE_BUF_SIZE);
 }
 
-void psxd_cue_parse(psxd_cue_t* cue, const char* path) {
+char* cue_get_directory(const char* path) {
+    char* ptr = &path[strlen(path) - 1];
+    char* dir = NULL;
+    int i = 0;
+
+    while ((*ptr != '/') && (*ptr != '\\') && (ptr != path))
+        ptr--;
+    
+    // If no directory specified, assume CWD
+    if (ptr == path) {
+        dir = malloc(3);
+
+        strcpy(dir, ".\\");
+
+        return dir;
+    }
+    
+    ptrdiff_t len = (ptr - path) + 1;
+
+    dir = malloc(len + 1);
+
+    strncpy(dir, path, len);
+
+    dir[len] = 0;
+
+    return dir;
+}
+
+int psxd_cue_load(psxd_cue_t* cue, const char* path) {
+    log_fatal("Parsing CUE...");
+
     FILE* file = fopen(path, "rb");
 
-    cue_parse(cue, file);
+    if (ferror(file) || !file) {
+        fclose(file);
 
-    if (cue->error) {
-        log_fatal("CUE error %u");
+        return 1;
+    }
+
+    if (cue_parse(cue, file)) {
+        log_fatal("CUE error %s (%u)",
+            g_psxd_cue_errors[cue->error],
+            cue->error
+        );
 
         exit(1);
     }
-}
 
-// To-do: Rework CUE loader
-//        I want to put every track one after the other
-//        on a big buffer for absolute MSF addressing.
-//        We should also save metadata about the tracks in
-//        the CUE struct.
-
-void psxd_cue_load(psxd_cue_t* cue) {
     log_fatal("Loading CD image...");
 
     size_t offset = 0;
 
+    char* directory = cue_get_directory(path);
+    size_t directory_len = strlen(directory);
+
     for (int i = 0; i < cue->num_tracks; i++) {
         cue_track_t* track = cue->track[i];
 
-        FILE* file = fopen(track->filename, "rb");
+        int len = strlen(track->filename) + directory_len;
+
+        char* full_path = malloc(len + 2);
+
+        strcpy(full_path, directory);
+        strcat(full_path, track->filename);
+
+        log_fatal("Loading track %u at \'%s\'...", i + 1, full_path);
+
+        FILE* track_file = fopen(full_path, "rb");
+
+        if (ferror(track_file) || !track_file) {
+            fclose(track_file);
+
+            return 1;
+        }
 
         uint32_t data_offset = msf_to_address(track->index[1]);
 
         // Get track size
-        fseek(file, 0, SEEK_END);
+        fseek(track_file, 0, SEEK_END);
 
         // Account for index 1 offset
-        track->size = ftell(file) - data_offset;
+        track->size = ftell(track_file) - data_offset;
 
         cue->buf_size += track->size;
 
         // Calculate track MS(F)
-        track->disc_offset.f = offset / CUE_SECTOR_SIZE;
-        track->disc_offset.s = track->disc_offset.f / CUE_SECTORS_PER_SECOND;
-        track->disc_offset.m = track->disc_offset.s / 60;
-        track->disc_offset.s -= track->disc_offset.m * 60;
-        track->disc_offset.s += 2;
-
-        msf_adjust(&track->disc_offset);
+        msf_from_address(&track->disc_offset, offset);
+        msf_add_s(&track->disc_offset, 2);
 
         cue->buf = cue_alloc_block(cue->buf, &offset, track->size);
 
-        fseek(file, data_offset, SEEK_SET);
-        fread(cue->buf + (offset - track->size), 1, track->size, file);
+        fseek(track_file, data_offset, SEEK_SET);
+        fread(cue->buf + (offset - track->size), 1, track->size, track_file);
 
-        fclose(file);
+        fclose(track_file);
+        free(full_path);
     }
 
-    cue->end.f = offset / CUE_SECTOR_SIZE;
-    cue->end.s = cue->end.f / CUE_SECTORS_PER_SECOND;
-    cue->end.m = cue->end.s / 60;
-    cue->end.s -= cue->end.m * 60;
-    cue->end.f -= ((cue->end.m * 60) + cue->end.s) * CUE_SECTORS_PER_SECOND;
-    cue->end.s += 2;
+    // Calculate disc end MSF
+    msf_from_address(&cue->end, offset);
+    msf_add_s(&cue->end, 2);
 
-    msf_adjust(&cue->end);
+    free(directory);
 
     log_fatal("Loaded CUE image, size=%08x, end=%02u:%02u:%02u",
         cue->buf_size,
@@ -364,6 +391,8 @@ void psxd_cue_load(psxd_cue_t* cue) {
         cue->end.s,
         cue->end.f
     );
+
+    return 0;
 }
 
 int psxd_cue_seek(void* udata, msf_t msf) {
@@ -371,9 +400,9 @@ int psxd_cue_seek(void* udata, msf_t msf) {
 
     // To-do: Check for OOB seeks
 
-    uint32_t sectors = (((msf.m * 60) + msf.s - 2) * CUE_SECTORS_PER_SECOND) + msf.f;
+    uint32_t sectors = (((msf.m * 60) + msf.s - 2) * CD_SECTORS_PS) + msf.f;
 
-    cue->seek_offset = sectors * CUE_SECTOR_SIZE;
+    cue->seek_offset = sectors * CD_SECTOR_SIZE;
 
     log_fatal("CUE seek to %02u:%02u:%02u (%08x < %08x)", msf.m, msf.s, msf.f, cue->seek_offset, cue->buf_size);
 
@@ -388,7 +417,7 @@ int psxd_cue_read_sector(void* udata, void* buf) {
 
     log_fatal("Reading sector at offset %08x", cue->seek_offset);
 
-    memcpy(buf, cue->buf + cue->seek_offset, CUE_SECTOR_SIZE);
+    memcpy(buf, cue->buf + cue->seek_offset, CD_SECTOR_SIZE);
 
     return 0;
 }
