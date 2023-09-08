@@ -1,9 +1,9 @@
 #ifndef PSX_H
 #define PSX_H
 
-#include "psx/cpu.h"
-#include "psx/log.h"
-#include "psx/exe.h"
+#include "cpu.h"
+#include "log.h"
+#include "exe.h"
 
 #include <stdint.h>
 

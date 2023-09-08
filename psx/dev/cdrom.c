@@ -81,9 +81,9 @@ void cdrom_cmd_setloc(psx_cdrom_t* cdrom) {
                 cdrom->state = CD_STATE_SEND_RESP1;
             }
 
-            cdrom->seek_ff = PFIFO_POP;
-            cdrom->seek_ss = PFIFO_POP;
-            cdrom->seek_mm = PFIFO_POP;
+            cdrom->seek_ff = BTOI(PFIFO_POP);
+            cdrom->seek_ss = BTOI(PFIFO_POP);
+            cdrom->seek_mm = BTOI(PFIFO_POP);
 
             log_fatal("setloc: %02u:%02u:%02u (%08x)",
                 cdrom->seek_mm,
@@ -122,9 +122,9 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
 
             msf_t msf;
 
-            msf.m = BTOI(cdrom->seek_mm);
-            msf.s = BTOI(cdrom->seek_ss);
-            msf.f = BTOI(cdrom->seek_ff);
+            msf.m = cdrom->seek_mm;
+            msf.s = cdrom->seek_ss;
+            msf.f = cdrom->seek_ff;
 
             int err = psx_disc_seek(cdrom->disc, msf);
 
@@ -159,9 +159,9 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
 
             msf_t msf;
 
-            msf.m = BTOI(cdrom->seek_mm);
-            msf.s = BTOI(cdrom->seek_ss);
-            msf.f = BTOI(cdrom->seek_ff);
+            msf.m = cdrom->seek_mm;
+            msf.s = cdrom->seek_ss;
+            msf.f = cdrom->seek_ff;
 
             psx_disc_seek(cdrom->disc, msf);
             psx_disc_read_sector(cdrom->disc, cdrom->dfifo);
