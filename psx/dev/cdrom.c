@@ -12,6 +12,8 @@
 
 #define PFIFO_POP (cdrom->pfifo[--cdrom->pfifo_index])
 
+#define VALID_BCD(v) (((v & 0xf) <= 9) && ((v & 0xf0) <= 0x90))
+
 void cdrom_cmd_error(psx_cdrom_t* cdrom) {
     SET_BITS(ifr, IFR_INT, IFR_INT5);
     RESP_PUSH(cdrom->error);
@@ -81,9 +83,23 @@ void cdrom_cmd_setloc(psx_cdrom_t* cdrom) {
                 cdrom->state = CD_STATE_SEND_RESP1;
             }
 
-            cdrom->seek_ff = BTOI(PFIFO_POP);
-            cdrom->seek_ss = BTOI(PFIFO_POP);
-            cdrom->seek_mm = BTOI(PFIFO_POP);
+            int f = PFIFO_POP;
+            int s = PFIFO_POP;
+            int m = PFIFO_POP;
+
+            if (!(VALID_BCD(m) && VALID_BCD(s) && VALID_BCD(f) && (f < 0x75))) {
+                cdrom->irq_delay = DELAY_1MS;
+                cdrom->delayed_command = CDL_ERROR;
+                cdrom->state = CD_STATE_ERROR;
+                cdrom->error = ERR_INVSUBF;
+                cdrom->error_flags = GETSTAT_ERROR;
+
+                return;
+            }
+
+            cdrom->seek_ff = BTOI(f);
+            cdrom->seek_ss = BTOI(s);
+            cdrom->seek_mm = BTOI(m);
 
             log_fatal("setloc: %02u:%02u:%02u (%08x)",
                 cdrom->seek_mm,
@@ -97,7 +113,7 @@ void cdrom_cmd_setloc(psx_cdrom_t* cdrom) {
             cdrom->delayed_command = CDL_NONE;
 
             SET_BITS(ifr, IFR_INT, IFR_INT3);
-            RESP_PUSH(cdrom->stat);
+            RESP_PUSH(GETSTAT_MOTOR);
 
             cdrom->state = CD_STATE_RECV_CMD;
         } break;
