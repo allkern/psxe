@@ -101,7 +101,8 @@ void psxi_sda_on_button_release(void* udata, uint16_t data) {
 
 // To-do: Implement analog mode
 void psxi_sda_on_analog_change(void* udata, uint16_t data) {
-    psxi_sda_t* sda = (psxi_sda_t*)udata;
+    // Suppress warning until we implement analog mode
+    // psxi_sda_t* sda = (psxi_sda_t*)udata;
 }
 
 int psxi_sda_query_fifo(void* udata) {

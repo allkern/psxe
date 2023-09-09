@@ -33,7 +33,6 @@ static const char g_default_settings[] =
     "[console]\n"
     "    region          = \"auto\"\n";
 
-
 static const char* g_models_text =
     "Available console models:\n"
     "\"scph1000\" (SCPH-1000) [NTSC-J]\n"
@@ -64,7 +63,6 @@ static const char* g_regions_text =
 
 static const char* g_desc_text =
     "\nPlease report any bugs to <https://github.com/allkern/psxe/issues>\n";
-
 
 psxe_config_t* psxe_cfg_create() {
     return (psxe_config_t*)malloc(sizeof(psxe_config_t));
@@ -272,13 +270,9 @@ void psxe_cfg_load(psxe_config_t* cfg, int argc, const char* argv[]) {
         cfg->psxe_version = psxe_version;
 }
 
+// To-do: Implement BIOS searching
 char* psxe_cfg_get_bios_path(psxe_config_t* cfg) {
-    if (cfg->bios) {
-        return cfg->bios;
-    }
-
-    if (!cfg->bios_search)
-        return NULL;
+    return NULL;
 }
 
 #undef STR1

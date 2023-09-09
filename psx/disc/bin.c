@@ -101,7 +101,7 @@ void psxd_bin_init_disc(psxd_bin_t* bin, psx_disc_t* disc) {
     disc->read_sector_func = psxd_bin_read_sector;
     disc->get_track_addr_func = psxd_bin_get_track_addr;
     disc->get_track_count_func = psxd_bin_get_track_count;
-    disc->destroy_func = psxd_bin_destroy;
+    disc->destroy_func = (disc_destroy_t)psxd_bin_destroy;
 }
 
 void psxd_bin_destroy(psxd_bin_t* bin) {

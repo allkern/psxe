@@ -87,6 +87,8 @@ uint32_t psx_mdec_read32(psx_mdec_t* mdec, uint32_t offset) {
         } break;
         case 4: return mdec->status;
     }
+
+    return 0x0;
 }
 
 uint16_t psx_mdec_read16(psx_mdec_t* mdec, uint32_t offset) {

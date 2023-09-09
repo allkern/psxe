@@ -197,8 +197,6 @@ int cue_parse(psxd_cue_t* cue, FILE* file) {
     cue->file = file;
     cue->c = fgetc(file);
 
-    void* filebuf;
-    size_t filesz;
     msf_t msf;
 
     EXPECT_KEYWORD(CUE_FILE);
@@ -282,9 +280,8 @@ void psxd_cue_init(psxd_cue_t* cue) {
 }
 
 char* cue_get_directory(const char* path) {
-    char* ptr = &path[strlen(path) - 1];
+    const char* ptr = &path[strlen(path) - 1];
     char* dir = NULL;
-    int i = 0;
 
     while ((*ptr != '/') && (*ptr != '\\') && (ptr != path))
         ptr--;
@@ -455,7 +452,7 @@ void psxd_cue_init_disc(psxd_cue_t* cue, psx_disc_t* disc) {
     disc->read_sector_func = psxd_cue_read_sector;
     disc->get_track_addr_func = psxd_cue_get_track_addr;
     disc->get_track_count_func = psxd_cue_get_track_count;
-    disc->destroy_func = psxd_cue_destroy;
+    disc->destroy_func = (disc_destroy_t)psxd_cue_destroy;
 }
 
 void psxd_cue_destroy(psxd_cue_t* cue) {

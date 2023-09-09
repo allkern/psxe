@@ -911,7 +911,6 @@ void gpu_cmd_68(psx_gpu_t* gpu) {
 
                 gpu->vram[gpu->v0.x + (gpu->v0.y * 1024)] = gpu_to_bgr555(gpu->color);
 
-
                 gpu->state = GPU_STATE_RECV_CMD;
             }
         } break;
