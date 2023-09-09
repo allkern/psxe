@@ -31,15 +31,15 @@ void msf_adjust(msf_t* msf) {
 }
 
 void msf_to_bcd(msf_t* msf) {
-    msf->m = BTOI(msf->m);
-    msf->s = BTOI(msf->s);
-    msf->f = BTOI(msf->f);
-}
-
-void msf_from_bcd(msf_t* msf) {
     msf->m = ITOB(msf->m);
     msf->s = ITOB(msf->s);
     msf->f = ITOB(msf->f);
+}
+
+void msf_from_bcd(msf_t* msf) {
+    msf->m = BTOI(msf->m);
+    msf->s = BTOI(msf->s);
+    msf->f = BTOI(msf->f);
 }
 
 uint32_t msf_to_address(msf_t msf) {

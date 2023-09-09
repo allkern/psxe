@@ -97,15 +97,14 @@ void cdrom_cmd_setloc(psx_cdrom_t* cdrom) {
                 return;
             }
 
-            cdrom->seek_ff = BTOI(f);
-            cdrom->seek_ss = BTOI(s);
-            cdrom->seek_mm = BTOI(m);
+            cdrom->seek_ff = f;
+            cdrom->seek_ss = s;
+            cdrom->seek_mm = m;
 
-            log_fatal("setloc: %02u:%02u:%02u (%08x)",
+            log_fatal("setloc: %02x:%02x:%02x",
                 cdrom->seek_mm,
                 cdrom->seek_ss,
-                cdrom->seek_ff,
-                cdrom->seek_offset
+                cdrom->seek_ff
             );
         } break;
 
@@ -141,6 +140,8 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
             msf.m = cdrom->seek_mm;
             msf.s = cdrom->seek_ss;
             msf.f = cdrom->seek_ff;
+
+            msf_from_bcd(&msf);
 
             int err = psx_disc_seek(cdrom->disc, msf);
 
@@ -178,6 +179,8 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
             msf.m = cdrom->seek_mm;
             msf.s = cdrom->seek_ss;
             msf.f = cdrom->seek_ff;
+
+            msf_from_bcd(&msf);
 
             psx_disc_seek(cdrom->disc, msf);
             psx_disc_read_sector(cdrom->disc, cdrom->dfifo);
@@ -768,7 +771,7 @@ void cdrom_write_status(psx_cdrom_t* cdrom, uint8_t value) {
 }
 
 void cdrom_write_cmd(psx_cdrom_t* cdrom, uint8_t value) {
-    //log_set_quiet(0);
+    log_set_quiet(0);
     log_fatal("%s(%02x) %u params=[%02x, %02x, %02x, %02x, %02x, %02x]",
         g_psx_cdrom_command_names[value],
         value,
@@ -780,7 +783,7 @@ void cdrom_write_cmd(psx_cdrom_t* cdrom, uint8_t value) {
         cdrom->pfifo[4],
         cdrom->pfifo[5]
     );
-    //log_set_quiet(1);
+    log_set_quiet(1);
 
     cdrom->command = value;
     cdrom->state = CD_STATE_RECV_CMD;
@@ -801,6 +804,7 @@ void cdrom_write_req(psx_cdrom_t* cdrom, uint8_t value) {
         SET_BITS(status, STAT_DRQSTS_MASK, STAT_DRQSTS_MASK);
 
         cdrom->dfifo_full = 1;
+        cdrom->dfifo_index = 0;
     } else {
         SET_BITS(status, STAT_DRQSTS_MASK, 0);
 
