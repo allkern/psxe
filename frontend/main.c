@@ -25,7 +25,7 @@ int main(int argc, const char* argv[]) {
 
     psxe_screen_t* screen = psxe_screen_create();
     psxe_screen_init(screen, psx);
-    psxe_screen_set_scale(screen, 2);
+    psxe_screen_set_scale(screen, 3);
     psxe_screen_reload(screen);
 
     psx_gpu_t* gpu = psx_get_gpu(psx);

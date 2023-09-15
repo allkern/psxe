@@ -1444,7 +1444,7 @@ void psx_cpu_i_ctc2(psx_cpu_t* cpu) {
 void psx_cpu_i_gte(psx_cpu_t* cpu) {
     DO_PENDING_LOAD;
 
-    g_psx_gte_table[cpu->opcode & 0x3f](cpu);
+    // g_psx_gte_table[cpu->opcode & 0x3f](cpu);
 }
 
 void psx_gte_i_invalid(psx_cpu_t* cpu) {

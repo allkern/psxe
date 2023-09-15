@@ -128,9 +128,9 @@ void cdrom_cmd_setloc(psx_cdrom_t* cdrom) {
 
         // Read ongoing
         case CD_STATE_SEND_RESP2: {
-            log_set_quiet(0);
+            // log_set_quiet(0);
             log_fatal("SETLOC WHILE READN");
-            log_set_quiet(1);
+            // log_set_quiet(0+0);
 
             int f = PFIFO_POP;
             int s = PFIFO_POP;
@@ -193,6 +193,34 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
                 return;
             }
 
+            psx_disc_read_sector(cdrom->disc, cdrom->dfifo);
+
+            msf_t sector_msf;
+
+            sector_msf.m = cdrom->dfifo[0x0c];
+            sector_msf.s = cdrom->dfifo[0x0d];
+            sector_msf.f = cdrom->dfifo[0x0e];
+
+            int correct_msf = (cdrom->seek_mm == sector_msf.m) && 
+                              (cdrom->seek_ss == sector_msf.s) &&
+                              (cdrom->seek_ff == sector_msf.f);
+            
+            // Most probably audio sector:
+            // Purposefully constructed audio data could
+            // circumvent this detection code, but it will work
+            // for most intents and purposes 
+            if (!correct_msf) {
+                log_fatal("CdlReadN: Audio read");
+
+                cdrom->irq_delay = DELAY_1MS * 600;
+                cdrom->delayed_command = CDL_ERROR;
+                cdrom->state = CD_STATE_ERROR;
+                cdrom->error = ERR_SEEK;
+                cdrom->error_flags = GETSTAT_SEEKERROR;
+
+                return;
+            }
+            
             int double_speed = cdrom->mode & MODE_SPEED;
 
             cdrom->irq_delay = double_speed ? READ_DOUBLE_DELAY : READ_SINGLE_DELAY;
@@ -219,41 +247,24 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
             psx_disc_seek(cdrom->disc, msf);
             psx_disc_read_sector(cdrom->disc, cdrom->dfifo);
 
-            msf_t sector_msf;
-
-            sector_msf.m = cdrom->dfifo[0x0c];
-            sector_msf.s = cdrom->dfifo[0x0d];
-            sector_msf.f = cdrom->dfifo[0x0e];
-
-            if ((cdrom->seek_mm != sector_msf.m) || 
-                (cdrom->seek_ss != sector_msf.s) ||
-                (cdrom->seek_ff != sector_msf.f)) {
-
-                log_set_quiet(0);
-                log_fatal("Mismatched sector and loc");
-                log_set_quiet(1);
-
-                exit(1);
-            }
+            // printf("Sector header: msf=%02x:%02x:%02x, mode=%02x, subheader=%02x,%02x,%02x,%02x\n",
+            //     cdrom->dfifo[0x0c],
+            //     cdrom->dfifo[0x0d],
+            //     cdrom->dfifo[0x0e],
+            //     cdrom->dfifo[0x0f],
+            //     cdrom->dfifo[0x10],
+            //     cdrom->dfifo[0x11],
+            //     cdrom->dfifo[0x12],
+            //     cdrom->dfifo[0x13]
+            // );
 
             if (cdrom->dfifo[0x12] & 0x20) {
-                log_set_quiet(0);
+                // log_set_quiet(0);
                 log_fatal("Unimplemented XA Form2 Sector");
-                log_set_quiet(1);
+                // log_set_quiet(0+0);
 
-                exit(1);
+                // exit(1);
             }
-
-            printf("Sector header: msf=%02x:%02x:%02x, mode=%02x, subheader=%02x,%02x,%02x,%02x\n",
-                cdrom->dfifo[0x0c],
-                cdrom->dfifo[0x0d],
-                cdrom->dfifo[0x0e],
-                cdrom->dfifo[0x0f],
-                cdrom->dfifo[0x10],
-                cdrom->dfifo[0x11],
-                cdrom->dfifo[0x12],
-                cdrom->dfifo[0x13]
-            );
 
             cdrom->seek_ff++;
 
@@ -317,6 +328,14 @@ void cdrom_cmd_init(psx_cdrom_t* cdrom) {
             cdrom->state = CD_STATE_SEND_RESP1;
             cdrom->delayed_command = CDL_INIT;
             cdrom->read_ongoing = 0;
+            cdrom->mode = 0;
+            cdrom->dfifo_index = 0;
+            cdrom->dfifo_full = 0;
+            cdrom->pfifo_index = 0;
+            cdrom->rfifo_index = 0;
+            cdrom->seek_mm = 0;
+            cdrom->seek_ss = 0;
+            cdrom->seek_ff = 0;
         } break;
 
         case CD_STATE_SEND_RESP1: {
@@ -435,7 +454,7 @@ void cdrom_cmd_setmode(psx_cdrom_t* cdrom) {
             cdrom->delayed_command = CDL_NONE;
     
             SET_BITS(ifr, IFR_INT, IFR_INT3);
-            RESP_PUSH(cdrom->stat);
+            RESP_PUSH(GETSTAT_MOTOR);
 
             cdrom->state = CD_STATE_RECV_CMD;
         } break;
@@ -528,6 +547,18 @@ void cdrom_cmd_seekl(psx_cdrom_t* cdrom) {
 
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
+            if (cdrom->pfifo_index) {
+                log_fatal("CdlSeekL: Expected exactly 0 parameters");
+
+                cdrom->irq_delay = DELAY_1MS;
+                cdrom->delayed_command = CDL_ERROR;
+                cdrom->state = CD_STATE_ERROR;
+                cdrom->error = ERR_PCOUNT;
+                cdrom->error_flags = GETSTAT_ERROR;
+
+                return;
+            }
+
             cdrom->irq_delay = DELAY_1MS;
             cdrom->state = CD_STATE_SEND_RESP1;
             cdrom->delayed_command = CDL_SEEKL;
@@ -551,7 +582,34 @@ void cdrom_cmd_seekl(psx_cdrom_t* cdrom) {
         } break;
     }
 }
-void cdrom_cmd_seekp(psx_cdrom_t* cdrom) { log_fatal("seekp: Unimplemented"); exit(1); }
+void cdrom_cmd_seekp(psx_cdrom_t* cdrom) {
+    cdrom->delayed_command = CDL_NONE;
+
+    switch (cdrom->state) {
+        case CD_STATE_RECV_CMD: {
+            cdrom->irq_delay = DELAY_1MS;
+            cdrom->state = CD_STATE_SEND_RESP1;
+            cdrom->delayed_command = CDL_SEEKP;
+        } break;
+
+        case CD_STATE_SEND_RESP1: {
+            SET_BITS(ifr, IFR_INT, 3);
+            RESP_PUSH(GETSTAT_MOTOR);
+
+            cdrom->irq_delay = DELAY_1MS;
+            cdrom->state = CD_STATE_SEND_RESP2;
+            cdrom->delayed_command = CDL_SEEKP;
+        } break;
+
+        case CD_STATE_SEND_RESP2: {
+            SET_BITS(ifr, IFR_INT, 2);
+            RESP_PUSH(GETSTAT_MOTOR);
+
+            cdrom->state = CD_STATE_RECV_CMD;
+            cdrom->delayed_command = CDL_NONE;
+        } break;
+    }
+}
 void cdrom_cmd_test(psx_cdrom_t* cdrom) {
     cdrom->delayed_command = CDL_NONE;
 
@@ -660,24 +718,75 @@ void cdrom_cmd_getid(psx_cdrom_t* cdrom) {
 void cdrom_cmd_reads(psx_cdrom_t* cdrom) {
     log_fatal("reads: Unimplemented");
 
-    exit(1);
+    //exit(1);
 
     cdrom->delayed_command = CDL_NONE;
+    cdrom->read_ongoing = 1;
 
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
-            log_fatal("CdlReadS: CD_STATE_RECV_CMD");
+            log_fatal("CdlReadN: CD_STATE_RECV_CMD");
             cdrom->irq_delay = DELAY_1MS;
             cdrom->state = CD_STATE_SEND_RESP1;
             cdrom->delayed_command = CDL_READS;
         } break;
 
         case CD_STATE_SEND_RESP1: {
-            log_fatal("CdlReadS: CD_STATE_SEND_RESP1");
+            log_fatal("CdlReadN: CD_STATE_SEND_RESP1");
 
-            SET_BITS(ifr, IFR_INT, 3);
+            SET_BITS(ifr, IFR_INT, IFR_INT3);
             RESP_PUSH(GETSTAT_MOTOR);
 
+            msf_t msf;
+
+            msf.m = cdrom->seek_mm;
+            msf.s = cdrom->seek_ss;
+            msf.f = cdrom->seek_ff;
+
+            msf_from_bcd(&msf);
+
+            int err = psx_disc_seek(cdrom->disc, msf);
+
+            if (err) {
+                log_fatal("CdlReadN: Out of bounds seek");
+
+                cdrom->irq_delay = DELAY_1MS * 600;
+                cdrom->delayed_command = CDL_ERROR;
+                cdrom->state = CD_STATE_ERROR;
+                cdrom->error = ERR_INVSUBF;
+                cdrom->error_flags = GETSTAT_SEEKERROR;
+
+                return;
+            }
+
+            psx_disc_read_sector(cdrom->disc, cdrom->dfifo);
+
+            msf_t sector_msf;
+
+            sector_msf.m = cdrom->dfifo[0x0c];
+            sector_msf.s = cdrom->dfifo[0x0d];
+            sector_msf.f = cdrom->dfifo[0x0e];
+
+            int correct_msf = (cdrom->seek_mm == sector_msf.m) && 
+                              (cdrom->seek_ss == sector_msf.s) &&
+                              (cdrom->seek_ff == sector_msf.f);
+            
+            // Most probably audio sector:
+            // Purposefully constructed audio data could
+            // circumvent this detection code, but it will work
+            // for most intents and purposes 
+            if (!correct_msf) {
+                log_fatal("CdlReadN: Audio read");
+
+                cdrom->irq_delay = DELAY_1MS * 600;
+                cdrom->delayed_command = CDL_ERROR;
+                cdrom->state = CD_STATE_ERROR;
+                cdrom->error = ERR_SEEK;
+                cdrom->error_flags = GETSTAT_SEEKERROR;
+
+                return;
+            }
+            
             int double_speed = cdrom->mode & MODE_SPEED;
 
             cdrom->irq_delay = double_speed ? READ_DOUBLE_DELAY : READ_SINGLE_DELAY;
@@ -691,25 +800,55 @@ void cdrom_cmd_reads(psx_cdrom_t* cdrom) {
         } break;
 
         case CD_STATE_SEND_RESP2: {
-            log_fatal("CdlReadS: CD_STATE_SEND_RESP2");
+            log_fatal("CdlReadN: CD_STATE_SEND_RESP2");
 
-            SET_BITS(ifr, IFR_INT, 1);
-            RESP_PUSH(GETSTAT_MOTOR | GETSTAT_READ);
+            msf_t msf;
 
-            // log_fatal("Reading data from disc. offset=%02x:%02x:%02x (%08x, tellg=%08x)",
-            //     cdrom->seek_mm, cdrom->seek_ss, cdrom->seek_ff,
-            //     cdrom->seek_offset, ftell(cdrom->disc)
+            msf.m = cdrom->seek_mm;
+            msf.s = cdrom->seek_ss;
+            msf.f = cdrom->seek_ff;
+
+            msf_from_bcd(&msf);
+
+            psx_disc_seek(cdrom->disc, msf);
+            psx_disc_read_sector(cdrom->disc, cdrom->dfifo);
+
+            // printf("Sector header: msf=%02x:%02x:%02x, mode=%02x, subheader=%02x,%02x,%02x,%02x\n",
+            //     cdrom->dfifo[0x0c],
+            //     cdrom->dfifo[0x0d],
+            //     cdrom->dfifo[0x0e],
+            //     cdrom->dfifo[0x0f],
+            //     cdrom->dfifo[0x10],
+            //     cdrom->dfifo[0x11],
+            //     cdrom->dfifo[0x12],
+            //     cdrom->dfifo[0x13]
             // );
 
-            cdrom->dfifo_index = 0;
+            if (cdrom->dfifo[0x12] & 0x20) {
+                // log_set_quiet(0);
+                log_fatal("Unimplemented XA Form2 Sector");
+                // log_set_quiet(0+0);
 
-            //fread(cdrom->dfifo, 1, CD_SECTOR_SIZE, cdrom->disc);
+                // exit(1);
+            }
+
+            cdrom->seek_ff++;
+
+            if ((cdrom->seek_ff & 0xF) == 10) { cdrom->seek_ff += 0x10; cdrom->seek_ff &= 0xF0; }
+            if (cdrom->seek_ff == 0x75) { cdrom->seek_ss++; cdrom->seek_ff = 0; }
+            if ((cdrom->seek_ss & 0xF) == 10) { cdrom->seek_ss += 0x10; cdrom->seek_ss &= 0xF0; }
+            if (cdrom->seek_ss == 0x60) { cdrom->seek_mm++; cdrom->seek_ss = 0; }
+            if ((cdrom->seek_mm & 0xF) == 10) { cdrom->seek_mm += 0x10; cdrom->seek_mm &= 0xF0; }
 
             int double_speed = cdrom->mode & MODE_SPEED;
 
             cdrom->irq_delay = double_speed ? READ_DOUBLE_DELAY : READ_SINGLE_DELAY;
-            cdrom->state = CD_STATE_RECV_CMD;
-            cdrom->delayed_command = CDL_NONE;
+            cdrom->state = CD_STATE_SEND_RESP2;
+            cdrom->delayed_command = CDL_READN;
+            cdrom->dfifo_index = 0;
+
+            SET_BITS(ifr, IFR_INT, IFR_INT1);
+            RESP_PUSH(GETSTAT_MOTOR | GETSTAT_READ);
         } break;
     }
 }
@@ -841,7 +980,7 @@ void cdrom_write_status(psx_cdrom_t* cdrom, uint8_t value) {
 }
 
 void cdrom_write_cmd(psx_cdrom_t* cdrom, uint8_t value) {
-    log_set_quiet(0);
+    // log_set_quiet(0);
     log_fatal("%s(%02x) %u params=[%02x, %02x, %02x, %02x, %02x, %02x]",
         g_psx_cdrom_command_names[value],
         value,
@@ -853,7 +992,7 @@ void cdrom_write_cmd(psx_cdrom_t* cdrom, uint8_t value) {
         cdrom->pfifo[4],
         cdrom->pfifo[5]
     );
-    log_set_quiet(1);
+    // log_set_quiet(0+0);
 
     cdrom->command = value;
     cdrom->state = CD_STATE_RECV_CMD;

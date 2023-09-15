@@ -356,7 +356,6 @@ void psx_dma_do_spu(psx_dma_t* dma) {
     
     // Clear BCR and CHCR trigger and busy bits
     dma->spu.chcr = 0;
-    //dma->otc.chcr &= ~(CHCR_BUSY_MASK | CHCR_TRIG_MASK);
     dma->spu.bcr = 0;
 }
 
@@ -430,7 +429,7 @@ void psx_dma_update(psx_dma_t* dma, int cyc) {
     int force_irq = (dma->dicr & DICR_FORCE) != 0;
     int irq = (dma->dicr & DICR_FLAGS) != 0;
 
-    int irq_signal = force_irq || (irq && irq_on_flags);
+    int irq_signal = force_irq || ((irq & irq_on_flags) != 0);
 
     if (irq_signal && !prev_irq_signal)
         psx_ic_irq(dma->ic, IC_DMA);

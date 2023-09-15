@@ -24,11 +24,11 @@ void psx_bus_destroy(psx_bus_t* bus) {
 }
 
 #define HANDLE_READ(dev, bits) \
-    if (RANGE(addr, bus->dev->io_base, bus->dev->io_base + bus->dev->io_size)) \
+    if (RANGE(addr, bus->dev->io_base, (bus->dev->io_base + bus->dev->io_size))) \
         return psx_ ## dev ## _read ## bits (bus->dev, addr - bus->dev->io_base);
 
 #define HANDLE_WRITE(dev, bits) \
-    if (RANGE(addr, bus->dev->io_base, bus->dev->io_base + bus->dev->io_size)) { \
+    if (RANGE(addr, bus->dev->io_base, (bus->dev->io_base + bus->dev->io_size))) { \
         psx_ ## dev ## _write ## bits (bus->dev, addr - bus->dev->io_base, value); \
         return; \
     }
@@ -41,7 +41,7 @@ uint32_t psx_bus_read32(psx_bus_t* bus, uint32_t addr) {
     addr &= g_psx_bus_region_mask_table[addr >> 29];
 
     if (addr & 0x3) {
-        log_warn("Unaligned 32-bit read from %08x:%08x", vaddr, addr);
+        log_fatal("Unaligned 32-bit read from %08x:%08x", vaddr, addr);
     }
 
     HANDLE_READ(bios, 32);
@@ -60,7 +60,9 @@ uint32_t psx_bus_read32(psx_bus_t* bus, uint32_t addr) {
     HANDLE_READ(pad, 32);
     HANDLE_READ(mdec, 32);
 
-    log_warn("Unhandled 32-bit read from %08x:%08x", vaddr, addr);
+    log_fatal("Unhandled 32-bit read from %08x:%08x", vaddr, addr);
+
+    exit(1);
 
     return 0x00000000;
 }
@@ -73,7 +75,7 @@ uint16_t psx_bus_read16(psx_bus_t* bus, uint32_t addr) {
     addr &= g_psx_bus_region_mask_table[addr >> 29];
 
     if (addr & 0x1) {
-        log_warn("Unaligned 16-bit read from %08x:%08x", vaddr, addr);
+        log_fatal("Unaligned 16-bit read from %08x:%08x", vaddr, addr);
     }
 
     HANDLE_READ(bios, 16);
@@ -92,7 +94,9 @@ uint16_t psx_bus_read16(psx_bus_t* bus, uint32_t addr) {
     HANDLE_READ(pad, 16);
     HANDLE_READ(mdec, 16);
 
-    log_warn("Unhandled 16-bit read from %08x:%08x", vaddr, addr);
+    log_fatal("Unhandled 16-bit read from %08x:%08x", vaddr, addr);
+
+    exit(1);
 
     return 0x0000;
 }
@@ -120,7 +124,9 @@ uint8_t psx_bus_read8(psx_bus_t* bus, uint32_t addr) {
     HANDLE_READ(pad, 8);
     HANDLE_READ(mdec, 8);
 
-    log_warn("Unhandled 8-bit read from %08x:%08x", vaddr, addr);
+    log_fatal("Unhandled 8-bit read from %08x:%08x", vaddr, addr);
+
+    //exit(1);
 
     return 0x00;
 }
@@ -133,7 +139,7 @@ void psx_bus_write32(psx_bus_t* bus, uint32_t addr, uint32_t value) {
     addr &= g_psx_bus_region_mask_table[addr >> 29];
 
     if (addr & 0x3) {
-        log_warn("Unaligned 32-bit write to %08x:%08x (%08x)", vaddr, addr, value);
+        log_fatal("Unaligned 32-bit write to %08x:%08x (%08x)", vaddr, addr, value);
     }
 
     HANDLE_WRITE(bios, 32);
@@ -152,7 +158,9 @@ void psx_bus_write32(psx_bus_t* bus, uint32_t addr, uint32_t value) {
     HANDLE_WRITE(pad, 32);
     HANDLE_WRITE(mdec, 32);
 
-    log_warn("Unhandled 32-bit write to %08x:%08x (%08x)", vaddr, addr, value);
+    log_fatal("Unhandled 32-bit write to %08x:%08x (%08x)", vaddr, addr, value);
+
+    exit(1);
 }
 
 void psx_bus_write16(psx_bus_t* bus, uint32_t addr, uint16_t value) {
@@ -163,7 +171,7 @@ void psx_bus_write16(psx_bus_t* bus, uint32_t addr, uint16_t value) {
     addr &= g_psx_bus_region_mask_table[addr >> 29];
 
     if (addr & 0x1) {
-        log_warn("Unaligned 16-bit write to %08x:%08x (%04x)", vaddr, addr, value);
+        log_fatal("Unaligned 16-bit write to %08x:%08x (%04x)", vaddr, addr, value);
     }
 
     HANDLE_WRITE(bios, 16);
@@ -182,7 +190,9 @@ void psx_bus_write16(psx_bus_t* bus, uint32_t addr, uint16_t value) {
     HANDLE_WRITE(pad, 16);
     HANDLE_WRITE(mdec, 16);
 
-    log_warn("Unhandled 16-bit write to %08x:%08x (%04x)", vaddr, addr, value);
+    log_fatal("Unhandled 16-bit write to %08x:%08x (%04x)", vaddr, addr, value);
+
+    //exit(1);
 }
 
 void psx_bus_write8(psx_bus_t* bus, uint32_t addr, uint8_t value) {
@@ -208,7 +218,9 @@ void psx_bus_write8(psx_bus_t* bus, uint32_t addr, uint8_t value) {
     HANDLE_WRITE(pad, 8);
     HANDLE_WRITE(mdec, 8);
 
-    log_warn("Unhandled 8-bit write to %08x:%08x (%02x)", vaddr, addr, value);
+    log_fatal("Unhandled 8-bit write to %08x:%08x (%02x)", vaddr, addr, value);
+
+    //exit(1);
 }
 
 void psx_bus_init_bios(psx_bus_t* bus, psx_bios_t* bios) {

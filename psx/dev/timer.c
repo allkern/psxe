@@ -63,6 +63,8 @@ uint32_t psx_timer_read32(psx_timer_t* timer, uint32_t offset) {
 
     log_fatal("Unhandled 32-bit TIMER read at offset %08x", offset);
 
+    exit(1);
+
     return 0x0;
 }
 
@@ -84,11 +86,15 @@ uint16_t psx_timer_read16(psx_timer_t* timer, uint32_t offset) {
 
     log_fatal("Unhandled 16-bit TIMER read at offset %08x", offset);
 
+    exit(1);
+    
     return 0x0;
 }
 
 uint8_t psx_timer_read8(psx_timer_t* timer, uint32_t offset) {
     log_fatal("Unhandled 8-bit TIMER read at offset %08x", offset);
+
+    exit(1);
 
     return 0x0;
 }
@@ -112,9 +118,13 @@ void psx_timer_write32(psx_timer_t* timer, uint32_t offset, uint32_t value) {
     }
 
     log_fatal("Unhandled 32-bit TIMER write at offset %08x (%02x)", offset, value);
+
+    exit(1);
 }
 
 void psx_timer_write16(psx_timer_t* timer, uint32_t offset, uint16_t value) {
+    return;
+
     int index = offset >> 4;
     int reg = offset & 0xf;
 
@@ -135,10 +145,14 @@ void psx_timer_write16(psx_timer_t* timer, uint32_t offset, uint16_t value) {
     }
 
     log_fatal("Unhandled 16-bit TIMER write at offset %08x (%02x)", offset, value);
+
+    exit(1);
 }
 
 void psx_timer_write8(psx_timer_t* timer, uint32_t offset, uint8_t value) {
     log_fatal("Unhandled 8-bit TIMER write at offset %08x (%02x)", offset, value);
+
+    exit(1);
 }
 
 void timer_update_timer0(psx_timer_t* timer, int cyc) {

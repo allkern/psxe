@@ -447,6 +447,10 @@ void gpu_cmd_a0(psx_gpu_t* gpu) {
         } break;
 
         case GPU_STATE_RECV_DATA: {
+            uint32_t addr = gpu->addr + (gpu->xcnt + (gpu->ycnt * 1024));
+
+            addr %= PSX_GPU_VRAM_SIZE;
+
             gpu->vram[gpu->addr + (gpu->xcnt + (gpu->ycnt * 1024))] = gpu->recv_data & 0xffff;
 
             gpu->xcnt += 1;
@@ -455,6 +459,9 @@ void gpu_cmd_a0(psx_gpu_t* gpu) {
                 gpu->ycnt += 1;
                 gpu->xcnt = 0;
             }
+
+            addr = gpu->addr + (gpu->xcnt + (gpu->ycnt * 1024));
+            addr %= PSX_GPU_VRAM_SIZE;
 
             gpu->vram[gpu->addr + (gpu->xcnt + (gpu->ycnt * 1024))] = gpu->recv_data >> 16;
 
