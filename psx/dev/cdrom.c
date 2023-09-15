@@ -46,17 +46,22 @@ void cdrom_cmd_getstat(psx_cdrom_t* cdrom) {
             }
 
             cdrom->irq_delay = DELAY_1MS;
-            cdrom->delayed_command = CDL_GETSTAT;
             cdrom->state = CD_STATE_SEND_RESP1;
+            cdrom->delayed_command = CDL_GETSTAT;
         } break;
 
         case CD_STATE_SEND_RESP1: {
-            cdrom->delayed_command = CDL_NONE;
-
             SET_BITS(ifr, IFR_INT, IFR_INT3);
             RESP_PUSH(GETSTAT_MOTOR | (cdrom->disc ? 0 : GETSTAT_TRAYOPEN));
 
-            cdrom->state = CD_STATE_RECV_CMD;
+            if (cdrom->read_ongoing) {
+                cdrom->state = CD_STATE_SEND_RESP2;
+                cdrom->delayed_command = CDL_READN;
+                cdrom->irq_delay = DELAY_1MS;
+            } else {
+                cdrom->delayed_command = CDL_NONE;
+                cdrom->state = CD_STATE_RECV_CMD;
+            }
         } break;
     }
 }
@@ -81,6 +86,10 @@ void cdrom_cmd_setloc(psx_cdrom_t* cdrom) {
                 cdrom->irq_delay = DELAY_1MS;
                 cdrom->delayed_command = CDL_SETLOC;
                 cdrom->state = CD_STATE_SEND_RESP1;
+            } else {
+                cdrom->irq_delay = DELAY_1MS;
+                cdrom->delayed_command = CDL_READN;
+                cdrom->state = CD_STATE_SEND_RESP2;
             }
 
             int f = PFIFO_POP;
@@ -116,10 +125,37 @@ void cdrom_cmd_setloc(psx_cdrom_t* cdrom) {
 
             cdrom->state = CD_STATE_RECV_CMD;
         } break;
+
+        // Read ongoing
+        case CD_STATE_SEND_RESP2: {
+            log_set_quiet(0);
+            log_fatal("SETLOC WHILE READN");
+            log_set_quiet(1);
+
+            int f = PFIFO_POP;
+            int s = PFIFO_POP;
+            int m = PFIFO_POP;
+
+            if (!(VALID_BCD(m) && VALID_BCD(s) && VALID_BCD(f) && (f < 0x75))) {
+                cdrom->read_ongoing = false;
+                cdrom->irq_delay = DELAY_1MS;
+                cdrom->delayed_command = CDL_ERROR;
+                cdrom->state = CD_STATE_ERROR;
+                cdrom->error = ERR_INVSUBF;
+                cdrom->error_flags = GETSTAT_ERROR;
+
+                return;
+            }
+
+            cdrom->seek_ff = f;
+            cdrom->seek_ss = s;
+            cdrom->seek_mm = m;
+        } break;
     }
 }
 void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
     cdrom->delayed_command = CDL_NONE;
+    cdrom->read_ongoing = 1;
 
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
@@ -170,8 +206,6 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
         } break;
 
         case CD_STATE_SEND_RESP2: {
-            cdrom->read_ongoing = 1;
-
             log_fatal("CdlReadN: CD_STATE_SEND_RESP2");
 
             msf_t msf;
@@ -184,6 +218,42 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
 
             psx_disc_seek(cdrom->disc, msf);
             psx_disc_read_sector(cdrom->disc, cdrom->dfifo);
+
+            msf_t sector_msf;
+
+            sector_msf.m = cdrom->dfifo[0x0c];
+            sector_msf.s = cdrom->dfifo[0x0d];
+            sector_msf.f = cdrom->dfifo[0x0e];
+
+            if ((cdrom->seek_mm != sector_msf.m) || 
+                (cdrom->seek_ss != sector_msf.s) ||
+                (cdrom->seek_ff != sector_msf.f)) {
+
+                log_set_quiet(0);
+                log_fatal("Mismatched sector and loc");
+                log_set_quiet(1);
+
+                exit(1);
+            }
+
+            if (cdrom->dfifo[0x12] & 0x20) {
+                log_set_quiet(0);
+                log_fatal("Unimplemented XA Form2 Sector");
+                log_set_quiet(1);
+
+                exit(1);
+            }
+
+            printf("Sector header: msf=%02x:%02x:%02x, mode=%02x, subheader=%02x,%02x,%02x,%02x\n",
+                cdrom->dfifo[0x0c],
+                cdrom->dfifo[0x0d],
+                cdrom->dfifo[0x0e],
+                cdrom->dfifo[0x0f],
+                cdrom->dfifo[0x10],
+                cdrom->dfifo[0x11],
+                cdrom->dfifo[0x12],
+                cdrom->dfifo[0x13]
+            );
 
             cdrom->seek_ff++;
 
@@ -742,10 +812,10 @@ uint8_t cdrom_read_dfifo(psx_cdrom_t* cdrom) {
 
     int sector_size_bit = cdrom->mode & MODE_SECTOR_SIZE;
 
-    uint32_t read_sector_size = sector_size_bit ? 0x924 : 0x800;
+    uint32_t sector_size = sector_size_bit ? 0x924 : 0x800;
     uint32_t offset = sector_size_bit ? 12 : 24;
-    
-    if (cdrom->dfifo_index != read_sector_size) {
+
+    if (cdrom->dfifo_index < sector_size) {
         SET_BITS(status, STAT_DRQSTS_MASK, STAT_DRQSTS_MASK);
 
         return cdrom->dfifo[offset + (cdrom->dfifo_index++)];
