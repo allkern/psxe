@@ -54,6 +54,14 @@ void psxe_screen_reload(psxe_screen_t* screen) {
     if (screen->renderer) SDL_DestroyRenderer(screen->renderer);
     if (screen->window) SDL_DestroyWindow(screen->window);
 
+    if (screen->debug_mode) {
+        screen->width = PSX_GPU_FB_WIDTH;
+        screen->height = PSX_GPU_FB_HEIGHT;
+    } else {
+        screen->width = 320;
+        screen->height = 240;
+    }
+
     screen->window = SDL_CreateWindow(
         "psxe " STR(REP_VERSION) "-" STR(REP_COMMIT_HASH),
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
@@ -96,6 +104,8 @@ int psxe_screen_is_open(psxe_screen_t* screen) {
 
 void psxe_screen_toggle_debug_mode(psxe_screen_t* screen) {
     screen->debug_mode = !screen->debug_mode;
+
+    psxe_screen_set_scale(screen, screen->saved_scale);
 
     psxe_gpu_dmode_event_cb(screen->psx->gpu);
 }
@@ -161,22 +171,29 @@ void psxe_screen_destroy(psxe_screen_t* screen) {
 void psxe_gpu_dmode_event_cb(psx_gpu_t* gpu) {
     psxe_screen_t* screen = gpu->udata[0];
 
+    int texture_width;
+    int texture_height;
+
     screen->format = psx_get_display_format(screen->psx) ?
         SDL_PIXELFORMAT_BGR555 : SDL_PIXELFORMAT_RGB888;
 
     if (screen->debug_mode) {
         screen->width = PSX_GPU_FB_WIDTH;
         screen->height = PSX_GPU_FB_HEIGHT;
+        texture_width = PSX_GPU_FB_WIDTH;
+        texture_height = PSX_GPU_FB_HEIGHT;
     } else {
-        screen->width = psx_get_display_width(screen->psx);
-        screen->height = psx_get_display_height(screen->psx);
+        screen->width = 320;
+        screen->height = 240;
+        texture_width = psx_get_display_width(screen->psx);
+        texture_height = psx_get_display_height(screen->psx);
     }
 
-    if (screen->width > 512) {
-        screen->scale = 1;
-    } else {
-        screen->scale = screen->saved_scale;
-    }
+    // if (screen->width > 512) {
+    //     screen->scale = 1;
+    // } else {
+    //     screen->scale = screen->saved_scale;
+    // }
 
     SDL_DestroyTexture(screen->texture);
 
@@ -184,7 +201,7 @@ void psxe_gpu_dmode_event_cb(psx_gpu_t* gpu) {
         screen->renderer,
         SDL_PIXELFORMAT_BGR555,
         SDL_TEXTUREACCESS_STREAMING,
-        screen->width, screen->height
+        texture_width, texture_height
     );
 
     SDL_SetWindowSize(

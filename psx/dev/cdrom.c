@@ -153,6 +153,61 @@ void cdrom_cmd_setloc(psx_cdrom_t* cdrom) {
         } break;
     }
 }
+void cdrom_cmd_play(psx_cdrom_t* cdrom) {
+    cdrom->delayed_command = CDL_NONE;
+
+    switch (cdrom->state) {
+        case CD_STATE_RECV_CMD: {
+            // if (cdrom->pfifo_index) {
+            //     log_fatal("CdlGetStat: Expected exactly 0 parameters");
+
+            //     cdrom->irq_delay = DELAY_1MS;
+            //     cdrom->delayed_command = CDL_ERROR;
+            //     cdrom->state = CD_STATE_ERROR;
+            //     cdrom->error = ERR_PCOUNT;
+            //     cdrom->error_flags = GETSTAT_ERROR;
+
+            //     return;
+            // }
+
+            cdrom->irq_delay = DELAY_1MS;
+            cdrom->state = CD_STATE_SEND_RESP1;
+            cdrom->delayed_command = CDL_PLAY;
+
+            cdrom->cdda_msf.m = cdrom->seek_mm;
+            cdrom->cdda_msf.s = cdrom->seek_ss;
+            cdrom->cdda_msf.f = cdrom->seek_ff;
+
+            // Convert seek to I
+            msf_t msf = cdrom->cdda_msf;
+            
+            msf_from_bcd(&msf);
+
+            msf.s -= 24;
+
+            // Seek to that address and read sector
+            psx_disc_seek(cdrom->disc, msf);
+            psx_disc_read_sector(cdrom->disc, cdrom->cdda_buf);
+
+            // Increment sector
+            msf_add_f(&msf, 1);
+            msf_to_bcd(&msf);
+
+            cdrom->cdda_msf = msf;
+            
+            cdrom->cdda_sector_offset = 0;
+            cdrom->cdda_playing = 1;
+        } break;
+
+        case CD_STATE_SEND_RESP1: {
+            SET_BITS(ifr, IFR_INT, IFR_INT3);
+            RESP_PUSH(GETSTAT_MOTOR | GETSTAT_PLAY);
+
+            cdrom->delayed_command = CDL_NONE;
+            cdrom->state = CD_STATE_RECV_CMD;
+        } break;
+    }
+}
 void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
     cdrom->delayed_command = CDL_NONE;
     cdrom->read_ongoing = 1;
@@ -528,7 +583,7 @@ void cdrom_cmd_gettd(psx_cdrom_t* cdrom) {
 
             psx_disc_get_track_addr(cdrom->disc, &td, cdrom->gettd_track);
 
-            log_fatal("GetTD track=%u, addr=%02u:%02u", cdrom->gettd_track, td.m, td.s);
+            log_fatal("@@@@@@@@@@@@@@@@ GetTD track=%u, addr=%02u:%02u", cdrom->gettd_track, td.m, td.s);
 
             // To-do: Handle OOB tracks
 
@@ -860,7 +915,7 @@ const char* g_psx_cdrom_command_names[] = {
     "CdlUnimplemented",
     "CdlGetstat",
     "CdlSetloc",
-    "CdlUnimplemented",
+    "CdlPlay",
     "CdlUnimplemented",
     "CdlUnimplemented",
     "CdlReadn",
@@ -895,7 +950,7 @@ cdrom_cmd_t g_psx_cdrom_command_table[] = {
     cdrom_cmd_unimplemented,
     cdrom_cmd_getstat,
     cdrom_cmd_setloc,
-    cdrom_cmd_unimplemented,
+    cdrom_cmd_play,
     cdrom_cmd_unimplemented,
     cdrom_cmd_unimplemented,
     cdrom_cmd_readn,
@@ -1109,6 +1164,8 @@ void psx_cdrom_init(psx_cdrom_t* cdrom, psx_ic_t* ic) {
 
     cdrom->ic = ic;
     cdrom->status = STAT_PRMEMPT_MASK | STAT_PRMWRDY_MASK;
+    cdrom->dfifo = malloc(CD_SECTOR_SIZE);
+    cdrom->cdda_buf = malloc(CD_SECTOR_SIZE);
 }
 
 uint32_t psx_cdrom_read32(psx_cdrom_t* cdrom, uint32_t offset) {
@@ -1236,6 +1293,95 @@ void psx_cdrom_open(psx_cdrom_t* cdrom, const char* path) {
 
         exit(1);
     }
+}
+
+void psx_cdrom_get_cdda_samples(psx_cdrom_t* cdrom, void* buf, int size) {
+    if (!cdrom->cdda_playing) {
+        memset(buf, 0, size);
+    
+        return;
+    }
+
+    memcpy(buf, cdrom->cdda_buf, size);
+
+    // Convert seek to I
+    msf_t msf = cdrom->cdda_msf;
+    
+    msf_from_bcd(&msf);
+
+    // Seek to that address and read sector
+    psx_disc_seek(cdrom->disc, msf);
+    psx_disc_read_sector(cdrom->disc, cdrom->cdda_buf);
+
+    // Increment sector
+    msf_add_f(&msf, 1);
+    msf_to_bcd(&msf);
+
+    // Assign to CDDA MSF
+    cdrom->cdda_msf = msf;
+
+    /*
+    start = offset
+    end = offset + request
+
+    start = 0
+    end = 10
+    
+    */
+
+    // int req_start = cdrom->cdda_sector_offset;
+    // int req_end = req_start + size;
+
+    // if (req_end > CD_SECTOR_SIZE) {
+    //     int unbuffered = req_end - CD_SECTOR_SIZE;
+    //     //int buffered = 
+    // }
+
+    // // We need a new sector
+    // if (cdrom->cdda_sector_offset >= CD_SECTOR_SIZE) {
+    //     cdrom->cdda_sector_offset -= CD_SECTOR_SIZE;
+
+    //     // Convert seek to I
+    //     msf_t msf = cdrom->cdda_msf;
+        
+    //     msf_from_bcd(&msf);
+
+    //     // Seek to that address and read sector
+    //     psx_disc_seek(cdrom->disc, msf);
+    //     psx_disc_read_sector(cdrom->disc, cdrom->cdda_buf);
+
+    //     // Increment sector
+    //     msf_add_f(&msf, 1);
+    //     msf_to_bcd(&msf);
+
+    //     // Assign to CDDA MSF
+    //     cdrom->cdda_msf = msf;
+    // }
+
+    memcpy(buf, cdrom->cdda_buf, size);
+
+    // cdrom->cdda_sector_offset += size;
+
+    // // We need a new sector
+    // if (cdrom->cdda_sector_offset >= CD_SECTOR_SIZE) {
+    //     cdrom->cdda_sector_offset -= CD_SECTOR_SIZE;
+
+    //     // Convert seek to I
+    //     msf_t msf = cdrom->cdda_msf;
+        
+    //     msf_from_bcd(&msf);
+
+    //     // Seek to that address and read sector
+    //     psx_disc_seek(cdrom->disc, msf);
+    //     psx_disc_read_sector(cdrom->disc, cdrom->cdda_buf);
+
+    //     // Increment sector
+    //     msf_add_f(&msf, 1);
+    //     msf_to_bcd(&msf);
+
+    //     // Assign to CDDA MSF
+    //     cdrom->cdda_msf = msf;
+    // }
 }
 
 void psx_cdrom_destroy(psx_cdrom_t* cdrom) {

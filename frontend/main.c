@@ -1,10 +1,17 @@
 #include "psx/psx.h"
 #include "psx/input/sda.h"
+#include "psx/disc/cue.h"
 
 #include "screen.h"
 #include "config.h"
 
 #undef main
+
+void audio_update(void* ud, uint8_t* buf, int size) {
+    psx_cdrom_t* cdrom = ud;
+
+    psx_cdrom_get_cdda_samples(cdrom, buf, size);
+}
 
 int main(int argc, const char* argv[]) {
     psxe_config_t* cfg = psxe_cfg_create();
@@ -28,6 +35,24 @@ int main(int argc, const char* argv[]) {
     psxe_screen_set_scale(screen, 3);
     psxe_screen_reload(screen);
 
+    SDL_Init(SDL_INIT_AUDIO);
+
+    SDL_AudioDeviceID dev;
+    SDL_AudioSpec obtained, desired;
+
+    desired.freq     = 44100;
+    desired.format   = AUDIO_S16SYS;
+    desired.channels = 2;
+    desired.samples  = CD_SECTOR_SIZE >> 2;
+    desired.callback = &audio_update;
+    desired.userdata = cdrom;
+
+    dev = SDL_OpenAudioDevice(NULL, 0, &desired, &obtained, 0);
+
+    log_fatal("obtained.samples=%u", obtained.samples);
+
+    if (dev) SDL_PauseAudioDevice(dev, 0);
+    
     psx_gpu_t* gpu = psx_get_gpu(psx);
     psx_gpu_set_event_callback(gpu, GPU_EVENT_DMODE, psxe_gpu_dmode_event_cb);
     psx_gpu_set_event_callback(gpu, GPU_EVENT_VBLANK, psxe_gpu_vblank_event_cb);
@@ -74,7 +99,7 @@ int main(int argc, const char* argv[]) {
 
     if (cfg->cd_path)
         psx_cdrom_destroy(cdrom);
-    
+
     psx_input_destroy(input);
     psx_destroy(psx);
     psxi_sda_destroy(controller);

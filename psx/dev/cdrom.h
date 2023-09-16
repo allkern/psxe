@@ -155,8 +155,8 @@ typedef struct {
     int pfifo_index;
     int rfifo_index;
 
-    uint8_t read_buf[CD_SECTOR_SIZE];
-    uint8_t dfifo[CD_SECTOR_SIZE];
+    uint8_t* read_buf;
+    uint8_t* dfifo;
     int dfifo_index;
     int dfifo_full;
 
@@ -185,6 +185,12 @@ typedef struct {
     int read_ongoing;
     int gettd_track;
 
+    // CDDA
+    uint8_t* cdda_buf;
+    int cdda_sector_offset;
+    msf_t cdda_msf;
+    int cdda_playing;
+
     const char* path;
     psx_disc_t* disc;
 } psx_cdrom_t;
@@ -200,6 +206,7 @@ void psx_cdrom_write8(psx_cdrom_t*, uint32_t, uint8_t);
 void psx_cdrom_update(psx_cdrom_t*);
 void psx_cdrom_destroy(psx_cdrom_t*);
 void psx_cdrom_open(psx_cdrom_t*, const char*);
+void psx_cdrom_get_cdda_samples(psx_cdrom_t*, void*, int);
 
 /*
   Command          Parameters      Response(s)
@@ -251,6 +258,7 @@ void psx_cdrom_open(psx_cdrom_t*, const char*);
 void cdrom_cmd_unimplemented(psx_cdrom_t*);
 void cdrom_cmd_getstat(psx_cdrom_t*);
 void cdrom_cmd_setloc(psx_cdrom_t*);
+void cdrom_cmd_play(psx_cdrom_t*);
 void cdrom_cmd_readn(psx_cdrom_t*);
 void cdrom_cmd_stop(psx_cdrom_t*);
 void cdrom_cmd_pause(psx_cdrom_t*);
