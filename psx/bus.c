@@ -96,7 +96,7 @@ uint16_t psx_bus_read16(psx_bus_t* bus, uint32_t addr) {
 
     log_fatal("Unhandled 16-bit read from %08x:%08x", vaddr, addr);
 
-    exit(1);
+    // exit(1);
 
     return 0x0000;
 }

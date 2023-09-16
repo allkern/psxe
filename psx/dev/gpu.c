@@ -451,6 +451,8 @@ void gpu_cmd_a0(psx_gpu_t* gpu) {
 
             addr %= PSX_GPU_VRAM_SIZE;
 
+            // To-do: This is segfaulting for some reason
+            //        Fix GPU edge cases in general
             gpu->vram[gpu->addr + (gpu->xcnt + (gpu->ycnt * 1024))] = gpu->recv_data & 0xffff;
 
             gpu->xcnt += 1;

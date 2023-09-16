@@ -349,7 +349,7 @@ void psx_dma_do_spu(psx_dma_t* dma) {
     if (!size) {
         log_fatal("0 sized SPU DMA");
 
-        exit(1);
+        // exit(1);
     }
 
     dma->spu_irq_delay = size * 4;
