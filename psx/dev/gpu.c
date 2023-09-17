@@ -19,6 +19,13 @@ uint16_t gpu_to_bgr555(uint32_t color) {
            ((color & 0xf80000) >> 9);
 }
 
+#define BGR555(c) \
+    (((c & 0x0000f8) >> 3) | \
+     ((c & 0x00f800) >> 6) | \
+     ((c & 0xf80000) >> 9))
+
+// #define BGR555(c) gpu_to_bgr555(c)
+
 psx_gpu_t* psx_gpu_create() {
     return (psx_gpu_t*)malloc(sizeof(psx_gpu_t));
 }
@@ -113,7 +120,7 @@ int max(int x0, int x1) {
 
 #define EDGE(a, b, c) ((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x))
 
-uint16_t gpu_fetch_texel(psx_gpu_t* gpu, uint16_t tx, uint16_t ty, uint32_t tpx, uint32_t tpy, int depth) {
+uint16_t gpu_fetch_texel(psx_gpu_t* gpu, uint16_t tx, uint16_t ty, uint32_t tpx, uint32_t tpy, uint16_t clutx, uint16_t cluty, int depth) {
     tx = (tx & ~gpu->texw_mx) | (gpu->texw_ox & gpu->texw_mx);
     ty = (ty & ~gpu->texw_my) | (gpu->texw_oy & gpu->texw_my);
 
@@ -124,7 +131,7 @@ uint16_t gpu_fetch_texel(psx_gpu_t* gpu, uint16_t tx, uint16_t ty, uint32_t tpx,
 
             int index = (texel >> ((tx & 0x3) << 2)) & 0xf;
 
-            return gpu->vram[(gpu->clut_x + index) + (gpu->clut_y * 1024)];
+            return gpu->vram[(clutx + index) + (cluty * 1024)];
         } break;
 
         // 8-bit
@@ -133,7 +140,7 @@ uint16_t gpu_fetch_texel(psx_gpu_t* gpu, uint16_t tx, uint16_t ty, uint32_t tpx,
 
             int index = (texel >> ((tx & 0x1) << 3)) & 0xff;
 
-            return gpu->vram[(gpu->clut_x + index) + (gpu->clut_y * 1024)];
+            return gpu->vram[(clutx + index) + (cluty * 1024)];
         } break;
 
         // 15-bit
@@ -228,7 +235,7 @@ void gpu_render_flat_rectangle(psx_gpu_t* gpu, vertex_t v, uint32_t w, uint32_t 
     }
 }
 
-void gpu_render_textured_rectangle(psx_gpu_t* gpu, vertex_t v, uint32_t w, uint32_t h, uint32_t tpx, uint32_t tpy) {
+void gpu_render_textured_rectangle(psx_gpu_t* gpu, vertex_t v, uint32_t w, uint32_t h, uint16_t clutx, uint16_t cluty, uint32_t color) {
     vertex_t a = v;
 
     a.x += gpu->off_x;
@@ -243,13 +250,17 @@ void gpu_render_textured_rectangle(psx_gpu_t* gpu, vertex_t v, uint32_t w, uint3
 
     for (int y = ymin; y < ymax; y++) {
         for (int x = xmin; x < xmax; x++) {
-            uint16_t color = gpu_fetch_texel(gpu, a.tx + xc, a.ty + yc, tpx, tpy, gpu->texp_d);
+            uint16_t texel = gpu_fetch_texel(
+                gpu,
+                a.tx + xc, a.ty + yc,
+                gpu->texp_x, gpu->texp_y,
+                clutx, cluty,
+                gpu->texp_d
+            );
 
             ++xc;
 
-            if (!color) continue;
-
-            gpu->vram[x + (y * 1024)] = color;
+            gpu->vram[x + (y * 1024)] = texel;
         }
 
         xc = 0;
@@ -291,7 +302,7 @@ void gpu_render_flat_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t
             int z2 = ((a.x - c.x) * (y - c.y)) - ((a.y - c.y) * (x - c.x));
 
             if ((z0 >= 0) && (z1 >= 0) && (z2 >= 0)) {
-                gpu->vram[x + (y * 1024)] = gpu_to_bgr555(color);
+                gpu->vram[x + (y * 1024)] = BGR555(color);
             }
         }
     }
@@ -364,13 +375,13 @@ void gpu_render_shaded_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex
 
                 uint32_t color = (cb << 16) | (cg << 8) | cr;
 
-                gpu->vram[x + (y * 1024)] = gpu_to_bgr555(color);
+                gpu->vram[x + (y * 1024)] = BGR555(color);
             }
         }
     }
 }
 
-void gpu_render_textured_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, uint32_t tpx, uint32_t tpy, int depth) {
+void gpu_render_textured_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, uint32_t tpx, uint32_t tpy, uint16_t clutx, uint16_t cluty, int depth) {
     vertex_t a, b, c;
 
     a = v0;
@@ -413,7 +424,13 @@ void gpu_render_textured_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vert
                 uint32_t tx = ((z0 * a.tx) + (z1 * b.tx) + (z2 * c.tx)) / area;
                 uint32_t ty = ((z0 * a.ty) + (z1 * b.ty) + (z2 * c.ty)) / area;
 
-                uint16_t color = gpu_fetch_texel(gpu, tx, ty, tpx, tpy, depth);
+                uint16_t color = gpu_fetch_texel(
+                    gpu,
+                    tx, ty,
+                    tpx, tpy,
+                    clutx, cluty,
+                    depth
+                );
 
                 if (!color) continue;
 
@@ -612,15 +629,14 @@ void gpu_cmd_3c(psx_gpu_t* gpu) {
                 gpu->v3.x = gpu->buf[10] & 0xffff;
                 gpu->v3.y = gpu->buf[10] >> 16;
 
-                gpu->clut_x = (gpu->pal & 0x3f) << 4;
-                gpu->clut_y = (gpu->pal >> 6) & 0x1ff;
+                uint16_t clutx = (gpu->pal & 0x3f) << 4;
+                uint16_t cluty = (gpu->pal >> 6) & 0x1ff;
+                uint16_t tpx = (texp & 0xf) << 6;
+                uint16_t tpy = (texp & 0x10) << 4;
+                uint16_t depth = (texp >> 7) & 0x3;
 
-                uint32_t tpx = (texp & 0xf) << 6;
-                uint32_t tpy = (texp & 0x10) << 4;
-                uint32_t depth = (texp >> 7) & 0x3;
-
-                gpu_render_textured_triangle(gpu, gpu->v0, gpu->v1, gpu->v2, tpx, tpy, depth);
-                gpu_render_textured_triangle(gpu, gpu->v1, gpu->v2, gpu->v3, tpx, tpy, depth);
+                gpu_render_textured_triangle(gpu, gpu->v0, gpu->v1, gpu->v2, tpx, tpy, clutx, cluty, depth);
+                gpu_render_textured_triangle(gpu, gpu->v1, gpu->v2, gpu->v3, tpx, tpy, clutx, cluty, depth);
 
                 gpu->state = GPU_STATE_RECV_CMD;
             }
@@ -660,15 +676,14 @@ void gpu_cmd_2c(psx_gpu_t* gpu) {
                 gpu->v3.x = gpu->buf[7] & 0xffff;
                 gpu->v3.y = gpu->buf[7] >> 16;
 
-                gpu->clut_x = (gpu->pal & 0x3f) << 4;
-                gpu->clut_y = (gpu->pal >> 6) & 0x1ff;
+                uint16_t clutx = (gpu->pal & 0x3f) << 4;
+                uint16_t cluty = (gpu->pal >> 6) & 0x1ff;
+                uint16_t tpx = (texp & 0xf) << 6;
+                uint16_t tpy = (texp & 0x10) << 4;
+                uint16_t depth = (texp >> 7) & 0x3;
 
-                uint32_t tpx = (texp & 0xf) << 6;
-                uint32_t tpy = (texp & 0x10) << 4;
-                uint32_t depth = (texp >> 7) & 0x3;
-
-                gpu_render_textured_triangle(gpu, gpu->v0, gpu->v1, gpu->v2, tpx, tpy, depth);
-                gpu_render_textured_triangle(gpu, gpu->v1, gpu->v2, gpu->v3, tpx, tpy, depth);
+                gpu_render_textured_triangle(gpu, gpu->v0, gpu->v1, gpu->v2, tpx, tpy, clutx, cluty, depth);
+                gpu_render_textured_triangle(gpu, gpu->v1, gpu->v2, gpu->v3, tpx, tpy, clutx, cluty, depth);
 
                 gpu->state = GPU_STATE_RECV_CMD;
             }
@@ -704,14 +719,14 @@ void gpu_cmd_24(psx_gpu_t* gpu) {
                 gpu->v2.x = gpu->buf[5] & 0xffff;
                 gpu->v2.y = gpu->buf[5] >> 16;
 
-                gpu->clut_x = (gpu->pal & 0x3f) << 4;
-                gpu->clut_y = (gpu->pal >> 6) & 0x1ff;
+                uint16_t clutx = (gpu->pal & 0x3f) << 4;
+                uint16_t cluty = (gpu->pal >> 6) & 0x1ff;
+                uint16_t tpx = (texp & 0xf) << 6;
+                uint16_t tpy = (texp & 0x10) << 4;
+                uint16_t depth = (texp >> 7) & 0x3;
 
-                uint32_t tpx = (texp & 0xf) << 6;
-                uint32_t tpy = (texp & 0x10) << 4;
-                int depth = (texp >> 7) & 0x3;
-
-                gpu_render_textured_triangle(gpu, gpu->v0, gpu->v1, gpu->v2, tpx, tpy, depth);
+                gpu_render_textured_triangle(gpu, gpu->v0, gpu->v1, gpu->v2, tpx, tpy, clutx, cluty, depth);
+                gpu_render_textured_triangle(gpu, gpu->v1, gpu->v2, gpu->v3, tpx, tpy, clutx, cluty, depth);
 
                 gpu->state = GPU_STATE_RECV_CMD;
             }
@@ -751,15 +766,14 @@ void gpu_cmd_2d(psx_gpu_t* gpu) {
                 gpu->v3.x = gpu->buf[7] & 0xffff;
                 gpu->v3.y = gpu->buf[7] >> 16;
 
-                gpu->clut_x = (gpu->pal & 0x3f) << 4;
-                gpu->clut_y = (gpu->pal >> 6) & 0x1ff;
+                uint16_t clutx = (gpu->pal & 0x3f) << 4;
+                uint16_t cluty = (gpu->pal >> 6) & 0x1ff;
+                uint16_t tpx = (texp & 0xf) << 6;
+                uint16_t tpy = (texp & 0x10) << 4;
+                uint16_t depth = (texp >> 7) & 0x3;
 
-                uint32_t tpx = (texp & 0xf) << 6;
-                uint32_t tpy = (texp & 0x10) << 4;
-                int depth = (texp >> 7) & 0x3;
-
-                gpu_render_textured_triangle(gpu, gpu->v0, gpu->v1, gpu->v2, tpx, tpy, depth);
-                gpu_render_textured_triangle(gpu, gpu->v1, gpu->v2, gpu->v3, tpx, tpy, depth);
+                gpu_render_textured_triangle(gpu, gpu->v0, gpu->v1, gpu->v2, tpx, tpy, clutx, cluty, depth);
+                gpu_render_textured_triangle(gpu, gpu->v1, gpu->v2, gpu->v3, tpx, tpy, clutx, cluty, depth);
 
                 gpu->state = GPU_STATE_RECV_CMD;
             }
@@ -787,14 +801,10 @@ void gpu_cmd_64(psx_gpu_t* gpu) {
 
                 uint32_t w = gpu->buf[3] & 0xffff;
                 uint32_t h = gpu->buf[3] >> 16;
+                uint16_t clutx = (gpu->pal & 0x3f) << 4;
+                uint16_t cluty = (gpu->pal >> 6) & 0x1ff;
 
-                gpu->clut_x = (gpu->pal & 0x3f) << 4;
-                gpu->clut_y = (gpu->pal >> 6) & 0x1ff;
-
-                uint32_t tpx = gpu->texp_x;
-                uint32_t tpy = gpu->texp_y;
-
-                gpu_render_textured_rectangle(gpu, gpu->v0, w, h, tpx, tpy);
+                gpu_render_textured_rectangle(gpu, gpu->v0, w, h, clutx, cluty, gpu->color);
 
                 gpu->state = GPU_STATE_RECV_CMD;
             }
@@ -822,14 +832,10 @@ void gpu_cmd_7c(psx_gpu_t* gpu) {
 
                 uint32_t w = 16;
                 uint32_t h = 16;
+                uint16_t clutx = (gpu->pal & 0x3f) << 4;
+                uint16_t cluty = (gpu->pal >> 6) & 0x1ff;
 
-                gpu->clut_x = (gpu->pal & 0x3f) << 4;
-                gpu->clut_y = (gpu->pal >> 6) & 0x1ff;
-
-                uint32_t tpx = gpu->texp_x;
-                uint32_t tpy = gpu->texp_y;
-
-                gpu_render_textured_rectangle(gpu, gpu->v0, w, h, tpx, tpy);
+                gpu_render_textured_rectangle(gpu, gpu->v0, w, h, clutx, cluty, gpu->color);
 
                 gpu->state = GPU_STATE_RECV_CMD;
             }
@@ -857,14 +863,10 @@ void gpu_cmd_74(psx_gpu_t* gpu) {
 
                 uint32_t w = 8;
                 uint32_t h = 8;
+                uint16_t clutx = (gpu->pal & 0x3f) << 4;
+                uint16_t cluty = (gpu->pal >> 6) & 0x1ff;
 
-                gpu->clut_x = (gpu->pal & 0x3f) << 4;
-                gpu->clut_y = (gpu->pal >> 6) & 0x1ff;
-
-                uint32_t tpx = gpu->texp_x;
-                uint32_t tpy = gpu->texp_y;
-
-                gpu_render_textured_rectangle(gpu, gpu->v0, w, h, tpx, tpy);
+                gpu_render_textured_rectangle(gpu, gpu->v0, w, h, clutx, cluty, gpu->color);
 
                 gpu->state = GPU_STATE_RECV_CMD;
             }
@@ -892,7 +894,7 @@ void gpu_cmd_60(psx_gpu_t* gpu) {
                 gpu->v0.x += gpu->off_x;
                 gpu->v0.y += gpu->off_y;
 
-                gpu_render_flat_rectangle(gpu, gpu->v0, gpu->xsiz, gpu->ysiz, gpu_to_bgr555(gpu->color));
+                gpu_render_flat_rectangle(gpu, gpu->v0, gpu->xsiz, gpu->ysiz, BGR555(gpu->color));
 
                 gpu->state = GPU_STATE_RECV_CMD;
             }
@@ -918,7 +920,7 @@ void gpu_cmd_68(psx_gpu_t* gpu) {
                 gpu->v0.x += gpu->off_x;
                 gpu->v0.y += gpu->off_y;
 
-                gpu->vram[gpu->v0.x + (gpu->v0.y * 1024)] = gpu_to_bgr555(gpu->color);
+                gpu->vram[gpu->v0.x + (gpu->v0.y * 1024)] = BGR555(gpu->color);
 
                 gpu->state = GPU_STATE_RECV_CMD;
             }
@@ -941,7 +943,7 @@ void gpu_cmd_40(psx_gpu_t* gpu) {
                 gpu->v1.x  = gpu->buf[2] & 0xffff;
                 gpu->v1.y  = gpu->buf[2] >> 16;
 
-                gpu_render_flat_line(gpu, gpu->v0, gpu->v1, gpu_to_bgr555(gpu->color));
+                gpu_render_flat_line(gpu, gpu->v0, gpu->v1, BGR555(gpu->color));
 
                 gpu->state = GPU_STATE_RECV_CMD;
             }
@@ -999,10 +1001,13 @@ void gpu_cmd_02(psx_gpu_t* gpu) {
                 gpu->xsiz = (((gpu->xsiz & 0x3ff) + 0x0f) & 0xfffffff0);
                 gpu->ysiz = gpu->ysiz & 0x1ff;
 
-                gpu->v0.x += gpu->off_x;
-                gpu->v0.y += gpu->off_y;
+                uint16_t color = BGR555(gpu->color);
 
-                gpu_render_flat_rectangle(gpu, gpu->v0, gpu->xsiz, gpu->ysiz, gpu_to_bgr555(gpu->color));
+                for (uint32_t y = gpu->v0.y; y < (gpu->v0.y + gpu->ysiz); y++) {
+                    for (uint32_t x = gpu->v0.x; x < (gpu->v0.x + gpu->xsiz); x++) {
+                        gpu->vram[x + (y * 1024)] = color;
+                    }
+                }
 
                 gpu->state = GPU_STATE_RECV_CMD;
             }
