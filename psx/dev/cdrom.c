@@ -183,8 +183,6 @@ void cdrom_cmd_play(psx_cdrom_t* cdrom) {
             
             msf_from_bcd(&msf);
 
-            msf.s -= 24;
-
             // Seek to that address and read sector
             psx_disc_seek(cdrom->disc, msf);
             psx_disc_read_sector(cdrom->disc, cdrom->cdda_buf);

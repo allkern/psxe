@@ -360,17 +360,17 @@ int psxd_cue_load(psxd_cue_t* cue, const char* path) {
         fseek(track_file, 0, SEEK_END);
 
         // Account for index 1 offset
-        track->size = ftell(track_file) - data_offset;
+        track->size = ftell(track_file);
 
         cue->buf_size += track->size;
 
         // Calculate track MS(F)
-        msf_from_address(&track->disc_offset, offset);
+        msf_from_address(&track->disc_offset, offset + data_offset);
         msf_add_s(&track->disc_offset, 2);
 
         cue->buf = cue_alloc_block(cue->buf, &offset, track->size);
 
-        fseek(track_file, data_offset, SEEK_SET);
+        fseek(track_file, 0, SEEK_SET);
         fread(cue->buf + (offset - track->size), 1, track->size, track_file);
 
         fclose(track_file);
