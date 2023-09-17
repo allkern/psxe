@@ -110,6 +110,8 @@ void cdrom_cmd_setloc(psx_cdrom_t* cdrom) {
             cdrom->seek_ss = s;
             cdrom->seek_mm = m;
 
+            cdrom->seek_pending = 1;
+
             log_fatal("setloc: %02x:%02x:%02x",
                 cdrom->seek_mm,
                 cdrom->seek_ss,
@@ -158,6 +160,9 @@ void cdrom_cmd_play(psx_cdrom_t* cdrom) {
 
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
+            // Ignore parameters
+            cdrom->pfifo_index = 0;
+
             // if (cdrom->pfifo_index) {
             //     log_fatal("CdlGetStat: Expected exactly 0 parameters");
 
@@ -174,26 +179,30 @@ void cdrom_cmd_play(psx_cdrom_t* cdrom) {
             cdrom->state = CD_STATE_SEND_RESP1;
             cdrom->delayed_command = CDL_PLAY;
 
-            cdrom->cdda_msf.m = cdrom->seek_mm;
-            cdrom->cdda_msf.s = cdrom->seek_ss;
-            cdrom->cdda_msf.f = cdrom->seek_ff;
+            if (cdrom->seek_pending) {
+                cdrom->seek_pending = 0;
 
-            // Convert seek to I
-            msf_t msf = cdrom->cdda_msf;
-            
-            msf_from_bcd(&msf);
+                cdrom->cdda_msf.m = cdrom->seek_mm;
+                cdrom->cdda_msf.s = cdrom->seek_ss;
+                cdrom->cdda_msf.f = cdrom->seek_ff;
 
-            // Seek to that address and read sector
-            psx_disc_seek(cdrom->disc, msf);
-            psx_disc_read_sector(cdrom->disc, cdrom->cdda_buf);
+                // Convert seek to I
+                msf_t msf = cdrom->cdda_msf;
+                
+                msf_from_bcd(&msf);
 
-            // Increment sector
-            msf_add_f(&msf, 1);
-            msf_to_bcd(&msf);
+                // Seek to that address and read sector
+                psx_disc_seek(cdrom->disc, msf);
+                psx_disc_read_sector(cdrom->disc, cdrom->cdda_buf);
 
-            cdrom->cdda_msf = msf;
-            
-            cdrom->cdda_sector_offset = 0;
+                // Increment sector
+                msf_add_f(&msf, 1);
+                msf_to_bcd(&msf);
+
+                cdrom->cdda_msf = msf;
+                cdrom->cdda_sector_offset = 0;
+            }
+
             cdrom->cdda_playing = 1;
         } break;
 
@@ -346,6 +355,7 @@ void cdrom_cmd_pause(psx_cdrom_t* cdrom) {
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
             cdrom->read_ongoing = 0;
+            cdrom->cdda_playing = 0;
 
             cdrom->irq_delay = DELAY_1MS;
             cdrom->state = CD_STATE_SEND_RESP1;
@@ -624,6 +634,18 @@ void cdrom_cmd_seekl(psx_cdrom_t* cdrom) {
             cdrom->irq_delay = DELAY_1MS;
             cdrom->state = CD_STATE_SEND_RESP2;
             cdrom->delayed_command = CDL_SEEKL;
+
+            msf_t msf;
+
+            msf.m = cdrom->seek_mm;
+            msf.s = cdrom->seek_ss;
+            msf.f = cdrom->seek_ff;
+
+            msf_from_bcd(&msf);
+
+            psx_disc_seek(cdrom->disc, msf);
+
+            cdrom->seek_pending = 0;
         } break;
 
         case CD_STATE_SEND_RESP2: {
@@ -797,6 +819,8 @@ void cdrom_cmd_reads(psx_cdrom_t* cdrom) {
             msf.f = cdrom->seek_ff;
 
             msf_from_bcd(&msf);
+
+            cdrom->seek_pending = 0;
 
             int err = psx_disc_seek(cdrom->disc, msf);
 

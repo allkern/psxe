@@ -169,6 +169,7 @@ typedef struct {
     // Setloc
     uint8_t seek_ss, seek_mm, seek_ff;
     uint32_t seek_offset;
+    int seek_pending;
 
     // Setmode
     uint8_t mode;

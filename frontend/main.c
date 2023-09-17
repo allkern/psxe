@@ -49,8 +49,6 @@ int main(int argc, const char* argv[]) {
 
     dev = SDL_OpenAudioDevice(NULL, 0, &desired, &obtained, 0);
 
-    log_fatal("obtained.samples=%u", obtained.samples);
-
     if (dev) SDL_PauseAudioDevice(dev, 0);
     
     psx_gpu_t* gpu = psx_get_gpu(psx);
