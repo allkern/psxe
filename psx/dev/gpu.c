@@ -123,6 +123,8 @@ int max(int x0, int x1) {
 uint16_t gpu_fetch_texel(psx_gpu_t* gpu, uint16_t tx, uint16_t ty, uint32_t tpx, uint32_t tpy, uint16_t clutx, uint16_t cluty, int depth) {
     tx = (tx & ~gpu->texw_mx) | (gpu->texw_ox & gpu->texw_mx);
     ty = (ty & ~gpu->texw_my) | (gpu->texw_oy & gpu->texw_my);
+    tx &= 0xff;
+    ty &= 0xff;
 
     switch (depth) {
         // 4-bit
@@ -621,35 +623,41 @@ void gpu_cmd_a0(psx_gpu_t* gpu) {
                 gpu->ysiz = ((gpu->ysiz - 1) & 0x1ff) + 1;
                 gpu->tsiz = ((gpu->xsiz * gpu->ysiz) + 1) & 0xfffffffe;
                 gpu->addr = gpu->xpos + (gpu->ypos * 1024);
+                gpu->xcnt = 0;
+                gpu->ycnt = 0;
             }
         } break;
 
         case GPU_STATE_RECV_DATA: {
-            uint32_t addr = gpu->addr + (gpu->xcnt + (gpu->ycnt * 1024));
-
-            addr %= PSX_GPU_VRAM_SIZE;
+            unsigned int xpos = (gpu->xpos + gpu->xcnt) & 0x3ff;
+            unsigned int ypos = (gpu->ypos + gpu->ycnt) & 0x1ff;
 
             // To-do: This is segfaulting for some reason
             //        Fix GPU edge cases in general
-            gpu->vram[gpu->addr + (gpu->xcnt + (gpu->ycnt * 1024))] = gpu->recv_data & 0xffff;
+            gpu->vram[xpos + (ypos * 1024)] = gpu->recv_data & 0xffff;
 
-            gpu->xcnt += 1;
+            ++gpu->xcnt;
+
+            xpos = (gpu->xpos + gpu->xcnt) & 0x3ff;
 
             if (gpu->xcnt == gpu->xsiz) {
-                gpu->ycnt += 1;
+                ++gpu->ycnt;
                 gpu->xcnt = 0;
+
+                ypos = (gpu->ypos + gpu->ycnt) & 0x1ff;
             }
 
-            addr = gpu->addr + (gpu->xcnt + (gpu->ycnt * 1024));
-            addr %= PSX_GPU_VRAM_SIZE;
+            gpu->vram[xpos + (ypos * 1024)] = gpu->recv_data >> 16;
 
-            gpu->vram[gpu->addr + (gpu->xcnt + (gpu->ycnt * 1024))] = gpu->recv_data >> 16;
+            ++gpu->xcnt;
 
-            gpu->xcnt += 1;
+            xpos = (gpu->xpos + gpu->xcnt) & 0x3ff;
 
             if (gpu->xcnt == gpu->xsiz) {
-                gpu->ycnt += 1;
+                ++gpu->ycnt;
                 gpu->xcnt = 0;
+
+                ypos = (gpu->ypos + gpu->ycnt) & 0x1ff;
             }
 
             gpu->tsiz -= 2;
