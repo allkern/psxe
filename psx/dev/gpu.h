@@ -45,11 +45,31 @@ typedef struct psx_gpu_t psx_gpu_t;
 typedef void (*psx_gpu_cmd_t)(psx_gpu_t*);
 typedef void (*psx_gpu_event_callback_t)(psx_gpu_t*);
 
+enum {
+    RS_VARIABLE,
+    RS_1X1,
+    RS_8X8,
+    RS_16X16
+};
+
+enum {
+    RA_RAW = 1,
+    RA_TRANSP = 2,
+    RA_TEXTURED = 4
+};
+
 typedef struct {
-    int32_t x, y;
+    int16_t x, y;
     uint32_t c;
     uint8_t tx, ty;
 } vertex_t;
+
+typedef struct {
+    uint8_t attrib;
+    vertex_t v0;
+    uint16_t clut;
+    uint16_t width, height;
+} rect_data_t;
 
 struct psx_gpu_t {
     uint32_t io_base, io_size;

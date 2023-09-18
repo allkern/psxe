@@ -150,6 +150,124 @@ uint16_t gpu_fetch_texel(psx_gpu_t* gpu, uint16_t tx, uint16_t ty, uint32_t tpx,
     }
 }
 
+void gpu_render_rect(psx_gpu_t* gpu, rect_data_t data) {
+    uint16_t width, height;
+
+    switch ((data.attrib >> 3) & 3) {
+        case RS_VARIABLE: { width = data.width; height = data.height; } break;
+        case RS_1X1     : { width = 1         ; height = 1          ; } break;
+        case RS_8X8     : { width = 8         ; height = 8          ; } break;
+        case RS_16X16   : { width = 16        ; height = 16         ; } break;
+    }
+
+    int clutx = (data.clut & 0x3f) << 4;
+    int cluty = (data.clut >> 6) & 0x1ff;
+
+    /* Offset coordinates */
+    data.v0.x += gpu->off_x;
+    data.v0.y += gpu->off_y;
+
+    /* Calculate bounding box */
+    // int xmin = max(data.v0.x, gpu->draw_x1);
+    // int ymin = max(data.v0.y, gpu->draw_y1);
+    int xmax = data.v0.x + width; //min(xmin + width, gpu->draw_x2);
+    int ymax = data.v0.y + height; //min(ymin + height, gpu->draw_y2);
+
+    int32_t xc = 0, yc = 0;
+
+    for (int16_t y = data.v0.y; y < ymax; y++) {
+        for (int16_t x = data.v0.x; x < xmax; x++) {
+            int bc = (x >= gpu->draw_x1) && (x <= gpu->draw_x2) &&
+                     (y >= gpu->draw_y1) && (y <= gpu->draw_y2);
+
+            if (!bc)
+                goto skip;
+
+            uint16_t color;
+
+            if (data.attrib & RA_TEXTURED) {
+                uint16_t texel = gpu_fetch_texel(
+                    gpu,
+                    data.v0.tx + xc, data.v0.ty + yc,
+                    gpu->texp_x, gpu->texp_y,
+                    clutx, cluty,
+                    gpu->texp_d
+                );
+
+                if (!texel)
+                    goto skip;
+
+                int tr = ((texel >> 0 ) & 0x1f) << 3;
+                int tg = ((texel >> 5 ) & 0x1f) << 3;
+                int tb = ((texel >> 10) & 0x1f) << 3;
+
+                int mr = (data.v0.c >> 0 ) & 0xff;
+                int mg = (data.v0.c >> 8 ) & 0xff;
+                int mb = (data.v0.c >> 16) & 0xff;
+
+                int cr = (tr * mr) / 0x80;
+                int cg = (tg * mg) / 0x80;
+                int cb = (tb * mb) / 0x80;
+
+                uint32_t rgb = cr | (cg << 8) | (cb << 16);
+
+                color = BGR555(rgb);
+            } else {
+                color = BGR555(data.v0.c);
+            }
+
+            int cr = ((color >> 0 ) & 0x1f) << 3;
+            int cg = ((color >> 5 ) & 0x1f) << 3;
+            int cb = ((color >> 10) & 0x1f) << 3;
+
+            if (data.attrib & RA_TRANSP) {
+                uint16_t back = gpu->vram[x + (y * 1024)];
+
+                int br = ((back >> 0 ) & 0x1f) << 3;
+                int bg = ((back >> 5 ) & 0x1f) << 3;
+                int bb = ((back >> 10) & 0x1f) << 3;
+
+                switch ((gpu->gpustat >> 5) & 3) {
+                    case 0: {
+                        cr = (cr / 2) + (br / 2);
+                        cg = (cg / 2) + (bg / 2);
+                        cb = (cb / 2) + (bb / 2);
+                    } break;
+                    case 1: {
+                        cr = cr + br;
+                        cg = cg + bg;
+                        cb = cb + bb;
+                    } break;
+                    case 2: {
+                        cr = cr - br;
+                        cg = cg - bg;
+                        cb = cb - bb;
+                    }
+                    case 3: {
+                        cr = br + (cr / 4);
+                        cg = bg + (cg / 4);
+                        cb = bb + (cb / 4);
+                    } break;
+                }
+
+                uint32_t rgb = cr | (cg << 8) | (cb << 16);
+
+                color = BGR555(rgb);
+            }
+
+            gpu->vram[x + (y * 1024)] = color;
+
+            skip:
+
+            ++xc;
+        }
+
+        xc = 0;
+
+        ++yc;
+    }
+}
+
 void plotLineLow(psx_gpu_t* gpu, int x0, int y0, int x1, int y1, uint16_t color) {
     int dx = x1 - x0;
     int dy = y1 - y0;
@@ -437,6 +555,49 @@ void gpu_render_textured_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vert
                 gpu->vram[x + (y * 1024)] = color;
             }
         }
+    }
+}
+
+void gpu_rect(psx_gpu_t* gpu) {
+    switch (gpu->state) {
+        case GPU_STATE_RECV_CMD: {
+            gpu->state = GPU_STATE_RECV_ARGS;
+
+            int size = (gpu->buf[0] >> 27) & 3;
+            int textured = (gpu->buf[0] & 0x04000000) != 0;
+
+            gpu->cmd_args_remaining = 1 + (size == RS_VARIABLE) + textured;
+        } break;
+
+        case GPU_STATE_RECV_ARGS: {
+            if (!gpu->cmd_args_remaining) {
+                rect_data_t rect;
+
+                rect.attrib = gpu->buf[0] >> 24;
+
+                int textured = (rect.attrib & RA_TEXTURED) != 0;
+                int raw      = (rect.attrib & RA_RAW) != 0;
+
+                // Add 1 if is textured
+                int size_offset = 2 + textured;
+
+                rect.v0.c   = gpu->buf[0] & 0xffffff;
+                rect.v0.x   = gpu->buf[1] & 0xffff;
+                rect.v0.y   = gpu->buf[1] >> 16;
+                rect.v0.tx  = (gpu->buf[2] >> 0) & 0xff;
+                rect.v0.ty  = (gpu->buf[2] >> 8) & 0xff;
+                rect.clut   = gpu->buf[2] >> 16;
+                rect.width  = gpu->buf[size_offset] & 0xffff;
+                rect.height = gpu->buf[size_offset] >> 16;
+
+                if (textured && raw)
+                    rect.v0.c = 0x808080;
+
+                gpu_render_rect(gpu, rect);
+
+                gpu->state = GPU_STATE_RECV_CMD;
+            }
+        } break;
     }
 }
 
@@ -1046,6 +1207,12 @@ void gpu_cmd_80(psx_gpu_t* gpu) {
 }
 
 void psx_gpu_update_cmd(psx_gpu_t* gpu) {
+    if (((gpu->buf[0] >> 29) & 7) == 3) {
+        gpu_rect(gpu);
+
+        return;
+    }
+
     switch (gpu->buf[0] >> 24) {
         case 0x00: /* nop */ break;
         case 0x01: /* Cache clear */ break;
@@ -1113,7 +1280,11 @@ void psx_gpu_update_cmd(psx_gpu_t* gpu) {
             /* To-do: Implement mask bit thing */
         } break;
         default: {
+            log_set_quiet(0);
             log_fatal("Unhandled GP0(%02Xh)", gpu->buf[0] >> 24);
+            log_set_quiet(1);
+
+            exit(1);
         } break;
     }
 }
