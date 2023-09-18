@@ -95,9 +95,6 @@ int main(int argc, const char* argv[]) {
     log_fatal("gp=%08x sp=%08x fp=%08x ra=%08x", cpu->r[28], cpu->r[29], cpu->r[30], cpu->r[31]);
     log_fatal("pc=%08x hi=%08x lo=%08x ep=%08x", cpu->pc, cpu->hi, cpu->lo, cpu->cop0_r[COP0_EPC]);
 
-    if (cfg->cd_path)
-        psx_cdrom_destroy(cdrom);
-
     psx_input_destroy(input);
     psx_destroy(psx);
     psxi_sda_destroy(controller);
