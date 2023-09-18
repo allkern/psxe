@@ -8,6 +8,7 @@
 
 #define RESP_PUSH(data) \
     cdrom->rfifo[cdrom->rfifo_index++] = data; \
+    cdrom->rfifo_index &= 15; \
     SET_BITS(status, STAT_RSLRRDY_MASK, STAT_RSLRRDY_MASK);
 
 #define PFIFO_POP (cdrom->pfifo[--cdrom->pfifo_index])
@@ -130,10 +131,6 @@ void cdrom_cmd_setloc(psx_cdrom_t* cdrom) {
 
         // Read ongoing
         case CD_STATE_SEND_RESP2: {
-            // log_set_quiet(0);
-            log_fatal("SETLOC WHILE READN");
-            // log_set_quiet(0+0);
-
             int f = PFIFO_POP;
             int s = PFIFO_POP;
             int m = PFIFO_POP;
@@ -321,9 +318,7 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
             // );
 
             if (cdrom->dfifo[0x12] & 0x20) {
-                // log_set_quiet(0);
                 log_fatal("Unimplemented XA Form2 Sector");
-                // log_set_quiet(0+0);
 
                 // exit(1);
             }
@@ -791,23 +786,19 @@ void cdrom_cmd_getid(psx_cdrom_t* cdrom) {
     }
 }
 void cdrom_cmd_reads(psx_cdrom_t* cdrom) {
-    log_fatal("reads: Unimplemented");
-
-    //exit(1);
-
     cdrom->delayed_command = CDL_NONE;
     cdrom->read_ongoing = 1;
 
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
-            log_fatal("CdlReadN: CD_STATE_RECV_CMD");
+            log_fatal("CdlReadS: CD_STATE_RECV_CMD");
             cdrom->irq_delay = DELAY_1MS;
             cdrom->state = CD_STATE_SEND_RESP1;
             cdrom->delayed_command = CDL_READS;
         } break;
 
         case CD_STATE_SEND_RESP1: {
-            log_fatal("CdlReadN: CD_STATE_SEND_RESP1");
+            log_fatal("CdlReadS: CD_STATE_SEND_RESP1");
 
             SET_BITS(ifr, IFR_INT, IFR_INT3);
             RESP_PUSH(GETSTAT_MOTOR);
@@ -820,12 +811,10 @@ void cdrom_cmd_reads(psx_cdrom_t* cdrom) {
 
             msf_from_bcd(&msf);
 
-            cdrom->seek_pending = 0;
-
             int err = psx_disc_seek(cdrom->disc, msf);
 
             if (err) {
-                log_fatal("CdlReadN: Out of bounds seek");
+                log_fatal("CdlReadS: Out of bounds seek");
 
                 cdrom->irq_delay = DELAY_1MS * 600;
                 cdrom->delayed_command = CDL_ERROR;
@@ -853,7 +842,7 @@ void cdrom_cmd_reads(psx_cdrom_t* cdrom) {
             // circumvent this detection code, but it will work
             // for most intents and purposes 
             if (!correct_msf) {
-                log_fatal("CdlReadN: Audio read");
+                log_fatal("CdlReadS: Audio read");
 
                 cdrom->irq_delay = DELAY_1MS * 600;
                 cdrom->delayed_command = CDL_ERROR;
@@ -877,7 +866,7 @@ void cdrom_cmd_reads(psx_cdrom_t* cdrom) {
         } break;
 
         case CD_STATE_SEND_RESP2: {
-            log_fatal("CdlReadN: CD_STATE_SEND_RESP2");
+            log_fatal("CdlReadS: CD_STATE_SEND_RESP2");
 
             msf_t msf;
 
@@ -890,21 +879,15 @@ void cdrom_cmd_reads(psx_cdrom_t* cdrom) {
             psx_disc_seek(cdrom->disc, msf);
             psx_disc_read_sector(cdrom->disc, cdrom->dfifo);
 
-            // printf("Sector header: msf=%02x:%02x:%02x, mode=%02x, subheader=%02x,%02x,%02x,%02x\n",
-            //     cdrom->dfifo[0x0c],
-            //     cdrom->dfifo[0x0d],
-            //     cdrom->dfifo[0x0e],
-            //     cdrom->dfifo[0x0f],
-            //     cdrom->dfifo[0x10],
-            //     cdrom->dfifo[0x11],
-            //     cdrom->dfifo[0x12],
-            //     cdrom->dfifo[0x13]
-            // );
+            if (cdrom->mode & MODE_XA_ADPCM) {
+                cdrom->state = CD_STATE_RECV_CMD;
+                cdrom->delayed_command = CDL_NONE;
+
+                return;
+            }
 
             if (cdrom->dfifo[0x12] & 0x20) {
-                // log_set_quiet(0);
                 log_fatal("Unimplemented XA Form2 Sector");
-                // log_set_quiet(0+0);
 
                 // exit(1);
             }
@@ -921,7 +904,7 @@ void cdrom_cmd_reads(psx_cdrom_t* cdrom) {
 
             cdrom->irq_delay = double_speed ? READ_DOUBLE_DELAY : READ_SINGLE_DELAY;
             cdrom->state = CD_STATE_SEND_RESP2;
-            cdrom->delayed_command = CDL_READN;
+            cdrom->delayed_command = CDL_READS;
             cdrom->dfifo_index = 0;
 
             SET_BITS(ifr, IFR_INT, IFR_INT1);
@@ -1069,7 +1052,7 @@ void cdrom_write_cmd(psx_cdrom_t* cdrom, uint8_t value) {
         cdrom->pfifo[4],
         cdrom->pfifo[5]
     );
-    // log_set_quiet(0+0);
+    // log_set_quiet(1);
 
     cdrom->command = value;
     cdrom->state = CD_STATE_RECV_CMD;
