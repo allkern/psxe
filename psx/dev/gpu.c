@@ -639,24 +639,25 @@ void gpu_cmd_a0(psx_gpu_t* gpu) {
             ++gpu->xcnt;
 
             xpos = (gpu->xpos + gpu->xcnt) & 0x3ff;
+            ypos = (gpu->ypos + gpu->ycnt) & 0x1ff;
 
             if (gpu->xcnt == gpu->xsiz) {
                 ++gpu->ycnt;
                 gpu->xcnt = 0;
 
                 ypos = (gpu->ypos + gpu->ycnt) & 0x1ff;
+                xpos = (gpu->xpos + gpu->xcnt) & 0x3ff;
             }
 
             gpu->vram[xpos + (ypos * 1024)] = gpu->recv_data >> 16;
 
             ++gpu->xcnt;
-
-            xpos = (gpu->xpos + gpu->xcnt) & 0x3ff;
-
+            
             if (gpu->xcnt == gpu->xsiz) {
                 ++gpu->ycnt;
                 gpu->xcnt = 0;
 
+                xpos = (gpu->xpos + gpu->xcnt) & 0x3ff;
                 ypos = (gpu->ypos + gpu->ycnt) & 0x1ff;
             }
 
