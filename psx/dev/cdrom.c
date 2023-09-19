@@ -1307,6 +1307,9 @@ void psx_cdrom_get_cdda_samples(psx_cdrom_t* cdrom, void* buf, int size) {
         return;
     }
 
+    if (!cdrom->disc)
+        return;
+
     memcpy(buf, cdrom->cdda_buf, size);
 
     // Convert seek to I

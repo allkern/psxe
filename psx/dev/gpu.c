@@ -454,7 +454,7 @@ void plotLineLow(psx_gpu_t* gpu, int x0, int y0, int x1, int y1, uint16_t color)
     int y = y0;
 
     for (int x = x0; x < x1; x++) {
-        if ((x < 1024) && (y < 512))
+        if ((x < 1024) && (y < 512) && (x >= 0) && (y >= 0))
             gpu->vram[x + (y * 1024)] = color;
 
         if (d > 0) {
