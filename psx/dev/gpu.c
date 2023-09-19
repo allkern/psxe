@@ -26,6 +26,18 @@ uint16_t gpu_to_bgr555(uint32_t color) {
 
 // #define BGR555(c) gpu_to_bgr555(c)
 
+int min3(int a, int b, int c) {
+    int m = a < b ? a : b;
+
+    return m < c ? m : c;
+}
+
+int max3(int a, int b, int c) {
+    int m = a > b ? a : b;
+
+    return m > c ? m : c;
+}
+
 psx_gpu_t* psx_gpu_create() {
     return (psx_gpu_t*)malloc(sizeof(psx_gpu_t));
 }
@@ -152,6 +164,168 @@ uint16_t gpu_fetch_texel(psx_gpu_t* gpu, uint16_t tx, uint16_t ty, uint32_t tpx,
     }
 }
 
+void gpu_render_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, poly_data_t data) {
+    vertex_t a, b, c, p;
+
+    int tpx = (data.texp & 0xf) << 6;
+    int tpy = (data.texp & 0x10) << 4;
+    int clutx = (data.clut & 0x3f) << 4;
+    int cluty = (data.clut >> 6) & 0x1ff;
+    int depth = (data.texp >> 7) & 3;
+    //int transp = (data.texp >> 5) & 3;
+
+    a = v0;
+
+    /* Ensure the winding order is correct */
+    if (EDGE(v0, v1, v2) < 0) {
+        b = v2;
+        c = v1;
+    } else {
+        b = v1;
+        c = v2;
+    }
+
+    a.x += gpu->off_x;
+    a.y += gpu->off_y;
+    b.x += gpu->off_x;
+    b.y += gpu->off_y;
+    c.x += gpu->off_x;
+    c.y += gpu->off_y;
+
+    int xmin = max(min3(a.x, b.x, c.x), gpu->draw_x1);
+    int ymin = max(min3(a.y, b.y, c.y), gpu->draw_y1);
+    int xmax = min(max3(a.x, b.x, c.x), gpu->draw_x2); 
+    int ymax = min(max3(a.y, b.y, c.y), gpu->draw_y2);
+
+    float area = EDGE(a, b, c);
+
+    for (int y = ymin; y < ymax; y++) {
+        for (int x = xmin; x < xmax; x++) {
+            p.x = x;
+            p.y = y;
+
+            float z0 = EDGE(b, c, p);
+            float z1 = EDGE(c, a, p);
+            float z2 = EDGE(a, b, p);
+
+            if ((z0 < 0) || (z1 < 0) || (z2 < 0))
+                continue;
+
+            uint16_t texel = 0;
+            uint16_t color = 0;
+            uint32_t mod   = 0;
+
+            if (data.attrib & PA_SHADED) {
+                int cr = (z0 * ((a.c >>  0) & 0xff) + z1 * ((b.c >>  0) & 0xff) + z2 * ((c.c >>  0) & 0xff)) / area;
+                int cg = (z0 * ((a.c >>  8) & 0xff) + z1 * ((b.c >>  8) & 0xff) + z2 * ((c.c >>  8) & 0xff)) / area;
+                int cb = (z0 * ((a.c >> 16) & 0xff) + z1 * ((b.c >> 16) & 0xff) + z2 * ((c.c >> 16) & 0xff)) / area;
+
+                int dy = (y - ymin) & 3;
+                int dx = (x - xmin) & 3;
+
+                int dither = g_psx_gpu_dither_kernel[dx + (dy * 4)];
+
+                cr += dither;
+                cg += dither;
+                cb += dither;
+
+                // Saturate (clamp) to 00-ff
+                cr = (cr >= 0xff) ? 0xff : ((cr <= 0) ? 0 : cr);
+                cg = (cg >= 0xff) ? 0xff : ((cg <= 0) ? 0 : cg);
+                cb = (cb >= 0xff) ? 0xff : ((cb <= 0) ? 0 : cb);
+
+                uint32_t rgb = (cb << 16) | (cg << 8) | cr;
+
+                mod = rgb;
+            } else {
+                mod = data.v[0].c;
+            }
+
+            if (data.attrib & PA_TEXTURED) {
+                uint32_t tx = ((z0 * a.tx) + (z1 * b.tx) + (z2 * c.tx)) / area;
+                uint32_t ty = ((z0 * a.ty) + (z1 * b.ty) + (z2 * c.ty)) / area;
+
+                texel = gpu_fetch_texel(gpu, tx, ty, tpx, tpy, clutx, cluty, depth);
+
+                if (!texel)
+                    continue;
+
+                if (data.attrib & PA_RAW) {
+                    color = texel;
+                } else {
+                    int tr = ((texel >> 0 ) & 0x1f) << 3;
+                    int tg = ((texel >> 5 ) & 0x1f) << 3;
+                    int tb = ((texel >> 10) & 0x1f) << 3;
+
+                    int mr = (mod >> 0 ) & 0xff;
+                    int mg = (mod >> 8 ) & 0xff;
+                    int mb = (mod >> 16) & 0xff;
+
+                    int cr = (tr * mr) / 0x80;
+                    int cg = (tg * mg) / 0x80;
+                    int cb = (tb * mb) / 0x80;
+
+                    cr = (cr >= 0xff) ? 0xff : ((cr <= 0) ? 0 : cr);
+                    cg = (cg >= 0xff) ? 0xff : ((cg <= 0) ? 0 : cg);
+                    cb = (cb >= 0xff) ? 0xff : ((cb <= 0) ? 0 : cb);
+
+                    uint32_t rgb = cr | (cg << 8) | (cb << 16);
+
+                    color = BGR555(rgb);
+                }
+            } else {
+                color = BGR555(mod);
+            }
+
+            int cr = ((color >> 0 ) & 0x1f) << 3;
+            int cg = ((color >> 5 ) & 0x1f) << 3;
+            int cb = ((color >> 10) & 0x1f) << 3;
+
+            if (data.attrib & RA_TRANSP) {
+                uint16_t back = gpu->vram[x + (y * 1024)];
+
+                int br = ((back >> 0 ) & 0x1f) << 3;
+                int bg = ((back >> 5 ) & 0x1f) << 3;
+                int bb = ((back >> 10) & 0x1f) << 3;
+
+                // Do we use transp or gpustat here?
+                switch ((gpu->gpustat >> 5) & 3) {
+                    case 0: {
+                        cr = (br / 2) + (cr / 2);
+                        cg = (bg / 2) + (cg / 2);
+                        cb = (bb / 2) + (cb / 2);
+                    } break;
+                    case 1: {
+                        cr = br + cr;
+                        cg = bg + cg;
+                        cb = bb + cb;
+                    } break;
+                    case 2: {
+                        cr = br - cr;
+                        cg = bg - cg;
+                        cb = bb - cb;
+                    }
+                    case 3: {
+                        cr = br + (cr / 4);
+                        cg = bg + (cg / 4);
+                        cb = bb + (cb / 4);
+                    } break;
+                }
+
+                cr = (cr >= 0xff) ? 0xff : ((cr <= 0) ? 0 : cr);
+                cg = (cg >= 0xff) ? 0xff : ((cg <= 0) ? 0 : cg);
+                cb = (cb >= 0xff) ? 0xff : ((cb <= 0) ? 0 : cb);
+
+                uint32_t rgb = cr | (cg << 8) | (cb << 16);
+
+                color = BGR555(rgb);
+            }
+
+            gpu->vram[x + (y * 1024)] = color;
+        }
+    }
+}
+
 void gpu_render_rect(psx_gpu_t* gpu, rect_data_t data) {
     uint16_t width, height;
 
@@ -170,10 +344,8 @@ void gpu_render_rect(psx_gpu_t* gpu, rect_data_t data) {
     data.v0.y += gpu->off_y;
 
     /* Calculate bounding box */
-    // int xmin = max(data.v0.x, gpu->draw_x1);
-    // int ymin = max(data.v0.y, gpu->draw_y1);
-    int xmax = data.v0.x + width; //min(xmin + width, gpu->draw_x2);
-    int ymax = data.v0.y + height; //min(ymin + height, gpu->draw_y2);
+    int xmax = data.v0.x + width;
+    int ymax = data.v0.y + height;
 
     int32_t xc = 0, yc = 0;
 
@@ -231,19 +403,19 @@ void gpu_render_rect(psx_gpu_t* gpu, rect_data_t data) {
 
                 switch ((gpu->gpustat >> 5) & 3) {
                     case 0: {
-                        cr = (cr / 2) + (br / 2);
-                        cg = (cg / 2) + (bg / 2);
-                        cb = (cb / 2) + (bb / 2);
+                        cr = (br / 2) + (cr / 2);
+                        cg = (bg / 2) + (cg / 2);
+                        cb = (bb / 2) + (cb / 2);
                     } break;
                     case 1: {
-                        cr = cr + br;
-                        cg = cg + bg;
-                        cb = cb + bb;
+                        cr = br + cr;
+                        cg = bg + cg;
+                        cb = bb + cb;
                     } break;
                     case 2: {
-                        cr = cr - br;
-                        cg = cg - bg;
-                        cb = cb - bb;
+                        cr = br - cr;
+                        cg = bg - cg;
+                        cb = bb - cb;
                     }
                     case 3: {
                         cr = br + (cr / 4);
@@ -596,6 +768,101 @@ void gpu_rect(psx_gpu_t* gpu) {
                     rect.v0.c = 0x808080;
 
                 gpu_render_rect(gpu, rect);
+
+                gpu->state = GPU_STATE_RECV_CMD;
+            }
+        } break;
+    }
+}
+
+void gpu_poly(psx_gpu_t* gpu) {
+    switch (gpu->state) {
+        case GPU_STATE_RECV_CMD: {
+            gpu->state = GPU_STATE_RECV_ARGS;
+
+            int shaded   = (gpu->buf[0] & 0x10000000) != 0;
+            int quad     = (gpu->buf[0] & 0x08000000) != 0;
+            int textured = (gpu->buf[0] & 0x04000000) != 0;
+
+            int fields_per_vertex = 1 + shaded + textured;
+            int vertices = 3 + quad;
+ 
+            gpu->cmd_args_remaining = (fields_per_vertex * vertices) - shaded;
+
+            // log_set_quiet(0);
+            // log_fatal("Poly: GP0(%02x) shaded=%u, quad=%u, textured=%u, argc=%u, fpv=%u, vertc=%u",
+            //     gpu->buf[0] >> 24,
+            //     shaded, quad, textured,
+            //     gpu->cmd_args_remaining,
+            //     fields_per_vertex,
+            //     vertices
+            // );
+            // log_set_quiet(1);
+        } break;
+
+        case GPU_STATE_RECV_ARGS: {
+            if (!gpu->cmd_args_remaining) {
+                poly_data_t poly;
+
+                poly.attrib = gpu->buf[0] >> 24;
+
+                int shaded   = (poly.attrib & PA_SHADED) != 0;
+                int textured = (poly.attrib & PA_TEXTURED) != 0;
+
+                int color_offset = shaded * (2 + textured);
+                int vert_offset = 1 + (textured | shaded) +
+                                      (textured & shaded);
+                int texc_offset = textured * (2 + shaded);
+                int texp_offset = textured * (4 + shaded);
+
+                poly.clut = gpu->buf[2] >> 16;
+                poly.texp = gpu->buf[texp_offset] >> 16;
+
+                poly.v[0].c = gpu->buf[0+0*color_offset] & 0xffffff;
+                poly.v[1].c = gpu->buf[0+1*color_offset] & 0xffffff;
+                poly.v[2].c = gpu->buf[0+2*color_offset] & 0xffffff;
+                poly.v[3].c = gpu->buf[0+3*color_offset] & 0xffffff;
+                poly.v[0].x = gpu->buf[1+0*vert_offset] & 0xffff;
+                poly.v[1].x = gpu->buf[1+1*vert_offset] & 0xffff;
+                poly.v[2].x = gpu->buf[1+2*vert_offset] & 0xffff;
+                poly.v[3].x = gpu->buf[1+3*vert_offset] & 0xffff;
+                poly.v[0].y = gpu->buf[1+0*vert_offset] >> 16;
+                poly.v[1].y = gpu->buf[1+1*vert_offset] >> 16;
+                poly.v[2].y = gpu->buf[1+2*vert_offset] >> 16;
+                poly.v[3].y = gpu->buf[1+3*vert_offset] >> 16;
+                poly.v[0].tx = gpu->buf[2+0*texc_offset] & 0xff;
+                poly.v[1].tx = gpu->buf[2+1*texc_offset] & 0xff;
+                poly.v[2].tx = gpu->buf[2+2*texc_offset] & 0xff;
+                poly.v[3].tx = gpu->buf[2+3*texc_offset] & 0xff;
+                poly.v[0].ty = (gpu->buf[2+0*texc_offset] >> 8) & 0xff;
+                poly.v[1].ty = (gpu->buf[2+1*texc_offset] >> 8) & 0xff;
+                poly.v[2].ty = (gpu->buf[2+2*texc_offset] >> 8) & 0xff;
+                poly.v[3].ty = (gpu->buf[2+3*texc_offset] >> 8) & 0xff;
+
+                if (poly.attrib & PA_QUAD) {
+                    // log_set_quiet(0);
+                    // log_fatal("v0=(%u, %u, %06x) v1=(%u, %u, %06x) v2=(%u, %u, %06x) co=%u vo=%u tco=%u tpo=%u",
+                    //     poly.v[0].x, poly.v[0].y, poly.v[0].c,
+                    //     poly.v[1].x, poly.v[1].y, poly.v[1].c,
+                    //     poly.v[2].x, poly.v[2].y, poly.v[2].c,
+                    //     color_offset, vert_offset,
+                    //     texc_offset, texp_offset
+                    // );
+                    // log_set_quiet(1);
+                    gpu_render_triangle(gpu, poly.v[0], poly.v[1], poly.v[2], poly);
+                    gpu_render_triangle(gpu, poly.v[1], poly.v[2], poly.v[3], poly);
+                } else {
+                    // log_set_quiet(0);
+                    // log_fatal("v0=(%3u, %3u, %06x) v1=(%3u, %3u, %06x) v2=(%3u, %3u, %06x) co=%u vo=%u tco=%u tpo=%u",
+                    //     poly.v[0].x, poly.v[0].y, poly.v[0].c,
+                    //     poly.v[1].x, poly.v[1].y, poly.v[1].c,
+                    //     poly.v[2].x, poly.v[2].y, poly.v[2].c,
+                    //     color_offset, vert_offset,
+                    //     texc_offset, texp_offset
+                    // );
+                    // log_set_quiet(1);
+                    gpu_render_triangle(gpu, poly.v[0], poly.v[1], poly.v[2], poly);
+                }
 
                 gpu->state = GPU_STATE_RECV_CMD;
             }
@@ -1216,8 +1483,16 @@ void gpu_cmd_80(psx_gpu_t* gpu) {
 }
 
 void psx_gpu_update_cmd(psx_gpu_t* gpu) {
-    if (((gpu->buf[0] >> 29) & 7) == 3) {
+    int type = (gpu->buf[0] >> 29) & 7;
+
+    if (type == 3) {
         gpu_rect(gpu);
+
+        return;
+    }
+
+    if (type == 1) {
+        gpu_poly(gpu);
 
         return;
     }

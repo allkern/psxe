@@ -53,9 +53,17 @@ enum {
 };
 
 enum {
-    RA_RAW = 1,
-    RA_TRANSP = 2,
-    RA_TEXTURED = 4
+    RA_RAW      = 0x01,
+    RA_TRANSP   = 0x02,
+    RA_TEXTURED = 0x04
+};
+
+enum {
+    PA_RAW      = 0x01,
+    PA_TRANSP   = 0x02,
+    PA_TEXTURED = 0x04,
+    PA_QUAD     = 0x08,
+    PA_SHADED   = 0x10
 };
 
 typedef struct {
@@ -63,6 +71,12 @@ typedef struct {
     uint32_t c;
     uint8_t tx, ty;
 } vertex_t;
+
+typedef struct {
+    uint8_t attrib;
+    vertex_t v[4];
+    uint16_t clut, texp;
+} poly_data_t;
 
 typedef struct {
     uint8_t attrib;

@@ -328,7 +328,7 @@ void psx_dma_do_cdrom(psx_dma_t* dma) {
 void psx_dma_do_spu(psx_dma_t* dma) {
     if (!CHCR_BUSY(spu))
         return;
-    
+
     // log_fatal("SPU DMA transfer: madr=%08x, dir=%s, sync=%s (%u), step=%s, size=%x",
     //     dma->spu.madr,
     //     CHCR_TDIR(spu) ? "to device" : "to RAM",
@@ -352,7 +352,7 @@ void psx_dma_do_spu(psx_dma_t* dma) {
         // exit(1);
     }
 
-    dma->spu_irq_delay = size * 4;
+    dma->spu_irq_delay = 1;
     
     // Clear BCR and CHCR trigger and busy bits
     dma->spu.chcr = 0;
