@@ -172,7 +172,14 @@ void gpu_render_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, 
     int clutx = (data.clut & 0x3f) << 4;
     int cluty = (data.clut >> 6) & 0x1ff;
     int depth = (data.texp >> 7) & 3;
-    //int transp = (data.texp >> 5) & 3;
+    int transp = (data.attrib & PA_TRANSP) != 0;
+    int transp_mode;
+
+    if (data.attrib & PA_TEXTURED) {
+        transp_mode = (data.texp >> 5) & 3;
+    } else {
+        transp_mode = (gpu->gpustat >> 5) & 3;
+    }
 
     a = v0;
 
@@ -211,7 +218,6 @@ void gpu_render_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, 
             if ((z0 < 0) || (z1 < 0) || (z2 < 0))
                 continue;
 
-            uint16_t texel = 0;
             uint16_t color = 0;
             uint32_t mod   = 0;
 
@@ -245,10 +251,14 @@ void gpu_render_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, 
                 uint32_t tx = ((z0 * a.tx) + (z1 * b.tx) + (z2 * c.tx)) / area;
                 uint32_t ty = ((z0 * a.ty) + (z1 * b.ty) + (z2 * c.ty)) / area;
 
-                texel = gpu_fetch_texel(gpu, tx, ty, tpx, tpy, clutx, cluty, depth);
+                uint16_t texel = gpu_fetch_texel(gpu, tx, ty, tpx, tpy, clutx, cluty, depth);
 
                 if (!texel)
                     continue;
+
+                if (transp) {
+                    transp = (texel & 0x8000) != 0;
+                }
 
                 if (data.attrib & PA_RAW) {
                     color = texel;
@@ -281,7 +291,7 @@ void gpu_render_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, 
             int cg = ((color >> 5 ) & 0x1f) << 3;
             int cb = ((color >> 10) & 0x1f) << 3;
 
-            if (data.attrib & RA_TRANSP) {
+            if (transp) {
                 uint16_t back = gpu->vram[x + (y * 1024)];
 
                 int br = ((back >> 0 ) & 0x1f) << 3;
@@ -289,11 +299,11 @@ void gpu_render_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, 
                 int bb = ((back >> 10) & 0x1f) << 3;
 
                 // Do we use transp or gpustat here?
-                switch ((gpu->gpustat >> 5) & 3) {
+                switch (transp_mode) {
                     case 0: {
-                        cr = (br / 2) + (cr / 2);
-                        cg = (bg / 2) + (cg / 2);
-                        cb = (bb / 2) + (cb / 2);
+                        cr = (0.5f * br) + (0.5f * cr);
+                        cg = (0.5f * bg) + (0.5f * cg);
+                        cb = (0.5f * bb) + (0.5f * cb);
                     } break;
                     case 1: {
                         cr = br + cr;
@@ -304,11 +314,11 @@ void gpu_render_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, 
                         cr = br - cr;
                         cg = bg - cg;
                         cb = bb - cb;
-                    }
+                    } break;
                     case 3: {
-                        cr = br + (cr / 4);
-                        cg = bg + (cg / 4);
-                        cb = bb + (cb / 4);
+                        cr = br + (0.25 * cr);
+                        cg = bg + (0.25 * cg);
+                        cb = bb + (0.25 * cb);
                     } break;
                 }
 
@@ -336,6 +346,10 @@ void gpu_render_rect(psx_gpu_t* gpu, rect_data_t data) {
         case RS_16X16   : { width = 16        ; height = 16         ; } break;
     }
 
+    int textured = (data.attrib & RA_TEXTURED) != 0;
+    int transp = (data.attrib & RA_TRANSP) != 0;
+    int transp_mode = (gpu->gpustat >> 5) & 3;
+
     int clutx = (data.clut & 0x3f) << 4;
     int cluty = (data.clut >> 6) & 0x1ff;
 
@@ -359,7 +373,7 @@ void gpu_render_rect(psx_gpu_t* gpu, rect_data_t data) {
 
             uint16_t color;
 
-            if (data.attrib & RA_TEXTURED) {
+            if (textured) {
                 uint16_t texel = gpu_fetch_texel(
                     gpu,
                     data.v0.tx + xc, data.v0.ty + yc,
@@ -370,6 +384,10 @@ void gpu_render_rect(psx_gpu_t* gpu, rect_data_t data) {
 
                 if (!texel)
                     goto skip;
+
+                if (transp) {
+                    transp = (texel & 0x8000) != 0;
+                }
 
                 int tr = ((texel >> 0 ) & 0x1f) << 3;
                 int tg = ((texel >> 5 ) & 0x1f) << 3;
@@ -394,18 +412,18 @@ void gpu_render_rect(psx_gpu_t* gpu, rect_data_t data) {
             int cg = ((color >> 5 ) & 0x1f) << 3;
             int cb = ((color >> 10) & 0x1f) << 3;
 
-            if (data.attrib & RA_TRANSP) {
+            if (transp) {
                 uint16_t back = gpu->vram[x + (y * 1024)];
 
                 int br = ((back >> 0 ) & 0x1f) << 3;
                 int bg = ((back >> 5 ) & 0x1f) << 3;
                 int bb = ((back >> 10) & 0x1f) << 3;
 
-                switch ((gpu->gpustat >> 5) & 3) {
+                switch (transp_mode) {
                     case 0: {
-                        cr = (br / 2) + (cr / 2);
-                        cg = (bg / 2) + (cg / 2);
-                        cb = (bb / 2) + (cb / 2);
+                        cr = (0.5f * br) + (0.5f * cr);
+                        cg = (0.5f * bg) + (0.5f * cg);
+                        cb = (0.5f * bb) + (0.5f * cb);
                     } break;
                     case 1: {
                         cr = br + cr;
@@ -416,13 +434,17 @@ void gpu_render_rect(psx_gpu_t* gpu, rect_data_t data) {
                         cr = br - cr;
                         cg = bg - cg;
                         cb = bb - cb;
-                    }
+                    } break;
                     case 3: {
-                        cr = br + (cr / 4);
-                        cg = bg + (cg / 4);
-                        cb = bb + (cb / 4);
+                        cr = br + (0.25f * cr);
+                        cg = bg + (0.25f * cg);
+                        cb = bb + (0.25f * cb);
                     } break;
                 }
+
+                cr = (cr >= 0xff) ? 0xff : ((cr <= 0) ? 0 : cr);
+                cg = (cg >= 0xff) ? 0xff : ((cg <= 0) ? 0 : cg);
+                cb = (cb >= 0xff) ? 0xff : ((cb <= 0) ? 0 : cb);
 
                 uint32_t rgb = cr | (cg << 8) | (cb << 16);
 
@@ -840,15 +862,6 @@ void gpu_poly(psx_gpu_t* gpu) {
                 poly.v[3].ty = (gpu->buf[2+3*texc_offset] >> 8) & 0xff;
 
                 if (poly.attrib & PA_QUAD) {
-                    // log_set_quiet(0);
-                    // log_fatal("v0=(%u, %u, %06x) v1=(%u, %u, %06x) v2=(%u, %u, %06x) co=%u vo=%u tco=%u tpo=%u",
-                    //     poly.v[0].x, poly.v[0].y, poly.v[0].c,
-                    //     poly.v[1].x, poly.v[1].y, poly.v[1].c,
-                    //     poly.v[2].x, poly.v[2].y, poly.v[2].c,
-                    //     color_offset, vert_offset,
-                    //     texc_offset, texp_offset
-                    // );
-                    // log_set_quiet(1);
                     gpu_render_triangle(gpu, poly.v[0], poly.v[1], poly.v[2], poly);
                     gpu_render_triangle(gpu, poly.v[1], poly.v[2], poly.v[3], poly);
                 } else {
@@ -1658,6 +1671,8 @@ void psx_gpu_set_udata(psx_gpu_t* gpu, int index, void* udata) {
 #define GPU_CYCLES_PER_SCANL_NTSC 3413.0f
 #define GPU_SCANS_PER_VDRAW_NTSC 240
 #define GPU_SCANS_PER_FRAME_NTSC 263
+#define GPU_CYCLES_PER_SCANL_PAL 3406.0f
+#define GPU_SCANS_PER_FRAME_PAL  314
 
 void gpu_hblank_event(psx_gpu_t* gpu) {
     gpu->line++;
