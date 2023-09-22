@@ -14,7 +14,9 @@ A simple and portable Sony PlayStation emulator and emulation library written in
 ## Running
 You can download the latest automated build for your platform on Releases. If your system isn't supported, you can easily build the emulator from source, instructions on "Building" below.
 
-In order to run the emulator, you will need a BIOS file. You can either get it from the internet or [dump it from your own console](https://www.youtube.com/watch?v=u8eHp0COcBo).
+In order to run the emulator, you will need a BIOS file. You can either get one from the internet or [dump it from your own console](https://www.youtube.com/watch?v=u8eHp0COcBo).
+
+Most BIOS versions are confirmed to work.
 
 Use the `-b` or `--bios` setting to configure the BIOS file.
 
