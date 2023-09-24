@@ -360,7 +360,7 @@ void psx_dma_do_spu(psx_dma_t* dma) {
 }
 
 void psx_dma_do_pio(psx_dma_t* dma) {
-    log_fatal("PIO DMA channel unimplemented"); exit(1);
+    log_fatal("PIO DMA channel unimplemented");
 }
 
 void psx_dma_do_otc(psx_dma_t* dma) {

@@ -343,7 +343,45 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
         } break;
     }
 }
-void cdrom_cmd_stop(psx_cdrom_t* cdrom) { log_fatal("stop: Unimplemented"); exit(1); }
+void cdrom_cmd_stop(psx_cdrom_t* cdrom) {
+    cdrom->delayed_command = CDL_NONE;
+
+    switch (cdrom->state) {
+        case CD_STATE_RECV_CMD: {
+            cdrom->read_ongoing = 0;
+            cdrom->cdda_playing = 0;
+
+            cdrom->irq_delay = DELAY_1MS;
+            cdrom->state = CD_STATE_SEND_RESP1;
+            cdrom->delayed_command = CDL_STOP;
+            cdrom->seek_ff = 0;
+            cdrom->seek_ss = 0;
+            cdrom->seek_mm = 0;
+            cdrom->cdda_msf.m = 0;
+            cdrom->cdda_msf.s = 0;
+            cdrom->cdda_msf.f = 0;
+        } break;
+
+        case CD_STATE_SEND_RESP1: {
+            SET_BITS(ifr, IFR_INT, 3);
+            RESP_PUSH(GETSTAT_MOTOR | GETSTAT_READ);
+
+            int double_speed = cdrom->mode & MODE_SPEED;
+
+            cdrom->irq_delay = DELAY_1MS * (double_speed ? 70 : 65);
+            cdrom->state = CD_STATE_SEND_RESP2;
+            cdrom->delayed_command = CDL_STOP;
+        } break;
+
+        case CD_STATE_SEND_RESP2: {
+            SET_BITS(ifr, IFR_INT, 2);
+            RESP_PUSH(GETSTAT_MOTOR);
+
+            cdrom->state = CD_STATE_RECV_CMD;
+            cdrom->delayed_command = CDL_NONE;
+        } break;
+    }
+}
 void cdrom_cmd_pause(psx_cdrom_t* cdrom) {
     cdrom->delayed_command = CDL_NONE;
 
@@ -758,18 +796,46 @@ void cdrom_cmd_getid(psx_cdrom_t* cdrom) {
         } break;
 
         case CD_STATE_SEND_RESP2: {
-            SET_BITS(ifr, IFR_INT, 2);
+            /*
+                Drive Status           1st Response   2nd Response
+                Door Open              INT5(11h,80h)  N/A
+                Spin-up                INT5(01h,80h)  N/A
+                Detect busy            INT5(03h,80h)  N/A
+                No Disk                INT3(stat)     INT5(08h,40h, 00h,00h, 00h,00h,00h,00h)
+                Audio Disk             INT3(stat)     INT5(0Ah,90h, 00h,00h, 00h,00h,00h,00h)
+                Unlicensed:Mode1       INT3(stat)     INT5(0Ah,80h, 00h,00h, 00h,00h,00h,00h)
+                Unlicensed:Mode2       INT3(stat)     INT5(0Ah,80h, 20h,00h, 00h,00h,00h,00h)
+                Unlicensed:Mode2+Audio INT3(stat)     INT5(0Ah,90h, 20h,00h, 00h,00h,00h,00h)
+                Debug/Yaroze:Mode2     INT3(stat)     INT2(02h,00h, 20h,00h, 20h,20h,20h,20h)
+                Licensed:Mode2         INT3(stat)     INT2(02h,00h, 20h,00h, 53h,43h,45h,4xh)
+                Modchip:Audio/Mode1    INT3(stat)     INT2(02h,00h, 00h,00h, 53h,43h,45h,4xh)
+            */
 
             if (cdrom->disc) {
-                RESP_PUSH(0x41);
-                RESP_PUSH(0x45);
-                RESP_PUSH(0x43);
-                RESP_PUSH(0x53);
+                SET_BITS(ifr, IFR_INT, 2);
+
+                // Unlicensed:Mode1
                 RESP_PUSH(0x00);
-                RESP_PUSH(0x20);
                 RESP_PUSH(0x00);
-                RESP_PUSH(0x02);
+                RESP_PUSH(0x00);
+                RESP_PUSH(0x00);
+                RESP_PUSH(0x00);
+                RESP_PUSH(0x00);
+                RESP_PUSH(0x80);
+                RESP_PUSH(0x0a);
+
+                // Licensed:Mode2
+                // RESP_PUSH(0x41);
+                // RESP_PUSH(0x45);
+                // RESP_PUSH(0x43);
+                // RESP_PUSH(0x53);
+                // RESP_PUSH(0x00);
+                // RESP_PUSH(0x20);
+                // RESP_PUSH(0x00);
+                // RESP_PUSH(0x02);
             } else {
+                SET_BITS(ifr, IFR_INT, 5);
+
                 RESP_PUSH(0x00);
                 RESP_PUSH(0x00);
                 RESP_PUSH(0x00);

@@ -10,6 +10,7 @@ sdl2-win64/
 test/
 bios/
 roms/
+snap/
 *.bin
 *.dll
 *.exe
@@ -17,3 +18,4 @@ roms/
 *.toml
 *.zip
 *.cue
+*.iso

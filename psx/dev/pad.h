@@ -88,6 +88,11 @@
 #define CTRL_ACIE 0x0800
 #define CTRL_SLOT 0x1000
 
+enum {
+    DEST_JOY = 0x01,
+    DEST_MCD = 0x81
+};
+
 /*
     To-do: Design API to interface any type of controller.
 
@@ -115,6 +120,7 @@ typedef struct {
     int enable_once;
     int cycles_until_irq;
     int cycle_counter;
+    int dest;
 
     uint16_t mode, ctrl, baud, stat;
 } psx_pad_t;

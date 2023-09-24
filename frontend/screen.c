@@ -133,6 +133,27 @@ void psxe_screen_update(psxe_screen_t* screen) {
 
                         return;
                     } break;
+
+                    case SDLK_F2: {
+                        SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(
+                            0,
+                            screen->width * screen->scale,
+                            screen->height * screen->scale,
+                            16,
+                            SDL_PIXELFORMAT_BGR555
+                        );
+
+                        SDL_RenderReadPixels(
+                            screen->renderer,
+                            NULL,
+                            SDL_PIXELFORMAT_RGBA8888,
+                            surface->pixels, surface->pitch
+                        );
+
+                        SDL_SaveBMP(surface, "snap/screenshot.bmp");
+
+                        SDL_FreeSurface(surface);
+                    } break;
                 }
 
                 uint16_t mask = screen_get_button(event.key.keysym.sym);

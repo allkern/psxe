@@ -11,32 +11,20 @@ uint32_t pad_read_rx(psx_pad_t* pad) {
     if (!current_slot)
         return 0xffffffff;
 
-    if (!(pad->ctrl & CTRL_JOUT)) {
-        if (pad->ctrl & CTRL_RXEN) {
-            uint32_t data = current_slot->read_func(current_slot);
+    if ((pad->ctrl & CTRL_JOUT) || (pad->ctrl & CTRL_RXEN))
+        return current_slot->read_func(current_slot->udata);
 
-            pad->ctrl &= ~CTRL_RXEN;
-
-            return data;
-        }
-
-        return 0xffffffff;
-    }
-
-    return current_slot->read_func(current_slot->udata);
+    return 0xffffffff;
 }
 
 void pad_write_tx(psx_pad_t* pad, uint16_t data) {
     psx_input_t* current_slot = pad->slot[(pad->ctrl >> 13) & 1];
 
-    if (!current_slot)
-        return;
-
-    if (!(pad->ctrl & CTRL_TXEN))
+    if (!current_slot || !(pad->ctrl & CTRL_TXEN))
         return;
     
     pad->cycles_until_irq = 512;
-    
+
     current_slot->write_func(current_slot->udata, data);
 }
 

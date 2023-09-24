@@ -98,6 +98,7 @@ void psxe_cfg_load(psxe_config_t* cfg, int argc, const char* argv[]) {
     int help_region = 0;
     int log_level = 0;
     int quiet = 0;
+    int console_source = 0;
     const char* settings_path = NULL;
     const char* bios = NULL;
     const char* bios_search = NULL;
@@ -108,26 +109,27 @@ void psxe_cfg_load(psxe_config_t* cfg, int argc, const char* argv[]) {
     const char* cd_path = NULL;
 
     static const char *const usages[] = {
-        "psxe [options]",
+        "psxe [options] path-to-cdrom",
         NULL,
     };
 
     struct argparse_option options[] = {
-        OPT_BOOLEAN ('h', "help"         , NULL          , "Display this information", argparse_help_cb, 0, 0),
-        OPT_BOOLEAN (0  , "help-model"   , &help_model   , "Display available console models", NULL, 0, 0),
-        OPT_BOOLEAN (0  , "help-region"  , &help_region  , "Display available region options", NULL, 0, 0),
-        OPT_BOOLEAN ('v', "version"      , &version      , "Display version and build information", NULL, 0, 0),
+        OPT_BOOLEAN ('h', "help"          , NULL           , "Display this information", argparse_help_cb, 0, 0),
+        OPT_BOOLEAN (0  , "help-model"    , &help_model    , "Display available console models", NULL, 0, 0),
+        OPT_BOOLEAN (0  , "help-region"   , &help_region   , "Display available region options", NULL, 0, 0),
+        OPT_BOOLEAN ('v', "version"       , &version       , "Display version and build information", NULL, 0, 0),
         OPT_GROUP("Basic options"),
-        OPT_BOOLEAN ('a', "use-args"     , &use_args     , "Ignore settings file, use CLI args instead", NULL, 0, 0),
-        OPT_STRING  ('S', "settings-file", &settings_path, "Specify settings file path", NULL, 0, 0),
-        OPT_STRING  ('b', "bios"         , &bios         , "Use this BIOS file (ignores -B, -M)", NULL, 0, 0),
-        OPT_BOOLEAN ('B', "bios-folder"  , &bios_search  , "Specify a BIOS search folder", NULL, 0, 0),
-        OPT_STRING  ('M', "model"        , &model        , "Specify console model (SPCH-XXXX)", NULL, 0, 0),
-        OPT_STRING  ('r', "region"       , &region       , "Specify console region"),
-        OPT_STRING  ('x', "exe"          , &exe          , "Boot this PS-X EXE file (ignores CDROM image)"),
-        OPT_INTEGER ('L', "log-level"    , &log_level    , "Set log level"),
-        OPT_BOOLEAN ('q', "quiet"        , &quiet        , "Silence all logs (ignores -L)"),
-        OPT_STRING  (0  , "cdrom"        , &cd_path      , "Specify a CDROM image"),
+        OPT_BOOLEAN ('a', "use-args"      , &use_args      , "Ignore settings file, use CLI args instead", NULL, 0, 0),
+        OPT_STRING  ('b', "bios"          , &bios          , "Use this BIOS file (ignores -B, -M)", NULL, 0, 0),
+        OPT_BOOLEAN ('B', "bios-folder"   , &bios_search   , "Specify a BIOS search folder", NULL, 0, 0),
+        OPT_STRING  ('c', "console-source", &console_source, "Select console source (auto, null, kernel, atcons)"),
+        OPT_INTEGER ('L', "log-level"     , &log_level     , "Set log level"),
+        OPT_STRING  ('M', "model"         , &model         , "Specify console model (SPCH-XXXX)", NULL, 0, 0),
+        OPT_STRING  ('r', "region"        , &region        , "Specify console region"),
+        OPT_STRING  ('S', "settings-file" , &settings_path , "Specify settings file path", NULL, 0, 0),
+        OPT_BOOLEAN ('q', "quiet"         , &quiet         , "Silence all logs (ignores -L)"),
+        OPT_STRING  ('x', "exe"           , &exe           , "Boot this PS-X EXE file"),
+        OPT_STRING  (0  , "cdrom"         , &cd_path       , "Specify a CDROM image"),
         OPT_END()
     };
 

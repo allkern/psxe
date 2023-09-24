@@ -80,7 +80,7 @@ int psxd_bin_read_sector(void* udata, void* buf) {
 }
 
 int psxd_bin_get_track_addr(void* udata, msf_t* msf, int track) {
-    if (track > 0)
+    if (track > 1)
         return DISC_ERR_TRACK_OUT_OF_BOUNDS;
 
     msf->m = 0;

@@ -14,6 +14,8 @@ typedef struct {
     int help_region;
     int log_level;
     int quiet;
+    int console_source;
+    const char* snap_path;
     const char* settings_path;
     const char* bios;
     const char* bios_search;
