@@ -24,8 +24,8 @@ enum {
 };
 
 enum {
-    CUE_NONE,
-    CUE_4CH,
+    CUE_NONE = 255,
+    CUE_4CH = 0,
     CUE_AIFF,
     CUE_AUDIO,
     CUE_BINARY,

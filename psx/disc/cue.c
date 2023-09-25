@@ -91,7 +91,7 @@ int cue_get_keyword(psxd_cue_t* cue) {
     const char* token = g_psxd_cue_tokens[i];
 
     while (token) {
-        if (strcmp(token, cue->buf) == 1) {
+        if (!strcmp(token, cue->buf)) {
             return i;
         } else {
             token = g_psxd_cue_tokens[++i];
@@ -424,6 +424,9 @@ int psxd_cue_get_track_addr(void* udata, msf_t* msf, int track) {
     psxd_cue_t* cue = udata;
 
     if (!track) {
+        if (!msf)
+            return 0;
+
         msf->m = cue->end.m;
         msf->s = cue->end.s;
 
@@ -432,6 +435,9 @@ int psxd_cue_get_track_addr(void* udata, msf_t* msf, int track) {
 
     if (track > cue->num_tracks)
         return DISC_ERR_TRACK_OUT_OF_BOUNDS;
+
+    if (!msf)
+        return 0;
     
     msf->m = cue->track[track - 1]->disc_offset.m;
     msf->s = cue->track[track - 1]->disc_offset.s;

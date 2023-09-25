@@ -261,6 +261,7 @@ void cdrom_cmd_getstat(psx_cdrom_t*);
 void cdrom_cmd_setloc(psx_cdrom_t*);
 void cdrom_cmd_play(psx_cdrom_t*);
 void cdrom_cmd_readn(psx_cdrom_t*);
+void cdrom_cmd_motoron(psx_cdrom_t*);
 void cdrom_cmd_stop(psx_cdrom_t*);
 void cdrom_cmd_pause(psx_cdrom_t*);
 void cdrom_cmd_init(psx_cdrom_t*);

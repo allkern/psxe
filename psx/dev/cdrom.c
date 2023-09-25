@@ -343,6 +343,39 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
         } break;
     }
 }
+void cdrom_cmd_motoron(psx_cdrom_t* cdrom) {
+    cdrom->delayed_command = CDL_NONE;
+
+    switch (cdrom->state) {
+        case CD_STATE_RECV_CMD: {
+            cdrom->read_ongoing = 0;
+            cdrom->cdda_playing = 0;
+
+            cdrom->irq_delay = DELAY_1MS;
+            cdrom->state = CD_STATE_SEND_RESP1;
+            cdrom->delayed_command = CDL_MOTORON;
+        } break;
+
+        case CD_STATE_SEND_RESP1: {
+            SET_BITS(ifr, IFR_INT, 3);
+            RESP_PUSH(GETSTAT_MOTOR | GETSTAT_READ);
+
+            int double_speed = cdrom->mode & MODE_SPEED;
+
+            cdrom->irq_delay = DELAY_1MS * (double_speed ? 70 : 65);
+            cdrom->state = CD_STATE_SEND_RESP2;
+            cdrom->delayed_command = CDL_MOTORON;
+        } break;
+
+        case CD_STATE_SEND_RESP2: {
+            SET_BITS(ifr, IFR_INT, 2);
+            RESP_PUSH(GETSTAT_MOTOR);
+
+            cdrom->state = CD_STATE_RECV_CMD;
+            cdrom->delayed_command = CDL_NONE;
+        } break;
+    }
+}
 void cdrom_cmd_stop(psx_cdrom_t* cdrom) {
     cdrom->delayed_command = CDL_NONE;
 
@@ -557,7 +590,30 @@ void cdrom_cmd_setmode(psx_cdrom_t* cdrom) {
     }
 }
 void cdrom_cmd_getlocl(psx_cdrom_t* cdrom) { log_fatal("getlocl: Unimplemented"); exit(1); }
-void cdrom_cmd_getlocp(psx_cdrom_t* cdrom) { log_fatal("getlocp: Unimplemented"); exit(1); }
+void cdrom_cmd_getlocp(psx_cdrom_t* cdrom) {
+    switch (cdrom->state) {
+        case CD_STATE_RECV_CMD: {
+            cdrom->irq_delay = DELAY_1MS;
+            cdrom->delayed_command = CDL_GETLOCP;
+            cdrom->state = CD_STATE_SEND_RESP1;
+        } break;
+
+        case CD_STATE_SEND_RESP1: {
+            SET_BITS(ifr, IFR_INT, IFR_INT3);
+            RESP_PUSH(0x00);
+            RESP_PUSH(0x00);
+            RESP_PUSH(0x00);
+            RESP_PUSH(0x00);
+            RESP_PUSH(0x00);
+            RESP_PUSH(0x00);
+            RESP_PUSH(0x01);
+            RESP_PUSH(0xff);
+
+            cdrom->delayed_command = CDL_NONE;
+            cdrom->state = CD_STATE_RECV_CMD;
+        } break;
+    }
+}
 void cdrom_cmd_gettn(psx_cdrom_t* cdrom) {
     cdrom->delayed_command = CDL_NONE;
 
@@ -614,6 +670,18 @@ void cdrom_cmd_gettd(psx_cdrom_t* cdrom) {
 
             cdrom->gettd_track = PFIFO_POP;
 
+            int err = psx_disc_get_track_addr(cdrom->disc, NULL, cdrom->gettd_track);
+
+            if (err) {
+                cdrom->irq_delay = DELAY_1MS;
+                cdrom->delayed_command = CDL_ERROR;
+                cdrom->state = CD_STATE_ERROR;
+                cdrom->error = ERR_PCOUNT;
+                cdrom->error_flags = GETSTAT_ERROR;
+
+                return;
+            }
+
             cdrom->irq_delay = DELAY_1MS;
             cdrom->delayed_command = CDL_GETTD;
             cdrom->state = CD_STATE_SEND_RESP1;
@@ -623,10 +691,6 @@ void cdrom_cmd_gettd(psx_cdrom_t* cdrom) {
             msf_t td;
 
             psx_disc_get_track_addr(cdrom->disc, &td, cdrom->gettd_track);
-
-            log_fatal("@@@@@@@@@@@@@@@@ GetTD track=%u, addr=%02u:%02u", cdrom->gettd_track, td.m, td.s);
-
-            // To-do: Handle OOB tracks
 
             SET_BITS(ifr, IFR_INT, IFR_INT3);
             RESP_PUSH(ITOB(td.s));
@@ -815,24 +879,24 @@ void cdrom_cmd_getid(psx_cdrom_t* cdrom) {
                 SET_BITS(ifr, IFR_INT, 2);
 
                 // Unlicensed:Mode1
-                RESP_PUSH(0x00);
-                RESP_PUSH(0x00);
-                RESP_PUSH(0x00);
-                RESP_PUSH(0x00);
-                RESP_PUSH(0x00);
-                RESP_PUSH(0x00);
-                RESP_PUSH(0x80);
-                RESP_PUSH(0x0a);
+                // RESP_PUSH(0x00);
+                // RESP_PUSH(0x00);
+                // RESP_PUSH(0x00);
+                // RESP_PUSH(0x00);
+                // RESP_PUSH(0x00);
+                // RESP_PUSH(0x00);
+                // RESP_PUSH(0x80);
+                // RESP_PUSH(0x0a);
 
                 // Licensed:Mode2
-                // RESP_PUSH(0x41);
-                // RESP_PUSH(0x45);
-                // RESP_PUSH(0x43);
-                // RESP_PUSH(0x53);
-                // RESP_PUSH(0x00);
-                // RESP_PUSH(0x20);
-                // RESP_PUSH(0x00);
-                // RESP_PUSH(0x02);
+                RESP_PUSH(0x41);
+                RESP_PUSH(0x45);
+                RESP_PUSH(0x43);
+                RESP_PUSH(0x53);
+                RESP_PUSH(0x00);
+                RESP_PUSH(0x20);
+                RESP_PUSH(0x00);
+                RESP_PUSH(0x02);
             } else {
                 SET_BITS(ifr, IFR_INT, 5);
 
@@ -990,7 +1054,7 @@ const char* g_psx_cdrom_command_names[] = {
     "CdlUnimplemented",
     "CdlUnimplemented",
     "CdlReadn",
-    "CdlUnimplemented",
+    "CdlMotoron",
     "CdlStop",
     "CdlPause",
     "CdlInit",
@@ -1025,7 +1089,7 @@ cdrom_cmd_t g_psx_cdrom_command_table[] = {
     cdrom_cmd_unimplemented,
     cdrom_cmd_unimplemented,
     cdrom_cmd_readn,
-    cdrom_cmd_unimplemented,
+    cdrom_cmd_motoron,
     cdrom_cmd_stop,
     cdrom_cmd_pause,
     cdrom_cmd_init,
