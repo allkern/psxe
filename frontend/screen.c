@@ -146,7 +146,7 @@ void psxe_screen_update(psxe_screen_t* screen) {
                         SDL_RenderReadPixels(
                             screen->renderer,
                             NULL,
-                            SDL_PIXELFORMAT_RGBA8888,
+                            SDL_PIXELFORMAT_BGR555,
                             surface->pixels, surface->pitch
                         );
 

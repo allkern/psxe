@@ -62,7 +62,7 @@ uint32_t psx_bus_read32(psx_bus_t* bus, uint32_t addr) {
 
     log_fatal("Unhandled 32-bit read from %08x:%08x", vaddr, addr);
 
-    exit(1);
+    //exit(1);
 
     return 0x00000000;
 }
@@ -160,7 +160,7 @@ void psx_bus_write32(psx_bus_t* bus, uint32_t addr, uint32_t value) {
 
     log_fatal("Unhandled 32-bit write to %08x:%08x (%08x)", vaddr, addr, value);
 
-    exit(1);
+    //exit(1);
 }
 
 void psx_bus_write16(psx_bus_t* bus, uint32_t addr, uint16_t value) {

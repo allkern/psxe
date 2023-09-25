@@ -32,8 +32,8 @@
 #define PSXI_SW_SDA_SQUARE      0x8000
 
 enum {
-    SDA_STATE_WFC = 0,
-    SDA_STATE_WFR,
+    SDA_STATE_TX_HIZ = 0,
+    SDA_STATE_TX_IDL,
     SDA_STATE_TX_IDH,
     SDA_STATE_TX_SWL,
     SDA_STATE_TX_SWH

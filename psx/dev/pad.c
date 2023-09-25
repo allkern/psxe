@@ -8,11 +8,27 @@
 uint32_t pad_read_rx(psx_pad_t* pad) {
     psx_input_t* current_slot = pad->slot[(pad->ctrl >> 13) & 1];
 
-    if (!current_slot)
+    if (!current_slot || !pad->dest)
         return 0xffffffff;
 
-    if ((pad->ctrl & CTRL_JOUT) || (pad->ctrl & CTRL_RXEN))
-        return current_slot->read_func(current_slot->udata);
+    if ((pad->ctrl & CTRL_JOUT) || (pad->ctrl & CTRL_RXEN)) {
+        switch (pad->dest) {
+            case DEST_JOY: {
+                uint8_t data = current_slot->read_func(current_slot->udata);
+
+                if (!current_slot->query_fifo_func(current_slot->udata))
+                    pad->dest = 0;
+
+                return data;
+            } break;
+
+            case DEST_MCD: {
+                pad->dest = 0;
+
+                /* To-do */
+            } break;
+        }
+    }
 
     return 0xffffffff;
 }
@@ -25,7 +41,25 @@ void pad_write_tx(psx_pad_t* pad, uint16_t data) {
     
     pad->cycles_until_irq = 512;
 
-    current_slot->write_func(current_slot->udata, data);
+    if (!pad->dest) {
+        if ((data == DEST_JOY) || (data == DEST_MCD))
+            pad->dest = data;
+    } else {
+        switch (pad->dest) {
+            case DEST_JOY: {
+                current_slot->write_func(current_slot->udata, data);
+
+                if (!current_slot->query_fifo_func(current_slot->udata))
+                    pad->dest = 0;
+            } break;
+
+            case DEST_MCD: {
+                pad->dest = 0;
+
+                /* To-do */
+            } break;
+        }
+    }
 }
 
 uint32_t pad_handle_stat_read(psx_pad_t* pad) {

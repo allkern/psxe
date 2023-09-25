@@ -18,73 +18,40 @@ void psxi_sda_init(psxi_sda_t* sda, uint16_t model) {
     memset(sda, 0, sizeof(psxi_sda_t));
 
     sda->tx_data = 0xff;
+    sda->tx_data_ready = 1;
     sda->model = model;
-    sda->state = SDA_STATE_WFC;
+    sda->state = SDA_STATE_TX_HIZ;
     sda->sw = 0xffff;
 }
 
 uint32_t psxi_sda_read(void* udata) {
     psxi_sda_t* sda = (psxi_sda_t*)udata;
 
+    switch (sda->state) {
+        case SDA_STATE_TX_HIZ: sda->tx_data = 0xff; break;
+        case SDA_STATE_TX_IDL: sda->tx_data = sda->model; break;
+        case SDA_STATE_TX_IDH: sda->tx_data = 0x5a; break;
+        case SDA_STATE_TX_SWL: sda->tx_data = sda->sw & 0xff; break;
+
+        // Last state
+        case SDA_STATE_TX_SWH: {
+            sda->tx_data_ready = 0;
+            sda->state = 0;
+
+            return sda->sw >> 8;
+        } break;
+    }
+
+    sda->tx_data_ready = 1;
+    sda->state++;
+
     return sda->tx_data;
 }
 
 void psxi_sda_write(void* udata, uint16_t data) {
-    psxi_sda_t* sda = (psxi_sda_t*)udata;
+    // To-do: Handle TAP and MOT bytes here
 
-    switch (sda->state) {
-        case SDA_STATE_WFC: {
-            if (data == 0x01) {
-                sda->tx_data_ready = 1;
-                sda->tx_data = 0xff;
-                sda->state = SDA_STATE_WFR;
-            }
-
-            // Memory card access
-            if (data == 0x81) {
-                sda->tx_data_ready = 1;
-                sda->tx_data = 0xff;
-                sda->state = SDA_STATE_WFR;
-            }
-        } break;
-
-        case SDA_STATE_WFR: {
-            if (data == 'B') {
-                sda->tx_data = sda->model;
-                sda->state = SDA_STATE_TX_IDH;
-            } else if (data == 'R') {
-                sda->tx_data = 0xff;
-                sda->state = SDA_STATE_WFR;
-            }
-        } break;
-
-        case SDA_STATE_TX_IDH: {
-            // To-do: Handle MOT
-            sda->tx_data = 0x5a;
-            sda->state = SDA_STATE_TX_SWL;
-        } break;
-
-        case SDA_STATE_TX_SWL: {
-            sda->tx_data = sda->sw & 0xff;
-            sda->state = SDA_STATE_TX_SWH;
-        } break;
-
-        case SDA_STATE_TX_SWH: {
-            sda->tx_data = sda->sw >> 8;
-
-            switch (sda->model) {
-                case 0x41:
-                    sda->state = SDA_STATE_WFC;
-                break;
-
-                // To-do: Implement analog mode
-                case 0x73:
-                case 0x53:
-                    sda->state = SDA_STATE_WFC;
-                break;
-            }
-        } break;
-    }
+    return;
 }
 
 void psxi_sda_on_button_press(void* udata, uint16_t data) {
