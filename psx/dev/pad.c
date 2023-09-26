@@ -69,105 +69,10 @@ void pad_write_tx(psx_pad_t* pad, uint16_t data) {
     }
 }
 
-// uint32_t pad_read_rx(psx_pad_t* pad) {
-//     // log_set_quiet(0);
-//     // log_fatal("pad read dest=%02x, jout=%u, rxen=%u, slot=%u",
-//     //     pad->dest,
-//     //     !!(pad->ctrl & CTRL_JOUT),
-//     //     !!(pad->ctrl & CTRL_RXEN),
-//     //     (pad->ctrl >> 13) & 1
-//     // );
-//     // log_set_quiet(1);
-
-//     if (!pad->dest || !(pad->ctrl & CTRL_JOUT))
-//         return 0xffffffff;
-
-//     // if ((!(pad->ctrl & CTRL_JOUT)) && (!(pad->ctrl & CTRL_RXEN)))
-//     //     return 0xffffffff;
-
-//     switch (pad->dest) {
-//         case DEST_JOY: {
-//             psx_input_t* joy = pad->joy_slot[(pad->ctrl >> 13) & 1];
-
-//             if (!joy)
-//                 return 0xffffffff;
-
-//             uint8_t data = joy->read_func(joy->udata);
-
-//             if (!joy->query_fifo_func(joy->udata))
-//                 pad->dest = 0;
-
-//             return data;
-//         } break;
-
-//         case DEST_MCD: {
-//             psx_mcd_t* mcd = pad->mcd_slot[(pad->ctrl >> 13) & 1];
-
-//             if (!mcd)
-//                 return 0xffffffff;
-
-//             uint8_t data = psx_mcd_read(mcd);
-
-//             if (!psx_mcd_query(mcd))
-//                 pad->dest = 0;
-
-//             return data;
-//         } break;
-//     }
-
-//     return 0xffffffff;
-// }
-
-// void pad_write_tx(psx_pad_t* pad, uint16_t data) {
-//     if (!(pad->ctrl & CTRL_TXEN))
-//         return;
-
-//     if (!pad->joy_slot[(pad->ctrl >> 13) & 1])
-//         return;
-
-//     log_set_quiet(0);
-//     log_fatal("pad write %02x", data);
-//     log_set_quiet(1);
-
-//     if (!pad->dest) {
-//         if ((data == DEST_JOY) || (data == DEST_MCD))
-//             pad->dest = data;
-
-//         return;
-//     }
-
-//     switch (pad->dest) {
-//         case DEST_JOY: {
-//             psx_input_t* joy = pad->joy_slot[(pad->ctrl >> 13) & 1];
-
-//             if (!joy)
-//                 return;
-
-//             pad->cycles_until_irq = 512;
-
-//             joy->write_func(joy->udata, data);
-
-//             if (!joy->query_fifo_func(joy->udata))
-//                 pad->dest = 0;
-//         } break;
-
-//         case DEST_MCD: {
-//             psx_mcd_t* mcd = pad->mcd_slot[(pad->ctrl >> 13) & 1];
-
-//             if (!mcd)
-//                 return;
-
-//             pad->cycles_until_irq = 512;
-            
-//             psx_mcd_write(mcd, data);
-
-//             if (!psx_mcd_query(mcd))
-//                 pad->dest = 0;
-//         } break;
-//     }
-// }
-
 uint32_t pad_handle_stat_read(psx_pad_t* pad) {
+    log_set_quiet(0);
+    log_fatal("pad stat read");
+    log_set_quiet(1);
     return 0x07;
     psx_input_t* joy = pad->joy_slot[(pad->ctrl >> 13) & 1];
 
