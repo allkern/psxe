@@ -35,6 +35,7 @@ void psx_input_set_on_analog_change_func(psx_input_t* input, psx_input_on_analog
 }
 
 void psx_input_destroy(psx_input_t* input) {
+    free(input->udata);
     free(input);
 }
 

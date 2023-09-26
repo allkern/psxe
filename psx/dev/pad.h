@@ -5,6 +5,7 @@
 
 #include "ic.h"
 #include "input.h"
+#include "mcd.h"
 
 #define PSX_PAD_BEGIN 0x1f801040
 #define PSX_PAD_SIZE  0x10
@@ -115,7 +116,8 @@ typedef struct {
     uint32_t io_base, io_size;
 
     psx_ic_t* ic;
-    psx_input_t* slot[2];
+    psx_input_t* joy_slot[2];
+    psx_mcd_t* mcd_slot[2];
 
     int enable_once;
     int cycles_until_irq;
@@ -136,7 +138,10 @@ void psx_pad_write8(psx_pad_t*, uint32_t, uint8_t);
 void psx_pad_destroy(psx_pad_t*);
 void psx_pad_button_press(psx_pad_t*, int, uint16_t);
 void psx_pad_button_release(psx_pad_t*, int, uint16_t);
-void psx_pad_init_slot(psx_pad_t*, int, psx_input_t*);
+void psx_pad_attach_joy(psx_pad_t*, int, psx_input_t*);
+void psx_pad_detach_joy(psx_pad_t*, int);
+void psx_pad_attach_mcd(psx_pad_t*, int, const char*);
+void psx_pad_detach_mcd(psx_pad_t*, int);
 void psx_pad_update(psx_pad_t*, int);
 
 #endif
