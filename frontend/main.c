@@ -8,9 +8,17 @@
 #undef main
 
 void audio_update(void* ud, uint8_t* buf, int size) {
-    psx_cdrom_t* cdrom = ud;
+    psx_cdrom_t* cdrom = ((psx_t*)ud)->cdrom;
+    psx_spu_t* spu = ((psx_t*)ud)->spu;
 
     psx_cdrom_get_cdda_samples(cdrom, buf, size);
+
+    for (int i = 0; i < (size >> 2); i++) {
+        int16_t sample = psx_spu_get_sample(spu);
+
+        *(uint16_t*)(&buf[(i << 2) + 0]) = sample;
+        *(uint16_t*)(&buf[(i << 2) + 2]) = sample;
+    }
 }
 
 int main(int argc, const char* argv[]) {
@@ -45,7 +53,7 @@ int main(int argc, const char* argv[]) {
     desired.channels = 2;
     desired.samples  = CD_SECTOR_SIZE >> 2;
     desired.callback = &audio_update;
-    desired.userdata = cdrom;
+    desired.userdata = psx;
 
     dev = SDL_OpenAudioDevice(NULL, 0, &desired, &obtained, 0);
 

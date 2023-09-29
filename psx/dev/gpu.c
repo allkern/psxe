@@ -144,7 +144,7 @@ uint16_t gpu_fetch_texel(psx_gpu_t* gpu, uint16_t tx, uint16_t ty, uint32_t tpx,
         // 4-bit
         case 0: {
             uint16_t texel = VRAM(tpx + (tx >> 2), tpy + ty);
-            uint16_t index = (texel >> ((tx & 0x1) << 3)) & 0xff;
+            uint16_t index = (texel >> ((tx & 0x3) << 2)) & 0xf;
 
             return VRAM(clutx + index, cluty);
         } break;
@@ -938,7 +938,7 @@ void gpu_recv(psx_gpu_t* gpu) {
                 xpos = (gpu->xpos + gpu->xcnt) & 0x3ff;
             }
 
-            VRAM(xpos, ypos) = gpu->recv_data & 0xffff;
+            VRAM(xpos, ypos) = gpu->recv_data >> 16;
 
             ++gpu->xcnt;
             
@@ -1509,24 +1509,12 @@ void gpu_cmd_80(psx_gpu_t* gpu) {
 void psx_gpu_update_cmd(psx_gpu_t* gpu) {
     int type = (gpu->buf[0] >> 29) & 7;
 
-    if (type == 3) {
-        gpu_rect(gpu);
-
-        return;
-    }
-
-    if (type == 1) {
-        gpu_poly(gpu);
-
-        return;
-    }
-
     switch (type) {
-        case 1: gpu_poly(gpu); break;
-        case 3: gpu_rect(gpu); break;
-        case 4: gpu_copy(gpu); break;
-        case 5: gpu_recv(gpu); break;
-        case 6: gpu_send(gpu); break;
+        case 1: gpu_poly(gpu); return;
+        case 3: gpu_rect(gpu); return;
+        case 4: gpu_copy(gpu); return;
+        case 5: gpu_recv(gpu); return;
+        case 6: gpu_send(gpu); return;
         default: break;
     }
 
@@ -1566,8 +1554,8 @@ void psx_gpu_update_cmd(psx_gpu_t* gpu) {
         // case 0x7e: gpu_cmd_7c(gpu); break;
         // case 0x7f: gpu_cmd_7c(gpu); break;
         // case 0x80: gpu_cmd_80(gpu); break;
-        case 0xa0: gpu_cmd_a0(gpu); break;
-        case 0xc0: gpu_cmd_c0(gpu); break;
+        // case 0xa0: gpu_cmd_a0(gpu); break;
+        // case 0xc0: gpu_cmd_c0(gpu); break;
         case 0xe1: {
             gpu->gpustat &= 0xfffff800;
             gpu->gpustat |= gpu->buf[0] & 0x7ff;
