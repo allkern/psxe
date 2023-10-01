@@ -6,6 +6,7 @@
 #include "../log.h"
 
 #define CLAMP(v, l, h) ((v <= l) ? l : ((v >= h) ? h : v))
+#define MAX(a, b) (a > b ? a : b)
 
 static const int g_spu_pos_adpcm_table[] = {
     0, +60, +115, +98, +122
@@ -145,6 +146,168 @@ void spu_read_block(psx_spu_t* spu, int v) {
     }
 }
 
+#define PHASE spu->data[v].adsr_phase
+#define CYCLES spu->data[v].adsr_cycles
+#define EXPONENTIAL spu->data[v].adsr_mode
+#define DECREASE spu->data[v].adsr_dir
+#define SHIFT spu->data[v].adsr_shift
+#define STEP spu->data[v].adsr_step
+#define LEVEL_STEP spu->data[v].adsr_pending_step
+#define LEVEL spu->voice[v].envcvol
+
+/*
+  ____lower 16bit (at 1F801C08h+N*10h)___________________________________
+  15    Attack Mode       (0=Linear, 1=Exponential)
+  -     Attack Direction  (Fixed, always Increase) (until Level 7FFFh)
+  14-10 Attack Shift      (0..1Fh = Fast..Slow)
+  9-8   Attack Step       (0..3 = "+7,+6,+5,+4")
+  -     Decay Mode        (Fixed, always Exponential)
+  -     Decay Direction   (Fixed, always Decrease) (until Sustain Level)
+  7-4   Decay Shift       (0..0Fh = Fast..Slow)
+  -     Decay Step        (Fixed, always "-8")
+  3-0   Sustain Level     (0..0Fh)  ;Level=(N+1)*800h
+  ____upper 16bit (at 1F801C0Ah+N*10h)___________________________________
+  31    Sustain Mode      (0=Linear, 1=Exponential)
+  30    Sustain Direction (0=Increase, 1=Decrease) (until Key OFF flag)
+  29    Not used?         (should be zero)
+  28-24 Sustain Shift     (0..1Fh = Fast..Slow)
+  23-22 Sustain Step      (0..3 = "+7,+6,+5,+4" or "-8,-7,-6,-5") (inc/dec)
+  21    Release Mode      (0=Linear, 1=Exponential)
+  -     Release Direction (Fixed, always Decrease) (until Level 0000h)
+  20-16 Release Shift     (0..1Fh = Fast..Slow)
+  -     Release Step      (Fixed, always "-8")
+*/
+
+void spu_advance_adsr(psx_spu_t* spu, int v) {
+    switch (spu->data[v].adsr_phase) {
+        // KON->Attack
+        case 0: {
+            EXPONENTIAL = spu->voice[v].envctl1 >> 15;
+            DECREASE    = 0;
+            SHIFT       = (spu->voice[v].envctl1 >> 10) & 0x1f;
+            STEP        = 7 - ((spu->voice[v].envctl1 >> 8) & 3);
+            LEVEL       = 0;
+
+            log_fatal("        voice %u KON->Attack e=%u d=%u sh=%u st=%u, l=%04x",
+                v,
+                EXPONENTIAL,
+                DECREASE,
+                SHIFT,
+                STEP,
+                LEVEL
+            );
+        } break;
+
+        // Attack->Decay
+        case 1: {
+            EXPONENTIAL = 1;
+            DECREASE    = 1;
+            SHIFT       = (spu->voice[v].envctl1 >> 4) & 0xf;
+            STEP        = -8;
+            LEVEL       = 0x7fff;
+
+            log_fatal("        voice %u Attack->Decay e=%u d=%u sh=%u st=%u, l=%04x",
+                v,
+                EXPONENTIAL,
+                DECREASE,
+                SHIFT,
+                STEP,
+                LEVEL
+            );
+        } break;
+
+        // Decay->Sustain
+        case 2: {
+            EXPONENTIAL = spu->voice[v].envctl2 >> 15;
+            DECREASE    = (spu->voice[v].envctl2 >> 14) & 1;
+            SHIFT       = (spu->voice[v].envctl2 >> 8) & 0x1f;
+            STEP        = (spu->voice[v].envctl2 >> 6) & 3;
+            LEVEL       = spu->data[v].adsr_sustain_level;
+
+            STEP = DECREASE ? (-8 + STEP) : (7 - STEP);
+
+            log_fatal("        voice %u Decay->Sustain e=%u d=%u sh=%u st=%u, l=%04x",
+                v,
+                EXPONENTIAL,
+                DECREASE,
+                SHIFT,
+                STEP,
+                LEVEL
+            );
+        } break;
+
+        // Sustain->Release
+        case 3: {
+            EXPONENTIAL = (spu->voice[v].envctl2 >> 5) & 1;
+            DECREASE    = 1;
+            SHIFT       = spu->voice[v].envctl2 & 0x1f;
+            STEP        = -8;
+            //LEVEL       = spu->data[v].adsr_sustain_level;
+
+            log_fatal("        voice %u Sustain->Release e=%u d=%u sh=%u st=%u, l=%04x",
+                v,
+                EXPONENTIAL,
+                DECREASE,
+                SHIFT,
+                STEP,
+                LEVEL
+            );
+        } break;
+    }
+
+    CYCLES = 1 << MAX(0, SHIFT - 11);
+    LEVEL_STEP = STEP << MAX(0, 11 - SHIFT);
+
+    if (EXPONENTIAL && (LEVEL > 0x6000) && !DECREASE)
+        CYCLES *= 4;
+    
+    if (EXPONENTIAL && DECREASE)
+        STEP *= LEVEL / 0x8000;
+}
+
+void spu_handle_adsr(psx_spu_t* spu, int v) {
+    LEVEL += LEVEL_STEP;
+
+    switch (spu->data[v].adsr_phase) {
+        case 0: {
+            LEVEL = CLAMP(LEVEL, 0x0000, 0x7fff);
+
+            if (LEVEL == 0x7fff) {
+                spu->data[v].adsr_phase = 1;
+
+                spu_advance_adsr(spu, v);
+            }
+        } break;
+
+        case 1: {
+            LEVEL = CLAMP(LEVEL, 0x0000, 0x7fff);
+
+            if (LEVEL >= spu->data[v].adsr_sustain_level) {
+                spu->data[v].adsr_phase = 2;
+
+                spu_advance_adsr(spu, v);
+            }
+        } break;
+
+        case 3: {
+            LEVEL = CLAMP(LEVEL, 0x0000, 0x7fff);
+
+            if (!LEVEL) {
+                spu->data[v].adsr_phase = 0;
+                spu->data[v].playing = 0;
+            }
+        } break;
+    }
+}
+
+#undef PHASE
+#undef CYCLES
+#undef MODE
+#undef DIR
+#undef SHIFT
+#undef STEP
+#undef PENDING_STEP
+
 int spu_handle_write(psx_spu_t* spu, uint32_t offset, uint32_t value) {
     switch (offset) {
         case SPUR_KON: {
@@ -160,16 +323,22 @@ int spu_handle_write(psx_spu_t* spu, uint32_t offset, uint32_t value) {
                     spu->data[i].repeat_addr = spu->data[i].current_addr;
                     spu->data[i].lvol = (float)(spu->voice[i].volumel << 1) / (float)0x7fff;
                     spu->data[i].rvol = (float)(spu->voice[i].volumer << 1) / (float)0x7fff;
+                    spu->data[i].adsr_sustain_level = ((spu->voice[i].envctl1 & 0xf) + 1) * 0x800;
+                    spu->data[i].adsr_phase = 0;
 
-                    log_fatal("    voice %2u s=%06x r=%06x p=%04x vol=%f,%f",
+                    log_fatal("    voice %2u s=%06x r=%06x p=%04x vol=%f,%f adsr=%04x,%04x cvol=%04x",
                         i,
                         spu->voice[i].adsaddr << 3,
                         spu->voice[i].adraddr << 3,
                         spu->voice[i].adsampr,
                         spu->data[i].lvol,
-                        spu->data[i].rvol
+                        spu->data[i].rvol,
+                        spu->voice[i].envctl1,
+                        spu->voice[i].envctl2,
+                        spu->voice[i].envcvol
                     );
 
+                    spu_advance_adsr(spu, i);
                     spu_read_block(spu, i);
                 }
             }
@@ -183,7 +352,9 @@ int spu_handle_write(psx_spu_t* spu, uint32_t offset, uint32_t value) {
             log_fatal("KOFF %04x:", value);
             for (int i = 0; i < 24; i++) {
                 if ((value & (1 << i))) {
-                    spu->data[i].playing = 0;
+                    spu->data[i].adsr_phase = 3;
+
+                    spu_advance_adsr(spu, i);
 
                     log_fatal("    voice %2u",
                         i,
@@ -295,6 +466,11 @@ uint32_t psx_spu_get_sample(psx_spu_t* spu) {
     int right = 0x0000;
 
     for (int v = 0; v < 24; v++) {
+        --spu->data[v].adsr_cycles;
+
+        if (!spu->data[v].adsr_cycles)
+            spu_handle_adsr(spu, v);
+
         if (!spu->data[v].playing)
             continue;
         

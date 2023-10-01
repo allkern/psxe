@@ -115,6 +115,38 @@ typedef struct __attribute__((__packed__)) {
         int16_t h[2];
         float lvol;
         float rvol;
+
+        /*
+        ____lower 16bit (at 1F801C08h+N*10h)___________________________________
+        15    Attack Mode       (0=Linear, 1=Exponential)
+        -     Attack Direction  (Fixed, always Increase) (until Level 7FFFh)
+        14-10 Attack Shift      (0..1Fh = Fast..Slow)
+        9-8   Attack Step       (0..3 = "+7,+6,+5,+4")
+        -     Decay Mode        (Fixed, always Exponential)
+        -     Decay Direction   (Fixed, always Decrease) (until Sustain Level)
+        7-4   Decay Shift       (0..0Fh = Fast..Slow)
+        -     Decay Step        (Fixed, always "-8")
+        3-0   Sustain Level     (0..0Fh)  ;Level=(N+1)*800h
+        ____upper 16bit (at 1F801C0Ah+N*10h)___________________________________
+        31    Sustain Mode      (0=Linear, 1=Exponential)
+        30    Sustain Direction (0=Increase, 1=Decrease) (until Key OFF flag)
+        29    Not used?         (should be zero)
+        28-24 Sustain Shift     (0..1Fh = Fast..Slow)
+        23-22 Sustain Step      (0..3 = "+7,+6,+5,+4" or "-8,-7,-6,-5") (inc/dec)
+        21    Release Mode      (0=Linear, 1=Exponential)
+        -     Release Direction (Fixed, always Decrease) (until Level 0000h)
+        20-16 Release Shift     (0..1Fh = Fast..Slow)
+        -     Release Step      (Fixed, always "-8")
+        */
+
+        int adsr_phase;
+        int adsr_cycles;
+        int adsr_mode;
+        int adsr_dir;
+        int adsr_shift;
+        int adsr_step;
+        int adsr_pending_step;
+        int adsr_sustain_level;
     } data[24];
 } psx_spu_t;
 
