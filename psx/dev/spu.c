@@ -123,7 +123,7 @@ void spu_read_block(psx_spu_t* spu, int v) {
     spu->data[v].block_flags = spu->ram[addr + 1];
 
     unsigned shift  = 12 - (hdr & 0x0f);
-    unsigned filter = (hdr & 0x30) >> 4;
+    unsigned filter = (hdr >> 4) & 7;
 
     int32_t f0 = g_spu_pos_adpcm_table[filter];
     int32_t f1 = g_spu_neg_adpcm_table[filter];
