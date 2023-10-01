@@ -5,6 +5,8 @@
 #include "spu.h"
 #include "../log.h"
 
+#define CLAMP(v, l, h) ((v <= l) ? l : ((v >= h) ? h : v))
+
 static const int g_spu_pos_adpcm_table[] = {
     0, +60, +115, +98, +122
 };
@@ -284,12 +286,13 @@ void psx_spu_destroy(psx_spu_t* spu) {
   6-7   Unused (should be 0)
 */
 
-int32_t psx_spu_get_sample(psx_spu_t* spu) {
+uint32_t psx_spu_get_sample(psx_spu_t* spu) {
     if (spu->endx == 0x00ffffff)
         return 0x0000;
 
     int voice_count = 0;
-    int output = 0x0000;
+    int left = 0x0000;
+    int right = 0x0000;
 
     for (int v = 0; v < 24; v++) {
         if (!spu->data[v].playing)
@@ -348,7 +351,8 @@ int32_t psx_spu_get_sample(psx_spu_t* spu) {
         out += (g2 * spu->data[v].s[1]) >> 15;
         out += (g3 * spu->data[v].s[0]) >> 15;
 
-        output += out * ((spu->data[v].lvol + spu->data[v].rvol) / 2);
+        left += out * spu->data[v].lvol;
+        right += out * spu->data[v].rvol;
 
         uint16_t step = spu->voice[v].adsampr;
 
@@ -360,7 +364,8 @@ int32_t psx_spu_get_sample(psx_spu_t* spu) {
     if (!voice_count)
         return 0x00000000;
 
-    output = (output < INT16_MIN) ? INT16_MIN : ((output > INT16_MAX) ? INT16_MAX : output);
+    uint16_t clampl = CLAMP(left, INT16_MIN, INT16_MAX);
+    uint16_t clampr = CLAMP(right, INT16_MIN, INT16_MAX);
 
-    return output;
+    return clampl | (((uint32_t)clampr) << 16);
 }

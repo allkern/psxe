@@ -14,10 +14,13 @@ void audio_update(void* ud, uint8_t* buf, int size) {
     psx_cdrom_get_cdda_samples(cdrom, buf, size);
 
     for (int i = 0; i < (size >> 2); i++) {
-        int32_t sample = psx_spu_get_sample(spu) / 2;
+        uint32_t sample = psx_spu_get_sample(spu);
 
-        *(uint16_t*)(&buf[(i << 2) + 0]) += sample;
-        *(uint16_t*)(&buf[(i << 2) + 2]) += sample;
+        int16_t left = (int16_t)(sample & 0xffff);
+        int16_t right = (int16_t)(sample >> 16);
+
+        *(int16_t*)(&buf[(i << 2) + 0]) += left;
+        *(int16_t*)(&buf[(i << 2) + 2]) += right;
     }
 }
 
@@ -106,7 +109,6 @@ int main(int argc, const char* argv[]) {
 
     psx_pad_detach_joy(psx->pad, 0);
     psx_destroy(psx);
-    //psxi_sda_destroy(controller);
     psxe_screen_destroy(screen);
 
     return 0;
