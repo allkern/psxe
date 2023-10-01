@@ -105,11 +105,16 @@ typedef struct __attribute__((__packed__)) {
     uint16_t tfifo_index;
 
     struct {
+        int playing;
         uint32_t counter;
         uint32_t current_addr;
         uint32_t repeat_addr;
         int16_t s[4];
         int block_flags;
+        int16_t buf[28];
+        int16_t h[2];
+        float lvol;
+        float rvol;
     } data[24];
 } psx_spu_t;
 
@@ -122,6 +127,6 @@ void psx_spu_write32(psx_spu_t*, uint32_t, uint32_t);
 void psx_spu_write16(psx_spu_t*, uint32_t, uint16_t);
 void psx_spu_write8(psx_spu_t*, uint32_t, uint8_t);
 void psx_spu_destroy(psx_spu_t*);
-int16_t psx_spu_get_sample(psx_spu_t*);
+int32_t psx_spu_get_sample(psx_spu_t*);
 
 #endif

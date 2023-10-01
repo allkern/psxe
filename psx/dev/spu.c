@@ -5,7 +5,15 @@
 #include "spu.h"
 #include "../log.h"
 
-static const int16_t g_psx_spu_gauss_table[] = {
+static const int g_spu_pos_adpcm_table[] = {
+    0, +60, +115, +98, +122
+};
+
+static const int g_spu_neg_adpcm_table[] = {
+    0,   0,  -52, -55,  -60
+};
+
+static const int16_t g_spu_gauss_table[] = {
     -0x001, -0x001, -0x001, -0x001, -0x001, -0x001, -0x001, -0x001,
     -0x001, -0x001, -0x001, -0x001, -0x001, -0x001, -0x001, -0x001,
     0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0001,
@@ -84,6 +92,8 @@ void psx_spu_init(psx_spu_t* spu) {
 
     spu->ram = (uint8_t*)malloc(SPU_RAM_SIZE);
 
+    memset(spu->ram, 0, SPU_RAM_SIZE);
+
     // Mute all voices
     spu->endx = 0x00ffffff;
 }
@@ -106,61 +116,115 @@ uint8_t psx_spu_read8(psx_spu_t* spu, uint32_t offset) {
     return 0x0;
 }
 
-void psx_spu_write32(psx_spu_t* spu, uint32_t offset, uint32_t value) {
-    const uint8_t* ptr = (uint8_t*)&spu->voice[0].volumel;
-
-    *((uint32_t*)(ptr + offset)) = value;
-}
-
-
 void spu_read_block(psx_spu_t* spu, int v) {
-    spu->data[v].block_flags = spu->ram[spu->data[v].current_addr + 1];
+    uint32_t addr = spu->data[v].current_addr;
+    uint8_t hdr = spu->ram[addr];
+
+    spu->data[v].block_flags = spu->ram[addr + 1];
+
+    unsigned shift  = 12 - (hdr & 0x0f);
+    unsigned filter = (hdr & 0x30) >> 4;
+
+    int32_t f0 = g_spu_pos_adpcm_table[filter];
+    int32_t f1 = g_spu_neg_adpcm_table[filter];
+
+    for (int j = 0; j < 28; j++) {
+        uint16_t n = (spu->ram[addr + 2 + (j >> 1)] >> ((j & 1) * 4)) & 0xf;
+
+        // Sign extend t
+        int16_t t = (int16_t)(n << 12) >> 12; 
+        int16_t s = (t << shift) + (((spu->data[v].h[0] * f0) + (spu->data[v].h[1] * f1) + 32) / 64);
+        
+        s = (s < INT16_MIN) ? INT16_MIN : ((s > INT16_MAX) ? INT16_MAX : s);
+
+        spu->data[v].h[1] = spu->data[v].h[0];
+        spu->data[v].h[0] = s;
+        spu->data[v].buf[j] = s;
+    }
 }
 
-void psx_spu_write16(psx_spu_t* spu, uint32_t offset, uint16_t value) {
-    // Handle special cases first
+int spu_handle_write(psx_spu_t* spu, uint32_t offset, uint32_t value) {
     switch (offset) {
         case SPUR_KON: {
-            log_set_quiet(0);
-            for (int i = 0; i < 24; i++) {
-                if (value & (1 << i)) {
-                    log_fatal("KON voice %2u s=%06x r=%06x p=%04x",
-                        i,
-                        spu->voice[i].adsaddr,
-                        spu->voice[i].adraddr,
-                        spu->voice[i].adsampr
-                    );
+            if (!value)
+                return 1;
 
-                    spu->data[i].current_addr = spu->voice[i].adsaddr;
+            // log_set_quiet(0);
+            log_fatal("KON %04x:", value);
+            for (int i = 0; i < 24; i++) {
+                if ((value & (1 << i))) {
+                    spu->data[i].playing = 1;
+                    spu->data[i].current_addr = spu->voice[i].adsaddr << 3;
+                    spu->data[i].repeat_addr = spu->data[i].current_addr;
+                    spu->data[i].lvol = (float)(spu->voice[i].volumel << 1) / (float)0x7fff;
+                    spu->data[i].rvol = (float)(spu->voice[i].volumer << 1) / (float)0x7fff;
+
+                    log_fatal("    voice %2u s=%06x r=%06x p=%04x vol=%f,%f",
+                        i,
+                        spu->voice[i].adsaddr << 3,
+                        spu->voice[i].adraddr << 3,
+                        spu->voice[i].adsampr,
+                        spu->data[i].lvol,
+                        spu->data[i].rvol
+                    );
 
                     spu_read_block(spu, i);
                 }
             }
                     
-            log_set_quiet(1);
+            // log_set_quiet(1);
             spu->endx &= ~(value & 0x00ffffff);
-        } return;
+        } return 1;
 
         case SPUR_KOFF: {
-            spu->endx |= value & 0x00ffffff;
-        } return;
+            // log_set_quiet(0);
+            log_fatal("KOFF %04x:", value);
+            for (int i = 0; i < 24; i++) {
+                if ((value & (1 << i))) {
+                    spu->data[i].playing = 0;
+
+                    log_fatal("    voice %2u",
+                        i,
+                        spu->voice[i].adsaddr << 3,
+                        spu->voice[i].adraddr << 3,
+                        spu->voice[i].adsampr,
+                        spu->data[i].lvol,
+                        spu->data[i].rvol
+                    );
+                }
+            }
+            // log_set_quiet(1);
+
+            //spu->endx |= value & 0x00ffffff;
+        } return 1;
 
         case SPUR_TADDR: {
             spu->ramdta = value;
             spu->taddr = value << 3;
 
-            // log_set_quiet(0);
+            // // log_set_quiet(0);
             // log_fatal("ramdta=%04x taddr=%08x", spu->ramdta, spu->taddr);
-            // log_set_quiet(1);
-        } return;
+            // // log_set_quiet(1);
+        } return 1;
 
         case SPUR_TFIFO: {
-            // log_set_quiet(0);
+            // // log_set_quiet(0);
             // log_fatal("TFIFO write %04x (index=%u)", value, spu->tfifo_index);
-            // log_set_quiet(1);
+            // // log_set_quiet(1);
             spu->ramdtf = value;
             spu->tfifo[spu->tfifo_index++] = value;
-        } return;
+
+            if (spu->tfifo_index == 32) {
+                if (((spu->spucnt >> 4) & 3) == 2) {
+                    for (int i = 0; i < spu->tfifo_index; i++) {
+                        spu->ram[spu->taddr++] = spu->tfifo[i] & 0xff;
+                        spu->ram[spu->taddr++] = spu->tfifo[i] >> 8;
+                    }
+
+                    spu->tfifo_index = 0;
+                }
+            }
+        } return 1;
 
         case SPUR_SPUCNT: {
             spu->spucnt = value;
@@ -173,14 +237,32 @@ void psx_spu_write16(psx_spu_t* spu, uint32_t offset, uint16_t value) {
                     spu->ram[spu->taddr++] = spu->tfifo[i] >> 8;
                 }
                     
-                // log_set_quiet(0);
+                // // log_set_quiet(0);
                 // log_fatal("Transfer start mode=%u size=%u", (value >> 4) & 3, spu->tfifo_index);
-                // log_set_quiet(1);
+                // // log_set_quiet(1);
 
                 spu->tfifo_index = 0;
             }
-        } break;
+        } return 1;
     }
+
+    return 0;
+}
+
+void psx_spu_write32(psx_spu_t* spu, uint32_t offset, uint32_t value) {
+    // Handle special cases first
+    if (spu_handle_write(spu, offset, value))
+        return;
+
+    const uint8_t* ptr = (uint8_t*)&spu->voice[0].volumel;
+
+    *((uint32_t*)(ptr + offset)) = value;
+}
+
+void psx_spu_write16(psx_spu_t* spu, uint32_t offset, uint16_t value) {
+    // Handle special cases first
+    if (spu_handle_write(spu, offset, value))
+        return;
 
     const uint8_t* ptr = (uint8_t*)&spu->voice[0].volumel;
 
@@ -202,7 +284,7 @@ void psx_spu_destroy(psx_spu_t* spu) {
   6-7   Unused (should be 0)
 */
 
-int16_t psx_spu_get_sample(psx_spu_t* spu) {
+int32_t psx_spu_get_sample(psx_spu_t* spu) {
     if (spu->endx == 0x00ffffff)
         return 0x0000;
 
@@ -210,7 +292,7 @@ int16_t psx_spu_get_sample(psx_spu_t* spu) {
     int output = 0x0000;
 
     for (int v = 0; v < 24; v++) {
-        if (spu->endx & (1 << v))
+        if (!spu->data[v].playing)
             continue;
         
         ++voice_count;
@@ -230,12 +312,13 @@ int16_t psx_spu_get_sample(psx_spu_t* spu) {
 
             switch (spu->data[v].block_flags & 3) {
                 case 0: case 2: {
-                    spu->data[v].current_addr += 2;
+                    spu->data[v].current_addr += 0x10;
                 } break;
 
                 case 1: {
                     spu->data[v].current_addr = spu->data[v].repeat_addr;
-                    spu->endx |= (1 << v);
+                    //spu->endx |= (1 << v);
+                    spu->data[v].playing = 0;
                 } break;
 
                 case 3: {
@@ -249,25 +332,15 @@ int16_t psx_spu_get_sample(psx_spu_t* spu) {
             spu_read_block(spu, v);
         }
 
-        uint8_t hdr = spu->ram[spu->data[v].current_addr];
-
         // Fetch ADPCM sample
-        uint16_t sample = spu->ram[spu->data[v].current_addr + 2 + (sample_index >> 1)];
-
-        // "Expand" sample (according to XA-ADPCM)
-        sample >>= (sample_index & 1) * 4;
-        sample &= 0xf;
-        sample <<= 12;
-        sample >>= hdr & 0xf;
-
-        spu->data[v].s[0] = sample;
+        spu->data[v].s[0] = spu->data[v].buf[sample_index];
 
         // Apply 4-point Gaussian interpolation
         uint8_t gauss_index = (spu->data[v].counter >> 4) & 0xff;
-        int16_t g0 = g_psx_spu_gauss_table[0x0ff - gauss_index];
-        int16_t g1 = g_psx_spu_gauss_table[0x1ff - gauss_index];
-        int16_t g2 = g_psx_spu_gauss_table[0x100 + gauss_index];
-        int16_t g3 = g_psx_spu_gauss_table[0x000 + gauss_index];
+        int16_t g0 = g_spu_gauss_table[0x0ff - gauss_index];
+        int16_t g1 = g_spu_gauss_table[0x1ff - gauss_index];
+        int16_t g2 = g_spu_gauss_table[0x100 + gauss_index];
+        int16_t g3 = g_spu_gauss_table[0x000 + gauss_index];
         int16_t out;
 
         out  = (g0 * spu->data[v].s[3]) >> 15;
@@ -275,14 +348,19 @@ int16_t psx_spu_get_sample(psx_spu_t* spu) {
         out += (g2 * spu->data[v].s[1]) >> 15;
         out += (g3 * spu->data[v].s[0]) >> 15;
 
-        output += out;
+        output += out * ((spu->data[v].lvol + spu->data[v].rvol) / 2);
 
-        uint16_t step = spu->voice[0].adsampr;
+        uint16_t step = spu->voice[v].adsampr;
 
         /* To-do: Do pitch modulation here */
 
         spu->data[v].counter += step;
     }
 
-    return output / voice_count;
+    if (!voice_count)
+        return 0x00000000;
+
+    output = (output < INT16_MIN) ? INT16_MIN : ((output > INT16_MAX) ? INT16_MAX : output);
+
+    return output;
 }

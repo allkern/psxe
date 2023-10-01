@@ -330,12 +330,12 @@ void psx_dma_do_spu(psx_dma_t* dma) {
         return;
 
     log_set_quiet(0);
-    log_fatal("SPU DMA transfer: madr=%08x, dir=%s, sync=%s (%u), step=%s, size=%x",
+    log_fatal("SPU DMA transfer: madr=%08x, dir=%s, sync=%s (%u), step=%s, size=%x, blocks=%u",
         dma->spu.madr,
         CHCR_TDIR(spu) ? "to device" : "to RAM",
         g_psx_dma_sync_type_name_table[CHCR_SYNC(spu)], CHCR_SYNC(spu),
         CHCR_STEP(spu) ? "decrementing" : "incrementing",
-        BCR_SIZE(spu)
+        BCR_SIZE(spu), BCR_BCNT(spu)
     );
 
     log_fatal("DICR: force=%u, en=%02x, irqen=%u, flags=%02x",
@@ -346,7 +346,8 @@ void psx_dma_do_spu(psx_dma_t* dma) {
     );
     log_set_quiet(1);
 
-    uint32_t size = BCR_SIZE(spu) * BCR_BCNT(spu);
+    uint32_t size = BCR_SIZE(spu);
+    uint32_t blocks = BCR_BCNT(spu);
 
     if (!size) {
         log_fatal("0 sized SPU DMA");
@@ -357,13 +358,15 @@ void psx_dma_do_spu(psx_dma_t* dma) {
     dma->spu_irq_delay = 1;
 
     if (CHCR_TDIR(spu)) {
-        for (int i = 0; i < size; i++) {
-            uint32_t data = psx_bus_read32(dma->bus, dma->spu.madr);
+        for (int j = 0; j < blocks; j++) {
+            for (int i = 0; i < size; i++) {
+                uint32_t data = psx_bus_read32(dma->bus, dma->spu.madr);
 
-            psx_bus_write16(dma->bus, 0x1f801da8, data >> 16);
-            psx_bus_write16(dma->bus, 0x1f801da8, data & 0xffff);
+                psx_bus_write16(dma->bus, 0x1f801da8, data & 0xffff);
+                psx_bus_write16(dma->bus, 0x1f801da8, data >> 16);
 
-            dma->spu.madr += CHCR_STEP(spu) ? -4 : 4;
+                dma->spu.madr += CHCR_STEP(spu) ? -4 : 4;
+            }
         }
     }
     

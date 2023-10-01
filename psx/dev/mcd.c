@@ -43,10 +43,6 @@ uint8_t psx_mcd_read(psx_mcd_t* mcd) {
                 case 'S': mcd->state = MCD_S_STATE_TX_ACK1; break;
             }
 
-            /**/ log_set_quiet(0);
-            /**/ log_fatal("mcd read %02x", mcd->tx_data);
-            /**/ log_set_quiet(1);
-
             return mcd->tx_data;
         } break;
 
@@ -71,20 +67,12 @@ uint8_t psx_mcd_read(psx_mcd_t* mcd) {
                 break;
             }
 
-            /**/ log_set_quiet(0);
-            /**/ log_fatal("mcd read %02x", data);
-            /**/ log_set_quiet(1);
-
             return data;
         } break;
         case MCD_R_STATE_TX_CHK: mcd->tx_data = mcd->checksum; break;
         case MCD_R_STATE_TX_MEB: {
             mcd->tx_data_ready = 0;
             mcd->state = MCD_STATE_TX_HIZ;
-
-            /**/ log_set_quiet(0);
-            /**/ log_fatal("mcd read %02x", 'G');
-            /**/ log_set_quiet(1);
 
             return 'G';
         } break;
@@ -93,18 +81,10 @@ uint8_t psx_mcd_read(psx_mcd_t* mcd) {
     mcd->tx_data_ready = 1;
     mcd->state++;
 
-    /**/ log_set_quiet(0);
-    /**/ log_fatal("mcd read %02x", mcd->tx_data);
-    /**/ log_set_quiet(1);
-
     return mcd->tx_data;
 }
 
 void psx_mcd_write(psx_mcd_t* mcd, uint8_t data) {
-    /**/ log_set_quiet(0);
-    /**/ log_fatal("mcd write %02x", data);
-    /**/ log_set_quiet(1);
-
     switch (mcd->state) {
         case MCD_STATE_TX_FLG: mcd->mode = data; break;
         case MCD_R_STATE_RX_MSB: mcd->msb = data; break;

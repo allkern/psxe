@@ -14,10 +14,10 @@ void audio_update(void* ud, uint8_t* buf, int size) {
     psx_cdrom_get_cdda_samples(cdrom, buf, size);
 
     for (int i = 0; i < (size >> 2); i++) {
-        int16_t sample = psx_spu_get_sample(spu);
+        int32_t sample = psx_spu_get_sample(spu) / 2;
 
-        *(uint16_t*)(&buf[(i << 2) + 0]) = sample;
-        *(uint16_t*)(&buf[(i << 2) + 2]) = sample;
+        *(uint16_t*)(&buf[(i << 2) + 0]) += sample;
+        *(uint16_t*)(&buf[(i << 2) + 2]) += sample;
     }
 }
 
