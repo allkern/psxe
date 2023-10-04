@@ -268,7 +268,7 @@ void psx_timer_update(psx_timer_t* timer, int cyc) {
 void psxe_gpu_hblank_event_cb(psx_gpu_t* gpu) {
     psx_timer_t* timer = gpu->udata[1];
 
-    if (T1_MODE & 0x100)
+    if (T1_MODE & 0x100 && !T1_PAUSED)
         T1_COUNTER++;
 
     if (T0_MODE & MODE_SYNCEN) {

@@ -187,15 +187,6 @@ void spu_advance_adsr(psx_spu_t* spu, int v) {
             SHIFT       = (spu->voice[v].envctl1 >> 10) & 0x1f;
             STEP        = 7 - ((spu->voice[v].envctl1 >> 8) & 3);
             LEVEL       = 0;
-
-            log_fatal("        voice %u KON->Attack e=%u d=%u sh=%u st=%u, l=%04x",
-                v,
-                EXPONENTIAL,
-                DECREASE,
-                SHIFT,
-                STEP,
-                LEVEL
-            );
         } break;
 
         // Attack->Decay
@@ -205,15 +196,6 @@ void spu_advance_adsr(psx_spu_t* spu, int v) {
             SHIFT       = (spu->voice[v].envctl1 >> 4) & 0xf;
             STEP        = -8;
             LEVEL       = 0x7fff;
-
-            log_fatal("        voice %u Attack->Decay e=%u d=%u sh=%u st=%u, l=%04x",
-                v,
-                EXPONENTIAL,
-                DECREASE,
-                SHIFT,
-                STEP,
-                LEVEL
-            );
         } break;
 
         // Decay->Sustain
@@ -225,15 +207,6 @@ void spu_advance_adsr(psx_spu_t* spu, int v) {
             LEVEL       = spu->data[v].adsr_sustain_level;
 
             STEP = DECREASE ? (-8 + STEP) : (7 - STEP);
-
-            log_fatal("        voice %u Decay->Sustain e=%u d=%u sh=%u st=%u, l=%04x",
-                v,
-                EXPONENTIAL,
-                DECREASE,
-                SHIFT,
-                STEP,
-                LEVEL
-            );
         } break;
 
         // Sustain->Release
@@ -243,15 +216,6 @@ void spu_advance_adsr(psx_spu_t* spu, int v) {
             SHIFT       = spu->voice[v].envctl2 & 0x1f;
             STEP        = -8;
             //LEVEL       = spu->data[v].adsr_sustain_level;
-
-            log_fatal("        voice %u Sustain->Release e=%u d=%u sh=%u st=%u, l=%04x",
-                v,
-                EXPONENTIAL,
-                DECREASE,
-                SHIFT,
-                STEP,
-                LEVEL
-            );
         } break;
     }
 
@@ -262,10 +226,18 @@ void spu_advance_adsr(psx_spu_t* spu, int v) {
         CYCLES *= 4;
     
     if (EXPONENTIAL && DECREASE)
-        STEP *= LEVEL / 0x8000;
+        LEVEL_STEP *= LEVEL / 0x8000;
+    
+    spu->data[v].adsr_cycles_reload = CYCLES;
+    
+    log_fatal("voice %u ADSR advance %u c=%u, s=%04x, step=%04x, level=%04x",
+        v, spu->data[v].adsr_phase, CYCLES, LEVEL_STEP, STEP, LEVEL
+    );
 }
 
 void spu_handle_adsr(psx_spu_t* spu, int v) {
+    CYCLES = spu->data[v].adsr_cycles_reload;
+
     LEVEL += LEVEL_STEP;
 
     switch (spu->data[v].adsr_phase) {
@@ -353,6 +325,7 @@ int spu_handle_write(psx_spu_t* spu, uint32_t offset, uint32_t value) {
             for (int i = 0; i < 24; i++) {
                 if ((value & (1 << i))) {
                     spu->data[i].adsr_phase = 3;
+                    spu->data[i].playing = 0;
 
                     spu_advance_adsr(spu, i);
 
@@ -466,10 +439,12 @@ uint32_t psx_spu_get_sample(psx_spu_t* spu) {
     int right = 0x0000;
 
     for (int v = 0; v < 24; v++) {
-        --spu->data[v].adsr_cycles;
+        // if (spu->data[v].adsr_cycles) {
+        //     --spu->data[v].adsr_cycles;
 
-        if (!spu->data[v].adsr_cycles)
-            spu_handle_adsr(spu, v);
+        //     if (!spu->data[v].adsr_cycles)
+        //         spu_handle_adsr(spu, v);
+        // }
 
         if (!spu->data[v].playing)
             continue;
@@ -527,8 +502,13 @@ uint32_t psx_spu_get_sample(psx_spu_t* spu) {
         out += (g2 * spu->data[v].s[1]) >> 15;
         out += (g3 * spu->data[v].s[0]) >> 15;
 
+        //float adsr_vol = (float)spu->voice[v].envcvol / 32767.0f;
+
         left += out * spu->data[v].lvol;
         right += out * spu->data[v].rvol;
+
+        // left *= adsr_vol;
+        // right *= adsr_vol;
 
         uint16_t step = spu->voice[v].adsampr;
 

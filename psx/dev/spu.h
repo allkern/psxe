@@ -140,6 +140,7 @@ typedef struct __attribute__((__packed__)) {
         */
 
         int adsr_phase;
+        int adsr_cycles_reload;
         int adsr_cycles;
         int adsr_mode;
         int adsr_dir;

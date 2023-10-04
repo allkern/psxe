@@ -44,6 +44,7 @@ typedef struct {
     uint16_t msb;
     uint16_t lsb;
     uint16_t addr;
+    uint8_t rx_data;
     int pending_bytes;
     char mode;
     int state;
@@ -57,6 +58,7 @@ void psx_mcd_init(psx_mcd_t*, const char*);
 uint8_t psx_mcd_read(psx_mcd_t*);
 void psx_mcd_write(psx_mcd_t*, uint8_t);
 int psx_mcd_query(psx_mcd_t*);
+void psx_mcd_reset(psx_mcd_t*);
 void psx_mcd_destroy(psx_mcd_t*);
 
 #endif

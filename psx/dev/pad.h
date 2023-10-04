@@ -82,12 +82,13 @@
 #define CTRL_UNK3 0x0008
 #define CTRL_ACKN 0x0010
 #define CTRL_UNK5 0x0020
-#define CTRL_NUS7 0x0040
-#define CTRL_RXIM 0x0180
-#define CTRL_TXIE 0x0200
-#define CTRL_RXIE 0x0400
-#define CTRL_ACIE 0x0800
-#define CTRL_SLOT 0x1000
+#define CTRL_REST 0x0040
+#define CTRL_NUS7 0x0080
+#define CTRL_RXIM 0x0300
+#define CTRL_TXIE 0x0400
+#define CTRL_RXIE 0x0800
+#define CTRL_ACIE 0x1000
+#define CTRL_SLOT 0x2000
 
 enum {
     DEST_JOY = 0x01,

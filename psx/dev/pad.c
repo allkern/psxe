@@ -44,8 +44,9 @@ void pad_write_tx(psx_pad_t* pad, uint16_t data) {
 
     if ((!(joy || mcd)) || !(pad->ctrl & CTRL_TXEN))
         return;
-    
-    pad->cycles_until_irq = 512;
+
+    if (pad->ctrl & CTRL_ACIE)
+        pad->cycles_until_irq = 1500;
 
     if (!pad->dest) {
         if ((data == DEST_JOY) || (data == DEST_MCD))
@@ -84,6 +85,13 @@ uint32_t pad_handle_stat_read(psx_pad_t* pad) {
 
 void pad_handle_ctrl_write(psx_pad_t* pad, uint32_t value) {
     pad->ctrl = value;
+
+    if (!(pad->ctrl & CTRL_JOUT)) {
+        pad->dest = 0;
+        pad->ctrl &= ~CTRL_SLOT;
+
+        psx_mcd_reset(pad->mcd_slot[(pad->ctrl >> 13) & 1]);
+    }
 }
 
 psx_pad_t* psx_pad_create() {

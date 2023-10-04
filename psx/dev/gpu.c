@@ -104,7 +104,7 @@ uint32_t psx_gpu_read32(psx_gpu_t* gpu, uint32_t offset) {
 
             return data;
         } break;
-        case 0x04: return gpu->gpustat | 0x1c000000;
+        case 0x04: return gpu->gpustat | 0x1e000000;
     }
 
     log_warn("Unhandled 32-bit GPU read at offset %08x", offset);
@@ -1537,7 +1537,7 @@ void psx_gpu_update_cmd(psx_gpu_t* gpu) {
         // case 0x38: gpu_cmd_38(gpu); break;
         // case 0x3c: gpu_cmd_3c(gpu); break;
         // case 0x3e: gpu_cmd_3c(gpu); break;
-        // case 0x40: gpu_cmd_40(gpu); break;
+        case 0x40: gpu_cmd_40(gpu); break;
         // case 0x60: gpu_cmd_60(gpu); break;
         // case 0x62: gpu_cmd_60(gpu); break;
         // case 0x64: gpu_cmd_64(gpu); break;
@@ -1628,6 +1628,33 @@ void psx_gpu_write32(psx_gpu_t* gpu, uint32_t offset, uint32_t value) {
             uint8_t cmd = value >> 24;
 
             switch (cmd) {
+                case 0x00: {
+                    gpu->gpustat = 0x14802000;
+
+                    /*
+                        GP1(01h)      ;clear fifo
+                        GP1(02h)      ;ack irq (0)
+                        GP1(03h)      ;display off (1)
+                        GP1(04h)      ;dma off (0)
+                        GP1(05h)      ;display address (0)
+                        GP1(06h)      ;display x1,x2 (x1=200h, x2=200h+256*10)
+                        GP1(07h)      ;display y1,y2 (y1=010h, y2=010h+240)
+                        GP1(08h)      ;display mode 320x200 NTSC (0)
+                        GP0(E1h..E6h) ;rendering attributes (0)
+                    */
+
+                    gpu->disp_x1 = 0x200;
+                    gpu->disp_x2 = 0xc00;
+                    gpu->disp_y1 = 0x010;
+                    gpu->disp_y2 = 0x100;
+                    gpu->display_mode = 0;
+
+                    gpu->disp_x = 0;
+                    gpu->disp_y = 0;
+
+                    if (gpu->event_cb_table[GPU_EVENT_DMODE])
+                        gpu->event_cb_table[GPU_EVENT_DMODE](gpu);
+                } break;
                 case 0x04: {
                 } break;
                 case 0x05: {
