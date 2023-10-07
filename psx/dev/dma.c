@@ -167,13 +167,17 @@ void psx_dma_do_mdec_in(psx_dma_t* dma) {
     if (!CHCR_BUSY(mdec_in))
         return;
 
-    for (int i = 0; i < BCR_SIZE(mdec_in); i++) {
-        uint32_t data = psx_bus_read32(dma->bus, dma->gpu.madr);
+    size_t size = BCR_SIZE(mdec_in) * BCR_BCNT(mdec_in);
+
+    for (int i = 0; i < size; i++) {
+        uint32_t data = psx_bus_read32(dma->bus, dma->mdec_in.madr);
 
         psx_bus_write32(dma->bus, 0x1f801820, data);
 
-        dma->gpu.madr += CHCR_STEP(mdec_in) ? -4 : 4;
+        dma->mdec_in.madr += CHCR_STEP(mdec_in) ? -4 : 4;
     }
+
+    dma->mdec_in_irq_delay = 1;
 
     dma->mdec_in.chcr &= ~(CHCR_BUSY_MASK | CHCR_TRIG_MASK);
     dma->mdec_in.bcr = 0;
@@ -183,7 +187,20 @@ void psx_dma_do_mdec_out(psx_dma_t* dma) {
     if (!CHCR_BUSY(mdec_out))
         return;
 
-    log_fatal("MDEC_OUT DMA channel unimplemented");
+    size_t size = BCR_SIZE(mdec_out) * BCR_BCNT(mdec_out);
+
+    for (int i = 0; i < size; i++) {
+        uint32_t data = psx_bus_read32(dma->bus, 0x1f801820);
+
+        psx_bus_write32(dma->bus, dma->mdec_out.madr, data);
+
+        dma->mdec_out.madr += CHCR_STEP(mdec_out) ? -4 : 4;
+    }
+
+    dma->mdec_out_irq_delay = 1;
+
+    dma->mdec_out.chcr &= ~(CHCR_BUSY_MASK | CHCR_TRIG_MASK);
+    dma->mdec_out.bcr = 0;
 }
 
 void psx_dma_do_gpu_linked(psx_dma_t* dma) {
@@ -438,6 +455,20 @@ void psx_dma_update(psx_dma_t* dma, int cyc) {
             dma->dicr |= DICR_DMA6FL;
 
         dma->otc_irq_delay = 0;
+    }
+
+    if (dma->mdec_in_irq_delay) {
+        if (dma->dicr & DICR_DMA0EN)
+            dma->dicr |= DICR_DMA0FL;
+        
+        dma->mdec_in_irq_delay = 0;
+    }
+
+    if (dma->mdec_out_irq_delay) {
+        if (dma->dicr & DICR_DMA1EN)
+            dma->dicr |= DICR_DMA1FL;
+        
+        dma->mdec_out_irq_delay = 0;
     }
 
     int prev_irq_signal = (dma->dicr & DICR_IRQSI) != 0;

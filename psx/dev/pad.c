@@ -9,7 +9,7 @@ uint32_t pad_read_rx(psx_pad_t* pad) {
     psx_input_t* joy = pad->joy_slot[(pad->ctrl >> 13) & 1];
     psx_mcd_t* mcd = pad->mcd_slot[(pad->ctrl >> 13) & 1];
 
-    if ((!(joy || mcd)) || !pad->dest)
+    if (!pad->dest)
         return 0xffffffff;
 
     if (!(pad->ctrl & CTRL_JOUT) && !(pad->ctrl & CTRL_RXEN))
@@ -17,6 +17,12 @@ uint32_t pad_read_rx(psx_pad_t* pad) {
 
     switch (pad->dest) {
         case DEST_JOY: {
+            if (!joy) {
+                pad->dest = 0;
+
+                return 0xffffffff;
+            }
+
             uint8_t data = joy->read_func(joy->udata);
 
             if (!joy->query_fifo_func(joy->udata))
@@ -26,6 +32,12 @@ uint32_t pad_read_rx(psx_pad_t* pad) {
         } break;
 
         case DEST_MCD: {
+            if (!mcd) {
+                pad->dest = 0;
+
+                return 0xffffffff;
+            }
+
             uint8_t data = psx_mcd_read(mcd);
 
             if (!psx_mcd_query(mcd))
@@ -42,18 +54,25 @@ void pad_write_tx(psx_pad_t* pad, uint16_t data) {
     psx_input_t* joy = pad->joy_slot[(pad->ctrl >> 13) & 1];
     psx_mcd_t* mcd = pad->mcd_slot[(pad->ctrl >> 13) & 1];
 
-    if ((!(joy || mcd)) || !(pad->ctrl & CTRL_TXEN))
+    if (!(pad->ctrl & CTRL_TXEN))
         return;
 
-    if (pad->ctrl & CTRL_ACIE)
-        pad->cycles_until_irq = 1500;
-
     if (!pad->dest) {
-        if ((data == DEST_JOY) || (data == DEST_MCD))
+        if ((data == DEST_JOY) || (data == DEST_MCD)) {
             pad->dest = data;
+        
+            if (pad->ctrl & CTRL_ACIE)
+                pad->cycles_until_irq = 1500;
+        }
     } else {
         switch (pad->dest) {
             case DEST_JOY: {
+                if (!joy) {
+                    pad->dest = 0;
+
+                    return;
+                }
+
                 joy->write_func(joy->udata, data);
 
                 if (!joy->query_fifo_func(joy->udata))
@@ -61,12 +80,21 @@ void pad_write_tx(psx_pad_t* pad, uint16_t data) {
             } break;
 
             case DEST_MCD: {
+                if (!mcd) {
+                    pad->dest = 0;
+
+                    return;
+                }
+
                 psx_mcd_write(mcd, data);
 
                 if (!psx_mcd_query(mcd))
                     pad->dest = 0;
             } break;
         }
+
+        if (pad->ctrl & CTRL_ACIE)
+            pad->cycles_until_irq = 1500;
     }
 }
 

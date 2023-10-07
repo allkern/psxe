@@ -80,6 +80,7 @@ int main(int argc, const char* argv[]) {
 
     psx_pad_attach_joy(psx->pad, 0, input);
     psx_pad_attach_mcd(psx->pad, 0, "slot1.mcd");
+    psx_pad_attach_mcd(psx->pad, 1, "slot2.mcd");
 
     if (cfg->exe) {
         while (psx->cpu->pc != 0x80030000) {

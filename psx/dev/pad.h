@@ -7,6 +7,8 @@
 #include "input.h"
 #include "mcd.h"
 
+#include "../input/sda.h"
+
 #define PSX_PAD_BEGIN 0x1f801040
 #define PSX_PAD_SIZE  0x10
 #define PSX_PAD_END   0x1f80104f
@@ -93,6 +95,16 @@
 enum {
     DEST_JOY = 0x01,
     DEST_MCD = 0x81
+};
+
+enum {
+    PAD_CONTROLLER_SDA,
+    PAD_CONTROLLER_MOUSE,
+    PAD_CONTROLLER_NAMCO_VOLUME,
+    PAD_CONTROLLER_SANKYO_NASUKA,
+    PAD_WHEEL_NEGCON,
+    PAD_WHEEL_MADCATZ,
+    PAD_WHEEL_MADCATZ_MC2
 };
 
 /*

@@ -30,6 +30,8 @@ typedef struct {
     dma_channel_t pio;
     dma_channel_t otc;
 
+    int mdec_in_irq_delay;
+    int mdec_out_irq_delay;
     int cdrom_irq_delay;
     int spu_irq_delay;
     int gpu_irq_delay;

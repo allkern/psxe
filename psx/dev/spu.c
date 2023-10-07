@@ -525,3 +525,6 @@ uint32_t psx_spu_get_sample(psx_spu_t* spu) {
 
     return clampl | (((uint32_t)clampr) << 16);
 }
+
+#undef CLAMP
+#undef MAX

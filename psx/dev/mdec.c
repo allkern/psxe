@@ -5,22 +5,213 @@
 #include <string.h>
 #include <stdlib.h>
 
+int zigzag[] = {
+    0 , 1 , 5 , 6 , 14, 15, 27, 28,
+    2 , 4 , 7 , 13, 16, 26, 29, 42,
+    3 , 8 , 12, 17, 25, 30, 41, 43,
+    9 , 11, 18, 24, 31, 40, 44, 53,
+    10, 19, 23, 32, 39, 45, 52, 54,
+    20, 22, 33, 38, 46, 51, 55, 60,
+    21, 34, 37, 47, 50, 56, 59, 61,
+    35, 36, 48, 49, 57, 58, 62, 63
+};
+
+int zagzig[] = {
+     0,  1,  8, 16,  9,  2,  3, 10,
+    17, 24, 32, 25, 18, 11,  4,  5,
+    12, 19, 26, 33, 40, 48, 41, 34,
+    27, 20, 13,  6,  7, 14, 21, 28,
+    35, 42, 49, 56, 57, 50, 43, 36, 
+    29, 22, 15, 23, 30, 37, 44, 51,
+    58, 59, 52, 45, 38, 31, 39, 46,
+    53, 60, 61, 54, 47, 55, 62, 63
+};
+
+float scalezag[] = {
+    0.125000, 0.173380, 0.173380, 0.163320, 0.240485, 0.163320, 0.146984, 0.226532,
+    0.226532, 0.146984, 0.125000, 0.203873, 0.213388, 0.203873, 0.125000, 0.098212,
+    0.173380, 0.192044, 0.192044, 0.173380, 0.098212, 0.067650, 0.136224, 0.163320,
+    0.172835, 0.163320, 0.136224, 0.067650, 0.034487, 0.093833, 0.128320, 0.146984,
+    0.146984, 0.128320, 0.093833, 0.034487, 0.047835, 0.088388, 0.115485, 0.125000,
+    0.115485, 0.088388, 0.047835, 0.045060, 0.079547, 0.098212, 0.098212, 0.079547,
+    0.045060, 0.040553, 0.067650, 0.077165, 0.067650, 0.040553, 0.034487, 0.053152, 
+    0.053152, 0.034487, 0.027097, 0.036612, 0.027097, 0.018664, 0.018664, 0.009515
+};
+
+#define EXTS10(v) (((int16_t)((v) << 6)) >> 6)
+#define CLAMP(v, l, h) ((v <= l) ? l : ((v >= h) ? h : v))
+#define MAX(a, b) (a > b ? a : b)
+
+void real_idct(int16_t* blk, int16_t* scale) {
+    int16_t buf[64];
+
+    int16_t* src = blk;
+    int16_t* dst = buf;
+
+    for (int pass = 0; pass < 2; pass++) {
+        for (int x = 0; x < 8; x++) {
+            for (int y = 0; y < 8; y++) {
+                int sum = 0;
+
+                for (int z = 0; z < 8; z++)
+                    sum += src[y+z*8] * (scale[x+z*8] / 8);
+                
+                dst[x+y*8] = (sum + 0xfff) / 0x2000;
+            }
+        }
+
+        int16_t* temp = src;
+
+        src = dst;
+        dst = temp;
+    }
+}
+
+#define IDCT_FUNC(blk, scale) real_idct(blk, scale)
+
+uint16_t* rl_decode_block(int16_t* blk, uint16_t* src, uint8_t* quant, int16_t* scale) {
+    int k = 0;
+
+    for (int i = 0; i < 64; i++)
+        blk[i] = 0;
+    
+    uint16_t n = *src;
+
+    src += 2;
+
+    while (n == 0xfe00) {
+        n = *src;
+
+        src += 2;
+    }
+
+    int q_scale = (n >> 10) & 0x3f;
+
+    int16_t val = EXTS10(n & 0x3ff) * quant[k];
+
+    while (k < 64) {
+        if (!q_scale)
+            val = EXTS10(n & 0x3ff) * 2;
+
+        val = CLAMP(val, -0x400, 0x3ff);
+        // val *= scalezag[k]; // For fast IDCT
+
+        if (q_scale > 0)
+            blk[zagzig[k]] = val;
+        
+        if (!q_scale)
+            blk[k] = val;
+
+        n = *src;
+
+        src += 2;
+
+        k += ((n >> 10) & 0x3f) + 1;
+
+        val = (EXTS10(n & 0x3ff) * quant[k] * q_scale + 4) / 8;
+    }
+
+    IDCT_FUNC(blk, scale);
+
+    return src;
+}
+
+void yuv_to_rgb(psx_mdec_t* mdec, int xx, int yy) {
+    for (int y = 0; y < 8; y++) {
+        for (int x = 0; x < 8; x++) {
+            int16_t r = mdec->crblk[((x + xx) >> 1) + ((y + yy) >> 1) * 8];
+            int16_t b = mdec->cbblk[((x + xx) >> 1) + ((y + yy) >> 1) * 8];
+            int16_t g = (-0.3437 * (float)b) + (-0.7143 * (float)r);
+
+            r = (1.402 * (float)r);
+            b = (1.772 * (float)b);
+
+            int16_t l = mdec->yblk[x + y * 8];
+
+            r = CLAMP(l + r, -128, 127);
+            g = CLAMP(l + g, -128, 127);
+            b = CLAMP(l + b, -128, 127);
+
+            if (!mdec->output_signed) {
+                r ^= 0x80;
+                g ^= 0x80;
+                b ^= 0x80;
+            }
+
+            if (mdec->output_depth == 3) {
+                uint16_t r5 = ((uint8_t)r) >> 3;
+                uint16_t g5 = ((uint8_t)g) >> 3;
+                uint16_t b5 = ((uint8_t)b) >> 3;
+
+                uint16_t rgb = (b << 10) | (g << 5) | r;
+
+                if (mdec->output_bit15)
+                    rgb |= 0x8000;
+                
+                mdec->output[0 + ((x + xx) + (y + yy) * 16) * 2] = rgb & 0xff;
+                mdec->output[1 + ((x + xx) + (y + yy) * 16) * 2] = rgb >> 8;
+            } else {
+                mdec->output[0 + ((x + xx) + (y + yy) * 16) * 3] = r & 0xff;
+                mdec->output[1 + ((x + xx) + (y + yy) * 16) * 3] = g & 0xff;
+                mdec->output[2 + ((x + xx) + (y + yy) * 16) * 3] = b & 0xff;
+            }
+        }
+    }
+}
+
 void mdec_nop(psx_mdec_t* mdec) { /* Do nothing */ }
 
 void mdec_decode_macroblock(psx_mdec_t* mdec) {
-    // To-do
+    if (mdec->output_depth < 2) {
+        rl_decode_block(mdec->yblk, mdec->input, mdec->y_quant_table, mdec->scale_table);
+
+        for (int i = 0; i < 64; i++) {
+            int16_t y = mdec->yblk[i] & 0xff;
+
+            if (mdec->output_depth == 1) {
+                mdec->output[i] = y;
+            } else {
+                // To-do
+                mdec->output[i] = 0;
+            }
+        }
+
+        mdec->output_words_remaining = ((mdec->output_depth == 1) ? 64 : 32) >> 2;
+        mdec->output_empty = 0;
+        mdec->output_index = 0;
+    } else {
+        uint16_t* ptr = mdec->input;
+
+        ptr = rl_decode_block(mdec->crblk, ptr, mdec->uv_quant_table, mdec->scale_table);
+        ptr = rl_decode_block(mdec->cbblk, ptr, mdec->uv_quant_table, mdec->scale_table);
+        ptr = rl_decode_block(mdec->yblk, ptr, mdec->y_quant_table, mdec->scale_table);
+        yuv_to_rgb(mdec, 0, 0);
+        ptr = rl_decode_block(mdec->yblk, ptr, mdec->y_quant_table, mdec->scale_table);
+        yuv_to_rgb(mdec, 0, 8);
+        ptr = rl_decode_block(mdec->yblk, ptr, mdec->y_quant_table, mdec->scale_table);
+        yuv_to_rgb(mdec, 8, 0);
+        ptr = rl_decode_block(mdec->yblk, ptr, mdec->y_quant_table, mdec->scale_table);
+        yuv_to_rgb(mdec, 8, 8);
+
+        mdec->output_words_remaining = ((mdec->output_depth == 3) ? 512 : 768) >> 2;
+        mdec->output_empty = 0;
+        mdec->output_index = 0;
+
+        log_set_quiet(0);
+        log_fatal("Finished decoding %u-bit MDEC data", (mdec->output_depth == 3) ? 15 : 24);
+        log_set_quiet(1);
+    }
 }
 
 void mdec_set_iqtab(psx_mdec_t* mdec) {
-    mdec->state = mdec->cmd & 1 ? MDEC_RECV_QUANT_COLOR : MDEC_RECV_QUANT;
-    mdec->data_remaining = mdec->cmd & 1 ? 32 : 16;
-    mdec->index = 0;
+    memcpy(mdec->y_quant_table, mdec->input, 64);
+
+    if (mdec->recv_color)
+        memcpy(mdec->uv_quant_table, &mdec->input[16], 64);
 }
 
 void mdec_set_scale(psx_mdec_t* mdec) {
-    mdec->state = MDEC_RECV_SCALE;
-    mdec->data_remaining = 32;
-    mdec->index = 0;
+    memcpy(mdec->scale_table, mdec->input, 128);
 }
 
 mdec_fn_t g_mdec_cmd_table[] = {
@@ -32,39 +223,6 @@ mdec_fn_t g_mdec_cmd_table[] = {
     mdec_nop,
     mdec_nop,
     mdec_nop
-};
-
-void mdec_recv_cmd(psx_mdec_t* mdec) {
-    log_fatal("MDEC command %u (%08x)", mdec->cmd >> 29, mdec->cmd);
-
-    g_mdec_cmd_table[mdec->cmd >> 29](mdec);
-}
-void mdec_recv_block(psx_mdec_t* mdec) {}
-void mdec_recv_quant(psx_mdec_t* mdec) {
-    mdec->data_remaining--;
-
-    if (!mdec->data_remaining)
-        mdec->state = MDEC_RECV_CMD;
-}
-void mdec_recv_quant_color(psx_mdec_t* mdec) {
-    mdec->data_remaining--;
-
-    if (!mdec->data_remaining)
-        mdec->state = MDEC_RECV_CMD;
-}
-void mdec_recv_scale(psx_mdec_t* mdec) {
-    mdec->data_remaining--;
-
-    if (!mdec->data_remaining)
-        mdec->state = MDEC_RECV_CMD;
-}
-
-mdec_fn_t g_mdec_recv_table[] = {
-    mdec_recv_cmd,
-    mdec_recv_block,
-    mdec_recv_quant,
-    mdec_recv_quant_color,
-    mdec_recv_scale
 };
 
 psx_mdec_t* psx_mdec_create() {
@@ -83,9 +241,35 @@ void psx_mdec_init(psx_mdec_t* mdec) {
 uint32_t psx_mdec_read32(psx_mdec_t* mdec, uint32_t offset) {
     switch (offset) {
         case 0: {
+            if (mdec->output_words_remaining) {
+                --mdec->output_words_remaining;
 
+                log_set_quiet(0);
+                log_fatal("output read %08x", 0);
+                log_set_quiet(1);
+
+                return ((uint32_t*)mdec->output)[mdec->output_index++];
+            } else {
+                mdec->output_empty = 1;
+                mdec->output_index = 0;
+            }
         } break;
-        case 4: return mdec->status;
+        case 4: {
+            uint32_t status = 0;
+
+            status |= mdec->words_remaining;
+            status |= mdec->current_block    << 16;
+            status |= mdec->output_bit15     << 23;
+            status |= mdec->output_signed    << 24;
+            status |= mdec->output_depth     << 25;
+            status |= mdec->output_request   << 27;
+            status |= mdec->input_request    << 28;
+            status |= mdec->busy             << 29;
+            status |= mdec->input_full       << 30;
+            status |= mdec->output_empty     << 31;
+
+            return 0x00000000;
+        } break;
     }
 
     return 0x0;
@@ -106,17 +290,97 @@ uint8_t psx_mdec_read8(psx_mdec_t* mdec, uint32_t offset) {
 void psx_mdec_write32(psx_mdec_t* mdec, uint32_t offset, uint32_t value) {
     switch (offset) {
         case 0: {
-            mdec->cmd = value;
+            if (mdec->busy) {
+                mdec->input[mdec->input_index++] = value;
 
-            g_mdec_recv_table[mdec->state](mdec);
+                --mdec->words_remaining;
+
+                if (!mdec->words_remaining) {
+                    mdec->output_empty = 0;
+                    mdec->input_full = 1;
+                    mdec->busy = 0;
+
+                    g_mdec_cmd_table[mdec->cmd >> 29](mdec);
+
+                    free(mdec->input);
+                }
+
+                break;
+            }
+
+            mdec->cmd = value;
+            mdec->output_empty = 1;
+            mdec->output_bit15 = (value >> 25) & 1;
+            mdec->output_signed = (value >> 26) & 1;
+            mdec->output_depth = (value >> 27) & 3;
+            mdec->input_index = 0;
+            mdec->busy = 1;
+
+            log_set_quiet(0);
+            switch (mdec->cmd >> 29) {
+                case MDEC_CMD_NOP: {
+                    mdec->busy = 0;
+                    mdec->words_remaining = 0;
+
+                    log_fatal("MDEC %08x: NOP", mdec->cmd);
+                } break;
+
+                case MDEC_CMD_DECODE: {
+                    mdec->words_remaining = mdec->cmd & 0xffff;
+
+                    log_fatal("MDEC %08x: decode macroblock %04x",
+                        mdec->cmd,
+                        mdec->words_remaining
+                    );
+                } break;
+
+                case MDEC_CMD_SET_QT: {
+                    mdec->recv_color = mdec->cmd & 1;
+                    mdec->words_remaining = mdec->recv_color ? 32 : 16;
+
+                    log_fatal("MDEC %08x: set quant tables %04x",
+                        mdec->cmd,
+                        mdec->words_remaining
+                    );
+                } break;
+
+                case MDEC_CMD_SET_ST: {
+                    mdec->words_remaining = 32;
+
+                    log_fatal("MDEC %08x: set scale table %04x",
+                        mdec->cmd,
+                        mdec->words_remaining
+                    );
+                } break;
+            }
+            log_set_quiet(1);
+
+            if (mdec->words_remaining) {
+                mdec->input_full = 0;
+                mdec->input_index = 0;
+                mdec->input = malloc(mdec->words_remaining * sizeof(uint32_t));
+            }
         } break;
 
         case 4: {
-            if (value & 0x80000000)
-                mdec->status = 0x80040000;
+            // Reset
+            if (value & 0x80000000) {
+                // status = 80040000h
+                mdec->busy            = 0;
+                mdec->words_remaining = 0;
+                mdec->output_bit15    = 0;
+                mdec->output_signed   = 0;
+                mdec->output_depth    = 0;
+                mdec->input_request   = 0;
+                mdec->output_request  = 0;
+                mdec->busy            = 0;
+                mdec->input_full      = 0;
+                mdec->output_empty    = 1;
+                mdec->current_block   = 4;
+            }
 
-            mdec->status &= 0xe7ffffff;
-            mdec->status |= (value & 0x60000000) >> 2;
+            mdec->output_request = (value & 0x20000000) != 0;
+            mdec->input_request = (value & 0x40000000) != 0;
         } break;
     }
 
@@ -138,3 +402,6 @@ void psx_mdec_write8(psx_mdec_t* mdec, uint32_t offset, uint8_t value) {
 void psx_mdec_destroy(psx_mdec_t* mdec) {
     free(mdec);
 }
+
+#undef CLAMP
+#undef MAX
