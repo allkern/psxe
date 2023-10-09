@@ -6,10 +6,48 @@
 #include "../log.h"
 #include "../msf.h"
 
-#define RESP_PUSH(data) \
+/*
+    Drive Status           1st Response   2nd Response
+    Door Open              INT5(11h,80h)  N/A
+    Spin-up                INT5(01h,80h)  N/A
+    Detect busy            INT5(03h,80h)  N/A
+    No Disk                INT3(stat)     INT5(08h,40h, 00h,00h, 00h,00h,00h,00h)
+    Audio Disk             INT3(stat)     INT5(0Ah,90h, 00h,00h, 00h,00h,00h,00h)
+    Unlicensed:Mode1       INT3(stat)     INT5(0Ah,80h, 00h,00h, 00h,00h,00h,00h)
+    Unlicensed:Mode2       INT3(stat)     INT5(0Ah,80h, 20h,00h, 00h,00h,00h,00h)
+    Unlicensed:Mode2+Audio INT3(stat)     INT5(0Ah,90h, 20h,00h, 00h,00h,00h,00h)
+    Debug/Yaroze:Mode2     INT3(stat)     INT2(02h,00h, 20h,00h, 20h,20h,20h,20h)
+    Licensed:Mode2         INT3(stat)     INT2(02h,00h, 20h,00h, 53h,43h,45h,4xh)
+    Modchip:Audio/Mode1    INT3(stat)     INT2(02h,00h, 00h,00h, 53h,43h,45h,4xh)
+*/
+
+#define GETID_RESPONSE_SIZE 8
+#define GETID_RESPONSE_END (GETID_RESPONSE_SIZE - 1)
+
+static const uint8_t g_getid_no_disc[] = {
+    0x08, 0x40, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00
+};
+
+static const uint8_t g_getid_audio[] = {
+    0x0a, 0x90, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00
+};
+
+static const uint8_t g_getid_unlicensed[] = {
+    0x0a, 0x80, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00
+};
+
+static const uint8_t g_getid_licensed[] = {
+    0x02, 0x00, 0x20, 0x00,
+    'S' , 'C' , 'E' , 'A'
+};
+
+#define RESP_PUSH(data) { \
     cdrom->rfifo[cdrom->rfifo_index++] = data; \
     cdrom->rfifo_index &= 15; \
-    SET_BITS(status, STAT_RSLRRDY_MASK, STAT_RSLRRDY_MASK);
+    SET_BITS(status, STAT_RSLRRDY_MASK, STAT_RSLRRDY_MASK); }
 
 #define PFIFO_POP (cdrom->pfifo[--cdrom->pfifo_index])
 
@@ -860,54 +898,30 @@ void cdrom_cmd_getid(psx_cdrom_t* cdrom) {
         } break;
 
         case CD_STATE_SEND_RESP2: {
-            /*
-                Drive Status           1st Response   2nd Response
-                Door Open              INT5(11h,80h)  N/A
-                Spin-up                INT5(01h,80h)  N/A
-                Detect busy            INT5(03h,80h)  N/A
-                No Disk                INT3(stat)     INT5(08h,40h, 00h,00h, 00h,00h,00h,00h)
-                Audio Disk             INT3(stat)     INT5(0Ah,90h, 00h,00h, 00h,00h,00h,00h)
-                Unlicensed:Mode1       INT3(stat)     INT5(0Ah,80h, 00h,00h, 00h,00h,00h,00h)
-                Unlicensed:Mode2       INT3(stat)     INT5(0Ah,80h, 20h,00h, 00h,00h,00h,00h)
-                Unlicensed:Mode2+Audio INT3(stat)     INT5(0Ah,90h, 20h,00h, 00h,00h,00h,00h)
-                Debug/Yaroze:Mode2     INT3(stat)     INT2(02h,00h, 20h,00h, 20h,20h,20h,20h)
-                Licensed:Mode2         INT3(stat)     INT2(02h,00h, 20h,00h, 53h,43h,45h,4xh)
-                Modchip:Audio/Mode1    INT3(stat)     INT2(02h,00h, 00h,00h, 53h,43h,45h,4xh)
-            */
-
             if (cdrom->disc) {
                 SET_BITS(ifr, IFR_INT, 2);
 
-                // Unlicensed:Mode1
-                // RESP_PUSH(0x00);
-                // RESP_PUSH(0x00);
-                // RESP_PUSH(0x00);
-                // RESP_PUSH(0x00);
-                // RESP_PUSH(0x00);
-                // RESP_PUSH(0x00);
-                // RESP_PUSH(0x80);
-                // RESP_PUSH(0x0a);
+                switch (cdrom->cd_type) {
+                    case CDT_LICENSED: {
+                        for (int i = 0; i < GETID_RESPONSE_SIZE; i++)
+                            RESP_PUSH(g_getid_licensed[GETID_RESPONSE_END - i]);
+                    } break;
 
-                // Licensed:Mode2
-                RESP_PUSH(0x41);
-                RESP_PUSH(0x45);
-                RESP_PUSH(0x43);
-                RESP_PUSH(0x53);
-                RESP_PUSH(0x00);
-                RESP_PUSH(0x20);
-                RESP_PUSH(0x00);
-                RESP_PUSH(0x02);
+                    case CDT_AUDIO: {
+                        for (int i = 0; i < GETID_RESPONSE_SIZE; i++)
+                            RESP_PUSH(g_getid_audio[GETID_RESPONSE_END - i]);
+                    } break;
+
+                    case CDT_UNKNOWN: {
+                        for (int i = 0; i < GETID_RESPONSE_SIZE; i++)
+                            RESP_PUSH(g_getid_unlicensed[GETID_RESPONSE_END - i]);
+                    } break;
+                }
             } else {
                 SET_BITS(ifr, IFR_INT, 5);
 
-                RESP_PUSH(0x00);
-                RESP_PUSH(0x00);
-                RESP_PUSH(0x00);
-                RESP_PUSH(0x00);
-                RESP_PUSH(0x00);
-                RESP_PUSH(0x00);
-                RESP_PUSH(0x40);
-                RESP_PUSH(0x08);
+                for (int i = 0; i < GETID_RESPONSE_SIZE; i++)
+                    RESP_PUSH(g_getid_no_disc[GETID_RESPONSE_END - i]);
             }
 
             cdrom->state = CD_STATE_RECV_CMD;
@@ -1392,6 +1406,39 @@ int cdrom_get_extension(const char* path) {
     return CD_EXT_UNSUPPORTED;
 }
 
+void cdrom_check_cd_type(psx_cdrom_t* cdrom) {
+    char buf[CD_SECTOR_SIZE];
+
+    // Seek to Primary Volume Descriptor
+    msf_t pvd = { 0, 2, 16 };
+
+    // If the disc is smaller than 16 sectors
+    // then it can't be a PlayStation game.
+    // Audio discs should also have ISO volume
+    // descriptors, so it's probably something else
+    // entirely.
+    if (psx_disc_seek(cdrom->disc, pvd)) {
+        cdrom->cd_type = CDT_UNKNOWN;
+
+        return;
+    }
+
+    psx_disc_read_sector(cdrom->disc, buf);
+
+    // Check for the "PLAYSTATION" string at PVD offset 20h
+
+    // Patch 20 byte so comparison is done correctly
+    buf[0x2b] = 0;
+
+    if (strncmp(&buf[0x20], "PLAYSTATION", 12)) {
+        cdrom->cd_type = CDT_AUDIO;
+
+        return;
+    }
+
+    cdrom->cd_type = CDT_LICENSED;
+}
+
 void psx_cdrom_open(psx_cdrom_t* cdrom, const char* path) {
     cdrom->disc = psx_disc_create();
 
@@ -1405,6 +1452,11 @@ void psx_cdrom_open(psx_cdrom_t* cdrom, const char* path) {
             psxd_cue_init_disc(cue, cdrom->disc);
             psxd_cue_init(cue);
             error = psxd_cue_load(cue, path);
+
+            if (error)
+                break;
+
+            cdrom_check_cd_type(cdrom);
         } break;
 
         case CD_EXT_BIN: {
@@ -1412,14 +1464,19 @@ void psx_cdrom_open(psx_cdrom_t* cdrom, const char* path) {
 
             psxd_bin_init_disc(bin, cdrom->disc);
             psxd_bin_init(bin);
-            
+
             error = psxd_bin_load(bin, path);
+
+            if (error)
+                break;
+
+            cdrom_check_cd_type(cdrom);
         } break;
 
         case CD_EXT_UNSUPPORTED: {
             log_fatal("Unsupported disc format");
 
-            exit(1);
+            cdrom->cd_type = CDT_UNKNOWN;
         } break;
     }
 

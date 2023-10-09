@@ -24,7 +24,6 @@ enum {
 };
 
 enum {
-    CUE_NONE = 255,
     CUE_4CH = 0,
     CUE_AIFF,
     CUE_AUDIO,
@@ -54,7 +53,8 @@ enum {
     CUE_SONGWRITER,
     CUE_TITLE,
     CUE_TRACK,
-    CUE_WAVE
+    CUE_WAVE,
+    CUE_NONE = 255
 };
 
 typedef struct {

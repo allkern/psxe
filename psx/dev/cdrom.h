@@ -141,6 +141,12 @@ enum {
 #define ERR_SEEK    0x04
 #define ERR_LIDOPEN 0x08
 
+enum {
+    CDT_LICENSED,
+    CDT_AUDIO,
+    CDT_UNKNOWN
+};
+
 typedef struct {
     uint32_t io_base, io_size;
 
@@ -194,6 +200,8 @@ typedef struct {
 
     const char* path;
     psx_disc_t* disc;
+
+    int cd_type;
 } psx_cdrom_t;
 
 psx_cdrom_t* psx_cdrom_create();

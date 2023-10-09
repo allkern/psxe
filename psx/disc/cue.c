@@ -212,6 +212,8 @@ int cue_parse(psxd_cue_t* cue, FILE* file) {
     EXPECT_KEYWORD(CUE_BINARY);
     EXPECT_KEYWORD(CUE_TRACK);
 
+    parse_track:
+
     if (cue_parse_number(cue))
         return cue->error;
     
@@ -262,6 +264,9 @@ int cue_parse(psxd_cue_t* cue, FILE* file) {
 
         case CUE_FILE:
             goto parse_file;
+
+        case CUE_TRACK:
+            goto parse_track;
 
         default:
             ERROR_OUT(PE_UNEXPECTED_TOKEN);
