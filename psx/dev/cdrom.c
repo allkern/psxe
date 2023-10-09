@@ -195,24 +195,29 @@ void cdrom_cmd_play(psx_cdrom_t* cdrom) {
 
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
-            // Ignore parameters
-            cdrom->pfifo_index = 0;
+            int track = 0;
 
-            // if (cdrom->pfifo_index) {
-            //     log_fatal("CdlGetStat: Expected exactly 0 parameters");
-
-            //     cdrom->irq_delay = DELAY_1MS;
-            //     cdrom->delayed_command = CDL_ERROR;
-            //     cdrom->state = CD_STATE_ERROR;
-            //     cdrom->error = ERR_PCOUNT;
-            //     cdrom->error_flags = GETSTAT_ERROR;
-
-            //     return;
-            // }
+            // Optional track number parameter
+            if (cdrom->pfifo_index)
+                track = PFIFO_POP;
 
             cdrom->irq_delay = DELAY_1MS;
             cdrom->state = CD_STATE_SEND_RESP1;
             cdrom->delayed_command = CDL_PLAY;
+
+            if (track) {
+
+                psx_disc_get_track_addr(cdrom->disc, &cdrom->cdda_msf, track);
+
+                msf_to_bcd(&cdrom->cdda_msf);
+
+                cdrom->cdda_track = track;
+                cdrom->seek_mm = cdrom->cdda_msf.m;
+                cdrom->seek_ss = cdrom->cdda_msf.s;
+                cdrom->seek_ff = cdrom->cdda_msf.f;
+    
+                cdrom->seek_pending = 1;
+            }
 
             if (cdrom->seek_pending) {
                 cdrom->seek_pending = 0;
@@ -1505,8 +1510,32 @@ void psx_cdrom_get_cdda_samples(psx_cdrom_t* cdrom, void* buf, int size) {
     msf_from_bcd(&msf);
 
     // Seek to that address and read sector
-    psx_disc_seek(cdrom->disc, msf);
+    if (psx_disc_seek(cdrom->disc, msf)) {
+        cdrom->cdda_playing = 0;
+    }
+
     psx_disc_read_sector(cdrom->disc, cdrom->cdda_buf);
+
+    ++cdrom->cdda_sectors_played;
+
+    if (cdrom->cdda_sectors_played == CD_SECTORS_PS) {
+        if (cdrom->mode & MODE_REPORT) {
+            SET_BITS(ifr, IFR_INT, 1);
+
+            RESP_PUSH(0);
+            RESP_PUSH(0);
+            RESP_PUSH(cdrom->cdda_msf.f);
+            RESP_PUSH(cdrom->cdda_msf.s | 0x80);
+            RESP_PUSH(cdrom->cdda_msf.m);
+            RESP_PUSH(0);
+            RESP_PUSH(cdrom->cdda_track);
+            RESP_PUSH(GETSTAT_PLAY);
+
+            psx_ic_irq(cdrom->ic, IC_CDROM);
+        }
+
+        cdrom->cdda_sectors_played = 0;
+    }
 
     // Increment sector
     msf_add_f(&msf, 1);
@@ -1515,68 +1544,7 @@ void psx_cdrom_get_cdda_samples(psx_cdrom_t* cdrom, void* buf, int size) {
     // Assign to CDDA MSF
     cdrom->cdda_msf = msf;
 
-    /*
-    start = offset
-    end = offset + request
-
-    start = 0
-    end = 10
-    
-    */
-
-    // int req_start = cdrom->cdda_sector_offset;
-    // int req_end = req_start + size;
-
-    // if (req_end > CD_SECTOR_SIZE) {
-    //     int unbuffered = req_end - CD_SECTOR_SIZE;
-    //     //int buffered = 
-    // }
-
-    // // We need a new sector
-    // if (cdrom->cdda_sector_offset >= CD_SECTOR_SIZE) {
-    //     cdrom->cdda_sector_offset -= CD_SECTOR_SIZE;
-
-    //     // Convert seek to I
-    //     msf_t msf = cdrom->cdda_msf;
-        
-    //     msf_from_bcd(&msf);
-
-    //     // Seek to that address and read sector
-    //     psx_disc_seek(cdrom->disc, msf);
-    //     psx_disc_read_sector(cdrom->disc, cdrom->cdda_buf);
-
-    //     // Increment sector
-    //     msf_add_f(&msf, 1);
-    //     msf_to_bcd(&msf);
-
-    //     // Assign to CDDA MSF
-    //     cdrom->cdda_msf = msf;
-    // }
-
     memcpy(buf, cdrom->cdda_buf, size);
-
-    // cdrom->cdda_sector_offset += size;
-
-    // // We need a new sector
-    // if (cdrom->cdda_sector_offset >= CD_SECTOR_SIZE) {
-    //     cdrom->cdda_sector_offset -= CD_SECTOR_SIZE;
-
-    //     // Convert seek to I
-    //     msf_t msf = cdrom->cdda_msf;
-        
-    //     msf_from_bcd(&msf);
-
-    //     // Seek to that address and read sector
-    //     psx_disc_seek(cdrom->disc, msf);
-    //     psx_disc_read_sector(cdrom->disc, cdrom->cdda_buf);
-
-    //     // Increment sector
-    //     msf_add_f(&msf, 1);
-    //     msf_to_bcd(&msf);
-
-    //     // Assign to CDDA MSF
-    //     cdrom->cdda_msf = msf;
-    // }
 }
 
 void psx_cdrom_destroy(psx_cdrom_t* cdrom) {

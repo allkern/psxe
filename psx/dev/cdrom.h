@@ -197,6 +197,8 @@ typedef struct {
     int cdda_sector_offset;
     msf_t cdda_msf;
     int cdda_playing;
+    int cdda_sectors_played;
+    int cdda_track;
 
     const char* path;
     psx_disc_t* disc;
