@@ -52,8 +52,9 @@ typedef struct {
 
     uint32_t* input;
     int input_index;
+    size_t input_size;
 
-    uint8_t output[(16 * 16) * 3];
+    uint8_t* output;
     int output_index;
     uint16_t output_words_remaining;
 

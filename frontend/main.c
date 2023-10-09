@@ -60,7 +60,8 @@ int main(int argc, const char* argv[]) {
 
     dev = SDL_OpenAudioDevice(NULL, 0, &desired, &obtained, 0);
 
-    if (dev) SDL_PauseAudioDevice(dev, 0);
+    if (dev)
+        SDL_PauseAudioDevice(dev, 0);
     
     psx_gpu_t* gpu = psx_get_gpu(psx);
     psx_gpu_set_event_callback(gpu, GPU_EVENT_DMODE, psxe_gpu_dmode_event_cb);
@@ -93,6 +94,8 @@ int main(int argc, const char* argv[]) {
     while (psxe_screen_is_open(screen)) {
         psx_update(psx);
     }
+
+    SDL_PauseAudioDevice(dev, 1);
 
     psx_cpu_t* cpu = psx_get_cpu(psx);
 

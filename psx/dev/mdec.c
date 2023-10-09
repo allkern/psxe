@@ -54,7 +54,7 @@ void real_idct(int16_t* blk, int16_t* scale) {
                 int sum = 0;
 
                 for (int z = 0; z < 8; z++)
-                    sum += src[y+z*8] * (scale[x+z*8] / 8);
+                    sum += (int32_t)src[y+z*8] * ((int32_t)scale[x+z*8] / 8);
                 
                 dst[x+y*8] = (sum + 0xfff) / 0x2000;
             }
@@ -116,7 +116,7 @@ uint16_t* rl_decode_block(int16_t* blk, uint16_t* src, uint8_t* quant, int16_t* 
     return src;
 }
 
-void yuv_to_rgb(psx_mdec_t* mdec, int xx, int yy) {
+void yuv_to_rgb(psx_mdec_t* mdec, uint8_t* buf, int xx, int yy) {
     for (int y = 0; y < 8; y++) {
         for (int x = 0; x < 8; x++) {
             int16_t r = mdec->crblk[((x + xx) >> 1) + ((y + yy) >> 1) * 8];
@@ -143,17 +143,17 @@ void yuv_to_rgb(psx_mdec_t* mdec, int xx, int yy) {
                 uint16_t g5 = ((uint8_t)g) >> 3;
                 uint16_t b5 = ((uint8_t)b) >> 3;
 
-                uint16_t rgb = (b << 10) | (g << 5) | r;
+                uint16_t rgb = (b5 << 10) | (g5 << 5) | r5;
 
                 if (mdec->output_bit15)
                     rgb |= 0x8000;
                 
-                mdec->output[0 + ((x + xx) + (y + yy) * 16) * 2] = rgb & 0xff;
-                mdec->output[1 + ((x + xx) + (y + yy) * 16) * 2] = rgb >> 8;
+                buf[0 + ((x + xx) + (y + yy) * 16) * 2] = rgb & 0xff;
+                buf[1 + ((x + xx) + (y + yy) * 16) * 2] = rgb >> 8;
             } else {
-                mdec->output[0 + ((x + xx) + (y + yy) * 16) * 3] = r & 0xff;
-                mdec->output[1 + ((x + xx) + (y + yy) * 16) * 3] = g & 0xff;
-                mdec->output[2 + ((x + xx) + (y + yy) * 16) * 3] = b & 0xff;
+                buf[0 + ((x + xx) + (y + yy) * 16) * 3] = r & 0xff;
+                buf[1 + ((x + xx) + (y + yy) * 16) * 3] = g & 0xff;
+                buf[2 + ((x + xx) + (y + yy) * 16) * 3] = b & 0xff;
             }
         }
     }
@@ -180,25 +180,58 @@ void mdec_decode_macroblock(psx_mdec_t* mdec) {
         mdec->output_empty = 0;
         mdec->output_index = 0;
     } else {
-        uint16_t* ptr = mdec->input;
+        uint16_t* in = mdec->input;
+        uint8_t* out;
 
-        ptr = rl_decode_block(mdec->crblk, ptr, mdec->uv_quant_table, mdec->scale_table);
-        ptr = rl_decode_block(mdec->cbblk, ptr, mdec->uv_quant_table, mdec->scale_table);
-        ptr = rl_decode_block(mdec->yblk, ptr, mdec->y_quant_table, mdec->scale_table);
-        yuv_to_rgb(mdec, 0, 0);
-        ptr = rl_decode_block(mdec->yblk, ptr, mdec->y_quant_table, mdec->scale_table);
-        yuv_to_rgb(mdec, 0, 8);
-        ptr = rl_decode_block(mdec->yblk, ptr, mdec->y_quant_table, mdec->scale_table);
-        yuv_to_rgb(mdec, 8, 0);
-        ptr = rl_decode_block(mdec->yblk, ptr, mdec->y_quant_table, mdec->scale_table);
-        yuv_to_rgb(mdec, 8, 8);
+        size_t block_size = (mdec->output_depth == 3) ? 512 : 768;
+        size_t size = block_size;
 
-        mdec->output_words_remaining = ((mdec->output_depth == 3) ? 512 : 768) >> 2;
+        unsigned int bytes_processed = 0;
+
+        while (bytes_processed < mdec->input_size) {
+            if (!mdec->output) {
+                mdec->output = malloc(size);
+
+                out = mdec->output;
+            } else {
+                mdec->output = realloc(mdec->output, size);
+            }
+            
+            in = rl_decode_block(mdec->crblk, in, mdec->uv_quant_table, mdec->scale_table);
+            in = rl_decode_block(mdec->cbblk, in, mdec->uv_quant_table, mdec->scale_table);
+            in = rl_decode_block(mdec->yblk, in, mdec->y_quant_table, mdec->scale_table);
+            yuv_to_rgb(mdec, out, 0, 0);
+            in = rl_decode_block(mdec->yblk, in, mdec->y_quant_table, mdec->scale_table);
+            yuv_to_rgb(mdec, out, 0, 8);
+            in = rl_decode_block(mdec->yblk, in, mdec->y_quant_table, mdec->scale_table);
+            yuv_to_rgb(mdec, out, 8, 0);
+            in = rl_decode_block(mdec->yblk, in, mdec->y_quant_table, mdec->scale_table);
+            yuv_to_rgb(mdec, out, 8, 8);
+
+            size += block_size;
+            out += block_size;
+
+            bytes_processed = (uintptr_t)in - (uintptr_t)mdec->input;
+
+            log_set_quiet(0);
+            log_fatal("Decompressed 1 macroblock (%u total bytes processed) output=%p, output+size=%p, output ptr=%p",
+                bytes_processed, mdec->output, mdec->output + size, out
+            );
+            log_set_quiet(1);
+        }
+
+        mdec->output_words_remaining = size >> 2;
         mdec->output_empty = 0;
         mdec->output_index = 0;
 
         log_set_quiet(0);
-        log_fatal("Finished decoding %u-bit MDEC data", (mdec->output_depth == 3) ? 15 : 24);
+        log_fatal("Finished decoding %u-bit MDEC data input=(%p-%p=%04x, %04x)",
+            (mdec->output_depth == 3) ? 15 : 24,
+            in,
+            mdec->input,
+            (uintptr_t)in - (uintptr_t)mdec->input,
+            mdec->input_size
+        );
         log_set_quiet(1);
     }
 }
@@ -252,6 +285,8 @@ uint32_t psx_mdec_read32(psx_mdec_t* mdec, uint32_t offset) {
             } else {
                 mdec->output_empty = 1;
                 mdec->output_index = 0;
+
+                return 0xaabbccdd;
             }
         } break;
         case 4: {
@@ -356,9 +391,10 @@ void psx_mdec_write32(psx_mdec_t* mdec, uint32_t offset, uint32_t value) {
             log_set_quiet(1);
 
             if (mdec->words_remaining) {
+                mdec->input_size = mdec->words_remaining * sizeof(uint32_t);
                 mdec->input_full = 0;
                 mdec->input_index = 0;
-                mdec->input = malloc(mdec->words_remaining * sizeof(uint32_t));
+                mdec->input = malloc(mdec->input_size);
             }
         } break;
 
