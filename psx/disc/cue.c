@@ -428,10 +428,12 @@ int psxd_cue_read_sector(void* udata, void* buf) {
 int psxd_cue_get_track_addr(void* udata, msf_t* msf, int track) {
     psxd_cue_t* cue = udata;
 
-    if (!track) {
-        if (!msf)
-            return 0;
+    track = BTOI(track);
 
+    if (!msf)
+        return 0;
+
+    if (!track) {
         msf->m = cue->end.m;
         msf->s = cue->end.s;
 
@@ -440,9 +442,6 @@ int psxd_cue_get_track_addr(void* udata, msf_t* msf, int track) {
 
     if (track > cue->num_tracks)
         return DISC_ERR_TRACK_OUT_OF_BOUNDS;
-
-    if (!msf)
-        return 0;
     
     msf->m = cue->track[track - 1]->disc_offset.m;
     msf->s = cue->track[track - 1]->disc_offset.s;
@@ -453,7 +452,7 @@ int psxd_cue_get_track_addr(void* udata, msf_t* msf, int track) {
 int psxd_cue_get_track_count(void* udata, int* count) {
     psxd_cue_t* cue = udata;
 
-    *count = cue->num_tracks;
+    *count = ITOB(cue->num_tracks);
 
     return 0;
 }

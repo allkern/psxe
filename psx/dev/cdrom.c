@@ -1518,15 +1518,41 @@ void psx_cdrom_get_cdda_samples(psx_cdrom_t* cdrom, void* buf, int size) {
 
     ++cdrom->cdda_sectors_played;
 
+    // Increment sector
+    msf_add_f(&msf, 1);
+    msf_to_bcd(&msf);
+    
+    // Assign to CDDA MSF
+    cdrom->cdda_msf = msf;
+
+    memcpy(buf, cdrom->cdda_buf, size);
+
+    // Handle report IRQ
     if (cdrom->cdda_sectors_played == CD_SECTORS_PS) {
         if (cdrom->mode & MODE_REPORT) {
             SET_BITS(ifr, IFR_INT, 1);
 
+            msf_t track, current = cdrom->cdda_msf;
+
+            msf_from_bcd(&current);
+
+            psx_disc_get_track_addr(cdrom->disc, &track, cdrom->cdda_track);
+
+            unsigned int track_s = (track.m * 60) + track.s;
+            unsigned int current_s = (current.m * 60) + current.s;
+            unsigned int diff = current_s - track_s;
+
+            current.s = diff;
+            current.m = 0;
+
+            msf_adjust(&current);
+            msf_to_bcd(&current);
+
             RESP_PUSH(0);
             RESP_PUSH(0);
             RESP_PUSH(cdrom->cdda_msf.f);
-            RESP_PUSH(cdrom->cdda_msf.s | 0x80);
-            RESP_PUSH(cdrom->cdda_msf.m);
+            RESP_PUSH(current.s | 0x80);
+            RESP_PUSH(current.m);
             RESP_PUSH(0);
             RESP_PUSH(cdrom->cdda_track);
             RESP_PUSH(GETSTAT_PLAY);
@@ -1536,15 +1562,6 @@ void psx_cdrom_get_cdda_samples(psx_cdrom_t* cdrom, void* buf, int size) {
 
         cdrom->cdda_sectors_played = 0;
     }
-
-    // Increment sector
-    msf_add_f(&msf, 1);
-    msf_to_bcd(&msf);
-
-    // Assign to CDDA MSF
-    cdrom->cdda_msf = msf;
-
-    memcpy(buf, cdrom->cdda_buf, size);
 }
 
 void psx_cdrom_destroy(psx_cdrom_t* cdrom) {
