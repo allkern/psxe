@@ -6,7 +6,9 @@
 #include "../log.h"
 
 #define CLAMP(v, l, h) ((v <= l) ? l : ((v >= h) ? h : v))
-#define MAX(a, b) (a > b ? a : b)
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+#define VOICE_COUNT 24
 
 static const int g_spu_pos_adpcm_table[] = {
     0, +60, +115, +98, +122
@@ -153,7 +155,7 @@ void spu_read_block(psx_spu_t* spu, int v) {
 #define SHIFT spu->data[v].adsr_shift
 #define STEP spu->data[v].adsr_step
 #define LEVEL_STEP spu->data[v].adsr_pending_step
-#define LEVEL spu->voice[v].envcvol
+#define LEVEL spu->data[v].cvol
 
 /*
   ____lower 16bit (at 1F801C08h+N*10h)___________________________________
@@ -178,47 +180,15 @@ void spu_read_block(psx_spu_t* spu, int v) {
   -     Release Step      (Fixed, always "-8")
 */
 
-void spu_advance_adsr(psx_spu_t* spu, int v) {
-    switch (spu->data[v].adsr_phase) {
-        // KON->Attack
-        case 0: {
-            EXPONENTIAL = spu->voice[v].envctl1 >> 15;
-            DECREASE    = 0;
-            SHIFT       = (spu->voice[v].envctl1 >> 10) & 0x1f;
-            STEP        = 7 - ((spu->voice[v].envctl1 >> 8) & 3);
-            LEVEL       = 0;
-        } break;
+enum {
+    ADSR_ATTACK,
+    ADSR_DECAY,
+    ADSR_SUSTAIN,
+    ADSR_RELEASE,
+    ADSR_END
+};
 
-        // Attack->Decay
-        case 1: {
-            EXPONENTIAL = 1;
-            DECREASE    = 1;
-            SHIFT       = (spu->voice[v].envctl1 >> 4) & 0xf;
-            STEP        = -8;
-            LEVEL       = 0x7fff;
-        } break;
-
-        // Decay->Sustain
-        case 2: {
-            EXPONENTIAL = spu->voice[v].envctl2 >> 15;
-            DECREASE    = (spu->voice[v].envctl2 >> 14) & 1;
-            SHIFT       = (spu->voice[v].envctl2 >> 8) & 0x1f;
-            STEP        = (spu->voice[v].envctl2 >> 6) & 3;
-            LEVEL       = spu->data[v].adsr_sustain_level;
-
-            STEP = DECREASE ? (-8 + STEP) : (7 - STEP);
-        } break;
-
-        // Sustain->Release
-        case 3: {
-            EXPONENTIAL = (spu->voice[v].envctl2 >> 5) & 1;
-            DECREASE    = 1;
-            SHIFT       = spu->voice[v].envctl2 & 0x1f;
-            STEP        = -8;
-            //LEVEL       = spu->data[v].adsr_sustain_level;
-        } break;
-    }
-
+void adsr_calculate_values(psx_spu_t* spu, int v) {
     CYCLES = 1 << MAX(0, SHIFT - 11);
     LEVEL_STEP = STEP << MAX(0, 11 - SHIFT);
 
@@ -226,50 +196,105 @@ void spu_advance_adsr(psx_spu_t* spu, int v) {
         CYCLES *= 4;
     
     if (EXPONENTIAL && DECREASE)
-        LEVEL_STEP *= LEVEL / 0x8000;
+        LEVEL_STEP = (LEVEL_STEP * LEVEL) >> 15;
     
     spu->data[v].adsr_cycles_reload = CYCLES;
-    
-    log_fatal("voice %u ADSR advance %u c=%u, s=%04x, step=%04x, level=%04x",
-        v, spu->data[v].adsr_phase, CYCLES, LEVEL_STEP, STEP, LEVEL
-    );
+}
+
+void adsr_load_attack(psx_spu_t* spu, int v) {
+    EXPONENTIAL = spu->data[v].envctl >> 15;
+    DECREASE    = 0;
+    SHIFT       = (spu->data[v].envctl >> 10) & 0x1f;
+    STEP        = 7 - ((spu->data[v].envctl >> 8) & 3);
+    LEVEL       = 0;
+    PHASE       = ADSR_ATTACK;
+
+    adsr_calculate_values(spu, v);
+}
+
+void adsr_load_decay(psx_spu_t* spu, int v) {
+    EXPONENTIAL = 1;
+    DECREASE    = 1;
+    SHIFT       = (spu->data[v].envctl >> 4) & 0xf;
+    STEP        = -8;
+    LEVEL       = 0x7fff;
+    PHASE       = ADSR_DECAY;
+
+    adsr_calculate_values(spu, v);
+}
+
+void adsr_load_sustain(psx_spu_t* spu, int v) {
+    EXPONENTIAL = spu->data[v].envctl >> 31;
+    DECREASE    = (spu->data[v].envctl >> 30) & 1;
+    SHIFT       = (spu->data[v].envctl >> 24) & 0x1f;
+    STEP        = (spu->data[v].envctl >> 22) & 3;
+    LEVEL       = spu->data[v].adsr_sustain_level;
+    STEP        = DECREASE ? (-8 + STEP) : (7 - STEP);
+    PHASE       = ADSR_SUSTAIN;
+
+    adsr_calculate_values(spu, v);
+}
+
+void adsr_load_release(psx_spu_t* spu, int v) {
+    EXPONENTIAL = (spu->data[v].envctl >> 21) & 1;
+    DECREASE    = 1;
+    SHIFT       = (spu->data[v].envctl >> 16) & 0x1f;
+    STEP        = -8;
+    PHASE       = ADSR_RELEASE;
+
+    adsr_calculate_values(spu, v);
 }
 
 void spu_handle_adsr(psx_spu_t* spu, int v) {
-    CYCLES = spu->data[v].adsr_cycles_reload;
+    if (CYCLES) {
+        CYCLES -= 1;
+
+        return;
+    }
 
     LEVEL += LEVEL_STEP;
 
     switch (spu->data[v].adsr_phase) {
-        case 0: {
+        case ADSR_ATTACK: {
             LEVEL = CLAMP(LEVEL, 0x0000, 0x7fff);
 
-            if (LEVEL == 0x7fff) {
-                spu->data[v].adsr_phase = 1;
-
-                spu_advance_adsr(spu, v);
-            }
+            if (LEVEL == 0x7fff)
+                adsr_load_decay(spu, v);
         } break;
 
-        case 1: {
+        case ADSR_DECAY: {
             LEVEL = CLAMP(LEVEL, 0x0000, 0x7fff);
 
-            if (LEVEL >= spu->data[v].adsr_sustain_level) {
-                spu->data[v].adsr_phase = 2;
-
-                spu_advance_adsr(spu, v);
-            }
+            if (LEVEL <= spu->data[v].adsr_sustain_level)
+                adsr_load_sustain(spu, v);
         } break;
 
-        case 3: {
+        case ADSR_SUSTAIN: {
+            LEVEL = CLAMP(LEVEL, 0x0000, 0x7fff);
+
+            /* Not stopped automatically, need to KOFF */
+        } break;
+
+        case ADSR_RELEASE: {
             LEVEL = CLAMP(LEVEL, 0x0000, 0x7fff);
 
             if (!LEVEL) {
-                spu->data[v].adsr_phase = 0;
+                PHASE = ADSR_END;
+                CYCLES = 0;
+                LEVEL_STEP = 0;
+
                 spu->data[v].playing = 0;
             }
         } break;
+
+        case ADSR_END: {
+            spu->data[v].playing = 0;
+        } break;
     }
+
+    spu->voice[v].envcvol = spu->data[v].cvol;
+
+    CYCLES = spu->data[v].adsr_cycles_reload;
 }
 
 #undef PHASE
@@ -280,83 +305,55 @@ void spu_handle_adsr(psx_spu_t* spu, int v) {
 #undef STEP
 #undef PENDING_STEP
 
+void spu_kon(psx_spu_t* spu, uint32_t value) {
+    for (int i = 0; i < VOICE_COUNT; i++) {
+        if ((value & (1 << i))) {
+            spu->data[i].playing = 1;
+            spu->data[i].current_addr = spu->voice[i].adsaddr << 3;
+            spu->data[i].repeat_addr = spu->data[i].current_addr;
+            spu->data[i].lvol = (float)(spu->voice[i].volumel << 1) / (float)0x7fff;
+            spu->data[i].rvol = (float)(spu->voice[i].volumer << 1) / (float)0x7fff;
+            spu->data[i].adsr_sustain_level = ((spu->voice[i].envctl1 & 0xf) + 1) * 0x800;
+            spu->data[i].envctl = (((uint32_t)spu->voice[i].envctl2) << 16) |
+                                    (uint32_t)spu->voice[i].envctl1;
+
+            adsr_load_attack(spu, i);
+            spu_read_block(spu, i);
+        }
+    }
+
+    spu->endx &= ~(value & 0x00ffffff);
+}
+
+void spu_koff(psx_spu_t* spu, uint32_t value) {
+    for (int i = 0; i < VOICE_COUNT; i++)
+        if ((value & (1 << i)))
+            adsr_load_release(spu, i);
+}
+
 int spu_handle_write(psx_spu_t* spu, uint32_t offset, uint32_t value) {
     switch (offset) {
-        case SPUR_KON: {
+        case SPUR_KONL: case SPUR_KONH: {
+            int high = (offset & 2) != 0;
+
             if (!value)
                 return 1;
 
-            // log_set_quiet(0);
-            log_fatal("KON %04x:", value);
-            for (int i = 0; i < 24; i++) {
-                if ((value & (1 << i))) {
-                    spu->data[i].playing = 1;
-                    spu->data[i].current_addr = spu->voice[i].adsaddr << 3;
-                    spu->data[i].repeat_addr = spu->data[i].current_addr;
-                    spu->data[i].lvol = (float)(spu->voice[i].volumel << 1) / (float)0x7fff;
-                    spu->data[i].rvol = (float)(spu->voice[i].volumer << 1) / (float)0x7fff;
-                    spu->data[i].adsr_sustain_level = ((spu->voice[i].envctl1 & 0xf) + 1) * 0x800;
-                    spu->data[i].adsr_phase = 0;
-
-                    log_fatal("    voice %2u s=%06x r=%06x p=%04x vol=%f,%f adsr=%04x,%04x cvol=%04x",
-                        i,
-                        spu->voice[i].adsaddr << 3,
-                        spu->voice[i].adraddr << 3,
-                        spu->voice[i].adsampr,
-                        spu->data[i].lvol,
-                        spu->data[i].rvol,
-                        spu->voice[i].envctl1,
-                        spu->voice[i].envctl2,
-                        spu->voice[i].envcvol
-                    );
-
-                    spu_advance_adsr(spu, i);
-                    spu_read_block(spu, i);
-                }
-            }
-                    
-            // log_set_quiet(1);
-            spu->endx &= ~(value & 0x00ffffff);
+            spu_kon(spu, value << (16 * high));
         } return 1;
 
-        case SPUR_KOFF: {
-            // log_set_quiet(0);
-            log_fatal("KOFF %04x:", value);
-            for (int i = 0; i < 24; i++) {
-                if ((value & (1 << i))) {
-                    spu->data[i].adsr_phase = 3;
-                    spu->data[i].playing = 0;
+        case SPUR_KOFFL: case SPUR_KOFFH: {
+            int high = (offset & 2) != 0;
 
-                    spu_advance_adsr(spu, i);
-
-                    log_fatal("    voice %2u",
-                        i,
-                        spu->voice[i].adsaddr << 3,
-                        spu->voice[i].adraddr << 3,
-                        spu->voice[i].adsampr,
-                        spu->data[i].lvol,
-                        spu->data[i].rvol
-                    );
-                }
-            }
-            // log_set_quiet(1);
-
-            //spu->endx |= value & 0x00ffffff;
+            spu_koff(spu, value << (16 * high));
         } return 1;
 
         case SPUR_TADDR: {
             spu->ramdta = value;
             spu->taddr = value << 3;
-
-            // // log_set_quiet(0);
-            // log_fatal("ramdta=%04x taddr=%08x", spu->ramdta, spu->taddr);
-            // // log_set_quiet(1);
         } return 1;
 
         case SPUR_TFIFO: {
-            // // log_set_quiet(0);
-            // log_fatal("TFIFO write %04x (index=%u)", value, spu->tfifo_index);
-            // // log_set_quiet(1);
             spu->ramdtf = value;
             spu->tfifo[spu->tfifo_index++] = value;
 
@@ -382,13 +379,14 @@ int spu_handle_write(psx_spu_t* spu, uint32_t offset, uint32_t value) {
                     spu->ram[spu->taddr++] = spu->tfifo[i] & 0xff;
                     spu->ram[spu->taddr++] = spu->tfifo[i] >> 8;
                 }
-                    
-                // // log_set_quiet(0);
-                // log_fatal("Transfer start mode=%u size=%u", (value >> 4) & 3, spu->tfifo_index);
-                // // log_set_quiet(1);
 
                 spu->tfifo_index = 0;
             }
+        } return 1;
+
+        case SPUR_MBASE: {
+            spu->mbase = value;
+            spu->revbaddr = spu->mbase << 3;
         } return 1;
     }
 
@@ -412,7 +410,8 @@ void psx_spu_write16(psx_spu_t* spu, uint32_t offset, uint16_t value) {
 
     const uint8_t* ptr = (uint8_t*)&spu->voice[0].volumel;
 
-    *((uint16_t*)(ptr + offset)) = value;
+    if (offset != 0x0c) 
+        *((uint16_t*)(ptr + offset)) = value;
 }
 
 void psx_spu_write8(psx_spu_t* spu, uint32_t offset, uint8_t value) {
@@ -424,32 +423,84 @@ void psx_spu_destroy(psx_spu_t* spu) {
     free(spu);
 }
 
-/*
-  0-3   Shift  (0..12) (0=Loudest) (13..15=Reserved/Same as 9)
-  4-5   Filter (0..3) (only four filters, unlike SPU-ADPCM which has five)
-  6-7   Unused (should be 0)
-*/
+#define R16(addr) (*((uint16_t*)(&spu->ram[addr])))
+#define W16(addr) *((uint16_t*)(&spu->ram[addr]))
+
+void spu_get_reverb_sample(psx_spu_t* spu, int inl, int inr, int* outl, int* outr) {
+    uint32_t mbase = spu->mbase << 3;
+    uint32_t dapf1 = spu->dapf1 << 3;
+    uint32_t dapf2 = spu->dapf2 << 3;
+    uint32_t mlsame = MAX(mbase, (spu->revbaddr + (spu->mlsame << 3)) & 0x7fffe);
+    uint32_t mrsame = MAX(mbase, (spu->revbaddr + (spu->mrsame << 3)) & 0x7fffe);
+    uint32_t dlsame = MAX(mbase, (spu->revbaddr + (spu->dlsame << 3)) & 0x7fffe);
+    uint32_t drsame = MAX(mbase, (spu->revbaddr + (spu->drsame << 3)) & 0x7fffe);
+    uint32_t mldiff = MAX(mbase, (spu->revbaddr + (spu->mldiff << 3)) & 0x7fffe);
+    uint32_t mrdiff = MAX(mbase, (spu->revbaddr + (spu->mrdiff << 3)) & 0x7fffe);
+    uint32_t dldiff = MAX(mbase, (spu->revbaddr + (spu->dldiff << 3)) & 0x7fffe);
+    uint32_t drdiff = MAX(mbase, (spu->revbaddr + (spu->drdiff << 3)) & 0x7fffe);
+    uint32_t mlcomb1 = MAX(mbase, (spu->revbaddr + (spu->mlcomb1 << 3)) & 0x7fffe);
+    uint32_t mlcomb2 = MAX(mbase, (spu->revbaddr + (spu->mlcomb2 << 3)) & 0x7fffe);
+    uint32_t mlcomb3 = MAX(mbase, (spu->revbaddr + (spu->mlcomb3 << 3)) & 0x7fffe);
+    uint32_t mlcomb4 = MAX(mbase, (spu->revbaddr + (spu->mlcomb4 << 3)) & 0x7fffe);
+    uint32_t mrcomb1 = MAX(mbase, (spu->revbaddr + (spu->mrcomb1 << 3)) & 0x7fffe);
+    uint32_t mrcomb2 = MAX(mbase, (spu->revbaddr + (spu->mrcomb2 << 3)) & 0x7fffe);
+    uint32_t mrcomb3 = MAX(mbase, (spu->revbaddr + (spu->mrcomb3 << 3)) & 0x7fffe);
+    uint32_t mrcomb4 = MAX(mbase, (spu->revbaddr + (spu->mrcomb4 << 3)) & 0x7fffe);
+    uint32_t mlapf1 = MAX(mbase, (spu->revbaddr + ((spu->mlapf1 << 3) - dapf1)) & 0x7fffe);
+    uint32_t mlapf2 = MAX(mbase, (spu->revbaddr + ((spu->mlapf2 << 3) - dapf2)) & 0x7fffe);
+    uint32_t mrapf1 = MAX(mbase, (spu->revbaddr + ((spu->mrapf1 << 3) - dapf1)) & 0x7fffe);
+    uint32_t mrapf2 = MAX(mbase, (spu->revbaddr + ((spu->mrapf2 << 3) - dapf2)) & 0x7fffe);
+    int16_t viir = spu->viir;
+    int16_t vwall = spu->vwall;
+    int16_t vcomb1 = spu->vcomb1;
+    int16_t vcomb2 = spu->vcomb2;
+    int16_t vcomb3 = spu->vcomb3;
+    int16_t vcomb4 = spu->vcomb4;
+    int16_t vapf1 = spu->vapf1;
+    int16_t vapf2 = spu->vapf2;
+    int16_t vlout = spu->vlout;
+    int16_t vrout = spu->vrout;
+
+    int lin = inl * spu->vlin;
+    int rin = inr * spu->vrin;
+
+    W16(mlsame) = (lin + R16(dlsame)*vwall - R16(mlsame-2))*viir + R16(mlsame-2);
+    W16(mrsame) = (rin + R16(drsame)*vwall - R16(mrsame-2))*viir + R16(mrsame-2);
+    W16(mldiff) = (lin + R16(drdiff)*vwall - R16(mldiff-2))*viir + R16(mldiff-2);
+    W16(mrdiff) = (rin + R16(dldiff)*vwall - R16(mrdiff-2))*viir + R16(mrdiff-2);
+
+    int lout=vcomb1*R16(mlcomb1)+vcomb2*R16(mlcomb2)+vcomb3*R16(mlcomb3)+vcomb4*R16(mlcomb4);
+    int rout=vcomb1*R16(mrcomb1)+vcomb2*R16(mrcomb2)+vcomb3*R16(mrcomb3)+vcomb4*R16(mrcomb4);
+
+    lout-=vapf1*R16(mlapf1); R16(mlapf1)=lout; lout*=vapf1+R16(mlapf1);
+    rout-=vapf1*R16(mrapf1); R16(mrapf1)=rout; rout*=vapf1+R16(mrapf1);
+    lout-=vapf2*R16(mlapf2); R16(mlapf2)=lout; lout*=vapf2+R16(mlapf2);
+    rout-=vapf2*R16(mrapf2); R16(mrapf2)=rout; rout*=vapf2+R16(mrapf2);
+
+    *outl = lout * vlout;
+    *outr = rout * vrout;
+
+    spu->revbaddr = MAX(mbase, (spu->revbaddr + 2) & 0x7fffe);
+}
+
+#undef R16
+#undef W16
 
 uint32_t psx_spu_get_sample(psx_spu_t* spu) {
-    if (spu->endx == 0x00ffffff)
-        return 0x0000;
+    spu->even_cycle ^= 1;
+    int active_voice_count = 0;
+    int left = 0;
+    int right = 0;
+    int revl = 0;
+    int revr = 0;
 
-    int voice_count = 0;
-    int left = 0x0000;
-    int right = 0x0000;
-
-    for (int v = 0; v < 24; v++) {
-        // if (spu->data[v].adsr_cycles) {
-        //     --spu->data[v].adsr_cycles;
-
-        //     if (!spu->data[v].adsr_cycles)
-        //         spu_handle_adsr(spu, v);
-        // }
-
+    for (int v = 0; v < VOICE_COUNT; v++) {
         if (!spu->data[v].playing)
             continue;
-        
-        ++voice_count;
+
+        spu_handle_adsr(spu, v);
+
+        ++active_voice_count;
 
         // Shift 3 older samples around
         spu->data[v].s[3] = spu->data[v].s[2];
@@ -470,12 +521,14 @@ uint32_t psx_spu_get_sample(psx_spu_t* spu) {
                 } break;
 
                 case 1: {
+                    spu->endx |= (1 << v);
                     spu->data[v].current_addr = spu->data[v].repeat_addr;
-                    //spu->endx |= (1 << v);
                     spu->data[v].playing = 0;
+                    spu->voice[v].envcvol = 0;
                 } break;
 
                 case 3: {
+                    spu->endx |= (1 << v);
                     spu->data[v].current_addr = spu->data[v].repeat_addr;
                 } break;
             }
@@ -502,13 +555,18 @@ uint32_t psx_spu_get_sample(psx_spu_t* spu) {
         out += (g2 * spu->data[v].s[1]) >> 15;
         out += (g3 * spu->data[v].s[0]) >> 15;
 
-        //float adsr_vol = (float)spu->voice[v].envcvol / 32767.0f;
+        float adsr_vol = (float)spu->voice[v].envcvol / 32767.0f;
 
-        left += out * spu->data[v].lvol;
-        right += out * spu->data[v].rvol;
+        float samplel = (out * spu->data[v].lvol) * adsr_vol;
+        float sampler = (out * spu->data[v].rvol) * adsr_vol;
 
-        // left *= adsr_vol;
-        // right *= adsr_vol;
+        left += samplel;
+        right += sampler;
+
+        if (spu->eon & (1 << v)) {
+            revl += samplel;
+            revr += sampler;
+        }
 
         uint16_t step = spu->voice[v].adsampr;
 
@@ -517,8 +575,12 @@ uint32_t psx_spu_get_sample(psx_spu_t* spu) {
         spu->data[v].counter += step;
     }
 
-    if (!voice_count)
+    if (!active_voice_count)
         return 0x00000000;
+
+    // To-do: Fix reverb
+    // if ((spu->spucnt & 0x0080) && spu->even_cycle)
+    //     spu_get_reverb_sample(spu, revl, revr, &spu->lrsl, &spu->lrsr);
 
     uint16_t clampl = CLAMP(left, INT16_MIN, INT16_MAX);
     uint16_t clampr = CLAMP(right, INT16_MIN, INT16_MAX);

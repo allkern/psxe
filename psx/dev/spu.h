@@ -18,21 +18,27 @@
     1F801DACh - Sound RAM Data Transfer Control (should be 0004h)
 */
 
-#define SPUR_KON     0x188
-#define SPUR_KOFF    0x18c
-#define SPUR_ENDX    0x19c
+#define SPUR_KONL    0x188
+#define SPUR_KONH    0x18a
+#define SPUR_KOFFL   0x18c
+#define SPUR_KOFFH   0x18e
+#define SPUR_EONL    0x198
+#define SPUR_EONH    0x19a
+#define SPUR_ENDXL   0x19c
+#define SPUR_ENDXH   0x19e
 #define SPUR_TADDR   0x1a6
 #define SPUR_TFIFO   0x1a8
 #define SPUR_SPUCNT  0x1aa
 #define SPUR_TCTRL   0x1ac
 #define SPUR_SPUSTAT 0x1ae
+#define SPUR_MBASE   0x1a2
 
 typedef struct __attribute__((__packed__)) {
     uint32_t io_base, io_size;
 
     uint8_t* ram;
 
-    struct {
+    struct __attribute__((__packed__)) {
         uint16_t volumel;
         uint16_t volumer;
         uint16_t adsampr;
@@ -45,8 +51,8 @@ typedef struct __attribute__((__packed__)) {
 
     uint16_t mainlvol;
     uint16_t mainrvol;
-    uint16_t revblvol;
-    uint16_t revbrvol;
+    uint16_t vlout;
+    uint16_t vrout;
     uint32_t kon;
     uint32_t koff;
     uint32_t pmon;
@@ -54,7 +60,7 @@ typedef struct __attribute__((__packed__)) {
     uint32_t eon;
     uint32_t endx;
     uint16_t unk_da0;
-    uint16_t revbaddr;
+    uint16_t mbase;
     uint16_t irq9addr;
     uint16_t ramdta;
     uint16_t ramdtf;
@@ -67,14 +73,14 @@ typedef struct __attribute__((__packed__)) {
     uint32_t unk_dbc;
     uint16_t dapf1;
     uint16_t dapf2;
-    uint16_t viir;
-    uint16_t vcomb1;
-    uint16_t vcomb2;
-    uint16_t vcomb3;
-    uint16_t vcomb4;
-    uint16_t vwall;
-    uint16_t vapf1;
-    uint16_t vapf2;
+    int16_t  viir;
+    int16_t  vcomb1;
+    int16_t  vcomb2;
+    int16_t  vcomb3;
+    int16_t  vcomb4;
+    int16_t  vwall;
+    int16_t  vapf1;
+    int16_t  vapf2;
     uint16_t mlsame;
     uint16_t mrsame;
     uint16_t mlcomb1;
@@ -95,14 +101,18 @@ typedef struct __attribute__((__packed__)) {
     uint16_t mrapf1;
     uint16_t mlapf2;
     uint16_t mrapf2;
-    uint16_t vlin;
-    uint16_t vrin;
+    int16_t  vlin;
+    int16_t  vrin;
 
     // Internal registers unimplemented
 
     uint32_t taddr;
     uint16_t tfifo[32];
     uint16_t tfifo_index;
+    uint32_t revbaddr;
+    int lrsl;
+    int lrsr;
+    int even_cycle;
 
     struct {
         int playing;
@@ -115,6 +125,8 @@ typedef struct __attribute__((__packed__)) {
         int16_t h[2];
         float lvol;
         float rvol;
+        int cvol;
+        int eon;
 
         /*
         ____lower 16bit (at 1F801C08h+N*10h)___________________________________
@@ -148,6 +160,7 @@ typedef struct __attribute__((__packed__)) {
         int adsr_step;
         int adsr_pending_step;
         int adsr_sustain_level;
+        uint32_t envctl;
     } data[24];
 } psx_spu_t;
 
