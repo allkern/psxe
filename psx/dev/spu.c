@@ -484,8 +484,8 @@ void spu_get_reverb_sample(psx_spu_t* spu, int inl, int inr, int* outl, int* out
     float vlout = (float)spu->vlout / 32767.0f;
     float vrout = (float)spu->vrout / 32767.0f;
 
-    int lin = ((float)inl * 0.5f) * vlin;
-    int rin = ((float)inr * 0.5f) * vrin;
+    int lin = ((float)inl * 0.65f) * vlin;
+    int rin = ((float)inr * 0.65f) * vrin;
 
     int mlsamev = (lin + R16(dlsame)*vwall - R16(mlsame-2))*viir + R16(mlsame-2);
     int mrsamev = (rin + R16(drsame)*vwall - R16(mrsame-2))*viir + R16(mrsame-2);
@@ -589,8 +589,8 @@ uint32_t psx_spu_get_sample(psx_spu_t* spu) {
 
         float adsr_vol = (float)spu->voice[v].envcvol / 32767.0f;
 
-        float samplel = (out * spu->data[v].lvol) * adsr_vol;
-        float sampler = (out * spu->data[v].rvol) * adsr_vol;
+        float samplel = (out * spu->data[v].lvol) * adsr_vol * (float)spu->mainlvol / 32767.0f; 
+        float sampler = (out * spu->data[v].rvol) * adsr_vol * (float)spu->mainrvol / 32767.0f; 
 
         left += samplel;
         right += sampler;
@@ -610,19 +610,16 @@ uint32_t psx_spu_get_sample(psx_spu_t* spu) {
     if (!active_voice_count)
         return 0x00000000;
     
-    int rsl = spu->lrsl;
-    int rsr = spu->lrsr;
+    int16_t clamprl = CLAMP(revl, INT16_MIN, INT16_MAX);
+    int16_t clamprr = CLAMP(revr, INT16_MIN, INT16_MAX);
+    int16_t clampsl = CLAMP(left, INT16_MIN, INT16_MAX);
+    int16_t clampsr = CLAMP(right, INT16_MIN, INT16_MAX);
+    
+    if ((spu->spucnt & 0x0080) && spu->even_cycle)
+        spu_get_reverb_sample(spu, clamprl, clamprr, &spu->lrsl, &spu->lrsr);
 
-    // To-do: Fix reverb
-    if ((spu->spucnt & 0x0080) && spu->even_cycle) {
-        spu_get_reverb_sample(spu, revl, revr, &rsl, &rsr);
-
-        spu->lrsl = rsl;
-        spu->lrsr = rsr;
-    }
-
-    uint16_t clampl = CLAMP(left + spu->lrsl, INT16_MIN, INT16_MAX);
-    uint16_t clampr = CLAMP(right + spu->lrsr, INT16_MIN, INT16_MAX);
+    uint16_t clampl = CLAMP(clampsl + spu->lrsl, INT16_MIN, INT16_MAX);
+    uint16_t clampr = CLAMP(clampsr + spu->lrsr, INT16_MIN, INT16_MAX);
 
     return clampl | (((uint32_t)clampr) << 16);
 }
