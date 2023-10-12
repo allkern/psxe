@@ -423,59 +423,90 @@ void psx_spu_destroy(psx_spu_t* spu) {
     free(spu);
 }
 
-#define R16(addr) (*((uint16_t*)(&spu->ram[addr])))
-#define W16(addr) *((uint16_t*)(&spu->ram[addr]))
+// To-do: Optimize reverb
+
+int16_t spu_read_reverb(psx_spu_t* spu, uint32_t addr) {
+    uint32_t mbase = spu->mbase << 3;
+
+    uint32_t relative = (addr + spu->revbaddr - mbase) % (0x80000 - mbase);
+    uint32_t wrapped = (mbase + relative) & 0x7fffe;
+
+    return *(int16_t*)(spu->ram + wrapped);
+}
+
+void spu_write_reverb(psx_spu_t* spu, uint32_t addr, int16_t value) {
+    uint32_t mbase = spu->mbase << 3;
+
+    uint32_t relative = (addr + spu->revbaddr - mbase) % (0x80000 - mbase);
+    uint32_t wrapped = (mbase + relative) & 0x7fffe;
+
+    *(int16_t*)(spu->ram + wrapped) = value;
+}
+
+#define R16(addr) (spu_read_reverb(spu, addr))
+#define W16(addr, value) spu_write_reverb(spu, addr, value)
 
 void spu_get_reverb_sample(psx_spu_t* spu, int inl, int inr, int* outl, int* outr) {
     uint32_t mbase = spu->mbase << 3;
     uint32_t dapf1 = spu->dapf1 << 3;
     uint32_t dapf2 = spu->dapf2 << 3;
-    uint32_t mlsame = MAX(mbase, (spu->revbaddr + (spu->mlsame << 3)) & 0x7fffe);
-    uint32_t mrsame = MAX(mbase, (spu->revbaddr + (spu->mrsame << 3)) & 0x7fffe);
-    uint32_t dlsame = MAX(mbase, (spu->revbaddr + (spu->dlsame << 3)) & 0x7fffe);
-    uint32_t drsame = MAX(mbase, (spu->revbaddr + (spu->drsame << 3)) & 0x7fffe);
-    uint32_t mldiff = MAX(mbase, (spu->revbaddr + (spu->mldiff << 3)) & 0x7fffe);
-    uint32_t mrdiff = MAX(mbase, (spu->revbaddr + (spu->mrdiff << 3)) & 0x7fffe);
-    uint32_t dldiff = MAX(mbase, (spu->revbaddr + (spu->dldiff << 3)) & 0x7fffe);
-    uint32_t drdiff = MAX(mbase, (spu->revbaddr + (spu->drdiff << 3)) & 0x7fffe);
-    uint32_t mlcomb1 = MAX(mbase, (spu->revbaddr + (spu->mlcomb1 << 3)) & 0x7fffe);
-    uint32_t mlcomb2 = MAX(mbase, (spu->revbaddr + (spu->mlcomb2 << 3)) & 0x7fffe);
-    uint32_t mlcomb3 = MAX(mbase, (spu->revbaddr + (spu->mlcomb3 << 3)) & 0x7fffe);
-    uint32_t mlcomb4 = MAX(mbase, (spu->revbaddr + (spu->mlcomb4 << 3)) & 0x7fffe);
-    uint32_t mrcomb1 = MAX(mbase, (spu->revbaddr + (spu->mrcomb1 << 3)) & 0x7fffe);
-    uint32_t mrcomb2 = MAX(mbase, (spu->revbaddr + (spu->mrcomb2 << 3)) & 0x7fffe);
-    uint32_t mrcomb3 = MAX(mbase, (spu->revbaddr + (spu->mrcomb3 << 3)) & 0x7fffe);
-    uint32_t mrcomb4 = MAX(mbase, (spu->revbaddr + (spu->mrcomb4 << 3)) & 0x7fffe);
-    uint32_t mlapf1 = MAX(mbase, (spu->revbaddr + ((spu->mlapf1 << 3) - dapf1)) & 0x7fffe);
-    uint32_t mlapf2 = MAX(mbase, (spu->revbaddr + ((spu->mlapf2 << 3) - dapf2)) & 0x7fffe);
-    uint32_t mrapf1 = MAX(mbase, (spu->revbaddr + ((spu->mrapf1 << 3) - dapf1)) & 0x7fffe);
-    uint32_t mrapf2 = MAX(mbase, (spu->revbaddr + ((spu->mrapf2 << 3) - dapf2)) & 0x7fffe);
-    int16_t viir = spu->viir;
-    int16_t vwall = spu->vwall;
-    int16_t vcomb1 = spu->vcomb1;
-    int16_t vcomb2 = spu->vcomb2;
-    int16_t vcomb3 = spu->vcomb3;
-    int16_t vcomb4 = spu->vcomb4;
-    int16_t vapf1 = spu->vapf1;
-    int16_t vapf2 = spu->vapf2;
-    int16_t vlout = spu->vlout;
-    int16_t vrout = spu->vrout;
+    uint32_t mlsame = spu->mlsame << 3;
+    uint32_t mrsame = spu->mrsame << 3;
+    uint32_t dlsame = spu->dlsame << 3;
+    uint32_t drsame = spu->drsame << 3;
+    uint32_t mldiff = spu->mldiff << 3;
+    uint32_t mrdiff = spu->mrdiff << 3;
+    uint32_t dldiff = spu->dldiff << 3;
+    uint32_t drdiff = spu->drdiff << 3;
+    uint32_t mlcomb1 = spu->mlcomb1 << 3;
+    uint32_t mlcomb2 = spu->mlcomb2 << 3;
+    uint32_t mlcomb3 = spu->mlcomb3 << 3;
+    uint32_t mlcomb4 = spu->mlcomb4 << 3;
+    uint32_t mrcomb1 = spu->mrcomb1 << 3;
+    uint32_t mrcomb2 = spu->mrcomb2 << 3;
+    uint32_t mrcomb3 = spu->mrcomb3 << 3;
+    uint32_t mrcomb4 = spu->mrcomb4 << 3;
+    uint32_t mlapf1 = spu->mlapf1 << 3;
+    uint32_t mlapf2 = spu->mlapf2 << 3;
+    uint32_t mrapf1 = spu->mrapf1 << 3;
+    uint32_t mrapf2 = spu->mrapf2 << 3;
 
-    int lin = inl * spu->vlin;
-    int rin = inr * spu->vrin;
+    float vlin = (float)spu->vlin / 32767.0f;
+    float vrin = (float)spu->vrin / 32767.0f;
+    float viir = (float)spu->viir / 32767.0f;
+    float vwall = (float)spu->vwall / 32767.0f;
+    float vcomb1 = (float)spu->vcomb1 / 32767.0f;
+    float vcomb2 = (float)spu->vcomb2 / 32767.0f;
+    float vcomb3 = (float)spu->vcomb3 / 32767.0f;
+    float vcomb4 = (float)spu->vcomb4 / 32767.0f;
+    float vapf1 = (float)spu->vapf1 / 32767.0f;
+    float vapf2 = (float)spu->vapf2 / 32767.0f;
+    float vlout = (float)spu->vlout / 32767.0f;
+    float vrout = (float)spu->vrout / 32767.0f;
 
-    W16(mlsame) = (lin + R16(dlsame)*vwall - R16(mlsame-2))*viir + R16(mlsame-2);
-    W16(mrsame) = (rin + R16(drsame)*vwall - R16(mrsame-2))*viir + R16(mrsame-2);
-    W16(mldiff) = (lin + R16(drdiff)*vwall - R16(mldiff-2))*viir + R16(mldiff-2);
-    W16(mrdiff) = (rin + R16(dldiff)*vwall - R16(mrdiff-2))*viir + R16(mrdiff-2);
+    int lin = ((float)inl * 0.5f) * vlin;
+    int rin = ((float)inr * 0.5f) * vrin;
+
+    int mlsamev = (lin + R16(dlsame)*vwall - R16(mlsame-2))*viir + R16(mlsame-2);
+    int mrsamev = (rin + R16(drsame)*vwall - R16(mrsame-2))*viir + R16(mrsame-2);
+    int mldiffv = (lin + R16(drdiff)*vwall - R16(mldiff-2))*viir + R16(mldiff-2);
+    int mrdiffv = (rin + R16(dldiff)*vwall - R16(mrdiff-2))*viir + R16(mrdiff-2);
+
+    W16(mlsame, CLAMP(mlsamev, -0x8000, 0x7fff));
+    W16(mrsame, CLAMP(mrsamev, -0x8000, 0x7fff));
+    W16(mldiff, CLAMP(mldiffv, -0x8000, 0x7fff));
+    W16(mrdiff, CLAMP(mrdiffv, -0x8000, 0x7fff));
 
     int lout=vcomb1*R16(mlcomb1)+vcomb2*R16(mlcomb2)+vcomb3*R16(mlcomb3)+vcomb4*R16(mlcomb4);
     int rout=vcomb1*R16(mrcomb1)+vcomb2*R16(mrcomb2)+vcomb3*R16(mrcomb3)+vcomb4*R16(mrcomb4);
 
-    lout-=vapf1*R16(mlapf1); R16(mlapf1)=lout; lout*=vapf1+R16(mlapf1);
-    rout-=vapf1*R16(mrapf1); R16(mrapf1)=rout; rout*=vapf1+R16(mrapf1);
-    lout-=vapf2*R16(mlapf2); R16(mlapf2)=lout; lout*=vapf2+R16(mlapf2);
-    rout-=vapf2*R16(mrapf2); R16(mrapf2)=rout; rout*=vapf2+R16(mrapf2);
+    lout = CLAMP(lout, -0x8000, 0x7fff);
+    rout = CLAMP(rout, -0x8000, 0x7fff);
+
+    lout-=CLAMP(vapf1*R16(mlapf1 - dapf1), -0x8000, 0x7fff); W16(mlapf1, lout); lout*=vapf1+((float)R16(mlapf1 - dapf1) / 32767.0f);
+    rout-=CLAMP(vapf1*R16(mrapf1 - dapf1), -0x8000, 0x7fff); W16(mrapf1, rout); rout*=vapf1+((float)R16(mrapf1 - dapf1) / 32767.0f);
+    lout-=CLAMP(vapf2*R16(mlapf2 - dapf2), -0x8000, 0x7fff); W16(mlapf2, lout); lout*=vapf2+((float)R16(mlapf2 - dapf2) / 32767.0f);
+    rout-=CLAMP(vapf2*R16(mrapf2 - dapf2), -0x8000, 0x7fff); W16(mrapf2, rout); rout*=vapf2+((float)R16(mrapf2 - dapf2) / 32767.0f);
 
     *outl = lout * vlout;
     *outr = rout * vrout;
@@ -488,6 +519,7 @@ void spu_get_reverb_sample(psx_spu_t* spu, int inl, int inr, int* outl, int* out
 
 uint32_t psx_spu_get_sample(psx_spu_t* spu) {
     spu->even_cycle ^= 1;
+
     int active_voice_count = 0;
     int left = 0;
     int right = 0;
@@ -577,13 +609,20 @@ uint32_t psx_spu_get_sample(psx_spu_t* spu) {
 
     if (!active_voice_count)
         return 0x00000000;
+    
+    int rsl = spu->lrsl;
+    int rsr = spu->lrsr;
 
     // To-do: Fix reverb
-    // if ((spu->spucnt & 0x0080) && spu->even_cycle)
-    //     spu_get_reverb_sample(spu, revl, revr, &spu->lrsl, &spu->lrsr);
+    if ((spu->spucnt & 0x0080) && spu->even_cycle) {
+        spu_get_reverb_sample(spu, revl, revr, &rsl, &rsr);
 
-    uint16_t clampl = CLAMP(left, INT16_MIN, INT16_MAX);
-    uint16_t clampr = CLAMP(right, INT16_MIN, INT16_MAX);
+        spu->lrsl = rsl;
+        spu->lrsr = rsr;
+    }
+
+    uint16_t clampl = CLAMP(left + spu->lrsl, INT16_MIN, INT16_MAX);
+    uint16_t clampr = CLAMP(right + spu->lrsr, INT16_MIN, INT16_MAX);
 
     return clampl | (((uint32_t)clampr) << 16);
 }
