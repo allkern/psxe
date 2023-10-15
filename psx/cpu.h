@@ -64,7 +64,43 @@ typedef void (*psx_cpu_kcall_hook_t)(psx_cpu_t*);
   -          hi,lo    Multiply/divide results, may be changed by subroutines
 */
 
-struct psx_cpu_t {
+typedef struct __attribute__((__packed__)) {
+    union {
+        uint32_t xy;
+        uint16_t p[2];
+    };
+
+    int16_t z;
+} gte_vertex_t;
+
+typedef struct __attribute__((__packed__)) {
+    union {
+        int32_t xy;
+        int16_t p[2];
+    };
+} gte_vec2_t;
+
+typedef struct __attribute__((__packed__)) {
+    int32_t x, y, z;
+} gte_vec3_t;
+
+typedef struct __attribute__((__packed__)) {
+    union {
+        uint32_t rgbc;
+        uint8_t c[4];
+    };
+} gte_color_t;
+
+typedef struct __attribute__((__packed__)) {
+    union {
+        uint32_t u32;
+        uint16_t c[2];
+    } m[4];
+
+    int16_t m33;
+} gte_matrix_t;
+
+struct __attribute__((__packed__)) psx_cpu_t {
     uint32_t r[32];
     uint32_t opcode;
     uint32_t pc, next_pc, saved_pc;
@@ -77,34 +113,39 @@ struct psx_cpu_t {
     uint32_t cop0_r[16];
 
     struct {
-        int16_t v0[4], v1[4], v2[4];
-        uint32_t rgbc;
-        uint32_t otz;
-        uint32_t ir0, ir1, ir2, ir3;
-        int16_t sxy0[2], sxy1[2], sxy2[2], sxyp[2];
-        uint32_t sz0, sz1, sz2, sz3;
-        uint32_t rgb0, rgb1, rgb2;
+        gte_vertex_t v[3];
+        gte_color_t rgbc;
+        uint16_t otz;
+        int16_t ir[4];
+        gte_vec2_t sxy[4];
+        uint16_t sz[4];
+        gte_color_t rgb[3];
         uint32_t res1;
-        int32_t mac0, mac1, mac2, mac3;
-        uint32_t irgb, orgb;
+        int32_t mac[4];
+        uint16_t irgb, orgb;
         int32_t lzcs, lzcr;
     } cop2_dr;
 
     struct {
-        int16_t rt[3 * 3];
-        uint32_t trx, try, trz;
-        int16_t l[3 * 3];
-        uint32_t rbk, gbk, bbk;
-        int16_t lr[3 * 3];
-        uint32_t rfc, gfc, bfc;
+        gte_matrix_t rt;
+        gte_vec3_t tr;
+        gte_matrix_t l;
+        gte_vec3_t bk;
+        gte_matrix_t lr;
+        gte_vec3_t fc;
         uint32_t ofx, ofy;
-        uint32_t h;
-        uint32_t dqa, dqb;
-        uint32_t zsf3, zsf4;
+        uint16_t h;
+        int16_t dqa;
+        int32_t dqb;
+        int16_t zsf3, zsf4;
         uint32_t flag;
     } cop2_cr;
 
-    uint32_t cop2_flag;
+    int gte_lm;
+    int gte_sf;
+    int gte_mmat;
+    int gte_mvec;
+    int gte_tvec;
 
     psx_bus_t* bus;
 
