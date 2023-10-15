@@ -1492,7 +1492,7 @@ void psx_cdrom_open(psx_cdrom_t* cdrom, const char* path) {
     }
 }
 
-void psx_cdrom_get_cdda_samples(psx_cdrom_t* cdrom, void* buf, int size) {
+void psx_cdrom_get_cdda_samples(psx_cdrom_t* cdrom, void* buf, int size, psx_spu_t* spu) {
     if (!cdrom->cdda_playing) {
         memset(buf, 0, size);
     
@@ -1501,8 +1501,6 @@ void psx_cdrom_get_cdda_samples(psx_cdrom_t* cdrom, void* buf, int size) {
 
     if (!cdrom->disc)
         return;
-
-    memcpy(buf, cdrom->cdda_buf, size);
 
     // Convert seek to I
     msf_t msf = cdrom->cdda_msf;
@@ -1526,6 +1524,8 @@ void psx_cdrom_get_cdda_samples(psx_cdrom_t* cdrom, void* buf, int size) {
     cdrom->cdda_msf = msf;
 
     memcpy(buf, cdrom->cdda_buf, size);
+
+    psx_spu_update_cdda_buffer(spu, cdrom->cdda_buf);
 
     // Handle report IRQ
     if (cdrom->cdda_sectors_played == CD_SECTORS_PS) {

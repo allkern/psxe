@@ -110,6 +110,14 @@ uint32_t psx_spu_read32(psx_spu_t* spu, uint32_t offset) {
 }
 
 uint16_t psx_spu_read16(psx_spu_t* spu, uint32_t offset) {
+    if (offset == SPUR_TFIFO) {
+        uint16_t data = *(uint16_t*)(&spu->ram[spu->taddr]);
+
+        spu->taddr += 2;
+
+        return data;
+    }
+
     const uint8_t* ptr = (uint8_t*)&spu->voice[0].volumel;
 
     return *((uint16_t*)(ptr + offset));
@@ -622,6 +630,16 @@ uint32_t psx_spu_get_sample(psx_spu_t* spu) {
     uint16_t clampr = CLAMP(clampsr + spu->lrsr, INT16_MIN, INT16_MAX);
 
     return clampl | (((uint32_t)clampr) << 16);
+}
+
+void psx_spu_update_cdda_buffer(psx_spu_t* spu, void* buf) {
+    int16_t* ptr = buf;
+    int16_t* ram = spu->ram;
+
+    for (int i = 0; i < 0x400;) {
+        ram[i] = ptr[i++];
+        ram[i + 0x400] = ptr[i++];
+    }
 }
 
 #undef CLAMP

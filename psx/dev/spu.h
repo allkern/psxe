@@ -173,6 +173,7 @@ void psx_spu_write32(psx_spu_t*, uint32_t, uint32_t);
 void psx_spu_write16(psx_spu_t*, uint32_t, uint16_t);
 void psx_spu_write8(psx_spu_t*, uint32_t, uint8_t);
 void psx_spu_destroy(psx_spu_t*);
+void psx_spu_update_cdda_buffer(psx_spu_t*, void*);
 uint32_t psx_spu_get_sample(psx_spu_t*);
 
 #endif

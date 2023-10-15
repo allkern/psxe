@@ -1301,19 +1301,6 @@ void psx_cpu_i_lwc1(psx_cpu_t* cpu) {
     psx_cpu_exception(cpu, CAUSE_CPU);
 }
 
-void psx_cpu_i_lwc2(psx_cpu_t* cpu) {
-    uint32_t s = cpu->r[S];
-    uint32_t addr = s + IMM16S;
-
-    DO_PENDING_LOAD;
-
-    if (addr & 0x3) {
-        psx_cpu_exception(cpu, CAUSE_ADEL);
-    } else {
-        COP2_DR(T) = psx_bus_read32(cpu->bus, addr);
-    }
-}
-
 void psx_cpu_i_lwc3(psx_cpu_t* cpu) {
     psx_cpu_exception(cpu, CAUSE_CPU);
 }
@@ -1324,26 +1311,6 @@ void psx_cpu_i_swc0(psx_cpu_t* cpu) {
 
 void psx_cpu_i_swc1(psx_cpu_t* cpu) {
     psx_cpu_exception(cpu, CAUSE_CPU);
-}
-
-void psx_cpu_i_swc2(psx_cpu_t* cpu) {
-    uint32_t s = cpu->r[S];
-    uint32_t addr = s + IMM16S;
-
-    DO_PENDING_LOAD;
-
-    // Cache isolated
-    if (cpu->cop0_r[COP0_SR] & SR_ISC) {
-        log_debug("Ignoring write while cache is isolated");
-
-        return;
-    }
-
-    if (addr & 0x3) {
-        psx_cpu_exception(cpu, CAUSE_ADES);
-    } else {
-        psx_bus_write32(cpu->bus, addr, COP2_DR(T));
-    }
 }
 
 void psx_cpu_i_swc3(psx_cpu_t* cpu) {
@@ -1753,6 +1720,9 @@ void gte_handle_lzcs_write(psx_cpu_t* cpu) {
 }
 
 uint32_t gte_read_register(psx_cpu_t* cpu, uint32_t r) {
+    if (r == 24) {
+        log_fatal("MAC0 read %08x", cpu->cop2_dr.mac[0]);
+    }
     switch (r) {
         case 0 : return cpu->cop2_dr.v[0].xy;
         case 1 : return (int32_t)cpu->cop2_dr.v[0].z;
@@ -1890,6 +1860,39 @@ void gte_write_register(psx_cpu_t* cpu, uint32_t r, uint32_t value) {
         case 61: cpu->cop2_cr.zsf3 = value; break;
         case 62: cpu->cop2_cr.zsf4 = value; break;
         case 63: cpu->cop2_cr.flag = value & 0x7ffff000; break;
+    }
+}
+
+void psx_cpu_i_lwc2(psx_cpu_t* cpu) {
+    uint32_t s = cpu->r[S];
+    uint32_t addr = s + IMM16S;
+
+    DO_PENDING_LOAD;
+
+    if (addr & 0x3) {
+        psx_cpu_exception(cpu, CAUSE_ADEL);
+    } else {
+        gte_write_register(cpu, T, psx_bus_read32(cpu->bus, addr));
+    }
+}
+
+void psx_cpu_i_swc2(psx_cpu_t* cpu) {
+    uint32_t s = cpu->r[S];
+    uint32_t addr = s + IMM16S;
+
+    DO_PENDING_LOAD;
+
+    // Cache isolated
+    if (cpu->cop0_r[COP0_SR] & SR_ISC) {
+        log_debug("Ignoring write while cache is isolated");
+
+        return;
+    }
+
+    if (addr & 0x3) {
+        psx_cpu_exception(cpu, CAUSE_ADES);
+    } else {
+        psx_bus_write32(cpu->bus, addr, gte_read_register(cpu, T));
     }
 }
 
@@ -2327,8 +2330,6 @@ void psx_gte_i_avsz3(psx_cpu_t* cpu) {
 
     R_MAC0 = (int)gte_clamp_mac0(cpu, avg);
     R_OTZ = gte_clamp_sz3(cpu, avg >> 12);
-    R_MAC0 = 0xbaadf00d;
-    R_OTZ = 0xdeadbeef;
 }
 
 void psx_gte_i_avsz4(psx_cpu_t* cpu) {

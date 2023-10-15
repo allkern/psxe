@@ -9,6 +9,7 @@
 #include "../disc/cue.h"
 #include "../disc/bin.h"
 #include "../msf.h"
+#include "spu.h"
 
 #define DELAY_1MS (PSX_CPU_CPS / 1000)
 #define READ_SINGLE_DELAY (PSX_CPU_CPS / 75)
@@ -217,7 +218,7 @@ void psx_cdrom_write8(psx_cdrom_t*, uint32_t, uint8_t);
 void psx_cdrom_update(psx_cdrom_t*);
 void psx_cdrom_destroy(psx_cdrom_t*);
 void psx_cdrom_open(psx_cdrom_t*, const char*);
-void psx_cdrom_get_cdda_samples(psx_cdrom_t*, void*, int);
+void psx_cdrom_get_cdda_samples(psx_cdrom_t*, void*, int, psx_spu_t*);
 
 /*
   Command          Parameters      Response(s)

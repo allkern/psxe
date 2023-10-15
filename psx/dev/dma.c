@@ -385,6 +385,20 @@ void psx_dma_do_spu(psx_dma_t* dma) {
                 dma->spu.madr += CHCR_STEP(spu) ? -4 : 4;
             }
         }
+    } else {
+        for (int j = 0; j < blocks; j++) {
+            for (int i = 0; i < size; i++) {
+                uint32_t data;
+
+                data  = psx_bus_read16(dma->bus, 0x1f801da8);
+                data |= psx_bus_read16(dma->bus, 0x1f801da8) << 16;
+
+                psx_bus_write32(dma->bus, dma->spu.madr, data);
+
+                dma->spu.madr += CHCR_STEP(spu) ? -4 : 4;
+            }
+        }
+
     }
     
     // Clear BCR and CHCR trigger and busy bits
