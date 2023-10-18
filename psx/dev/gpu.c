@@ -1585,11 +1585,11 @@ void psx_gpu_update_cmd(psx_gpu_t* gpu) {
             /* To-do: Implement mask bit thing */
         } break;
         default: {
-            log_set_quiet(0);
-            log_fatal("Unhandled GP0(%02Xh)", gpu->buf[0] >> 24);
-            log_set_quiet(1);
+            // log_set_quiet(0);
+            // log_fatal("Unhandled GP0(%02Xh)", gpu->buf[0] >> 24);
+            // log_set_quiet(1);
 
-            exit(1);
+            // exit(1);
         } break;
     }
 }

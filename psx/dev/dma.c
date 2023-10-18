@@ -346,22 +346,22 @@ void psx_dma_do_spu(psx_dma_t* dma) {
     if (!CHCR_BUSY(spu))
         return;
 
-    log_set_quiet(0);
-    log_fatal("SPU DMA transfer: madr=%08x, dir=%s, sync=%s (%u), step=%s, size=%x, blocks=%u",
-        dma->spu.madr,
-        CHCR_TDIR(spu) ? "to device" : "to RAM",
-        g_psx_dma_sync_type_name_table[CHCR_SYNC(spu)], CHCR_SYNC(spu),
-        CHCR_STEP(spu) ? "decrementing" : "incrementing",
-        BCR_SIZE(spu), BCR_BCNT(spu)
-    );
+    // log_set_quiet(0);
+    // log_fatal("SPU DMA transfer: madr=%08x, dir=%s, sync=%s (%u), step=%s, size=%x, blocks=%u",
+    //     dma->spu.madr,
+    //     CHCR_TDIR(spu) ? "to device" : "to RAM",
+    //     g_psx_dma_sync_type_name_table[CHCR_SYNC(spu)], CHCR_SYNC(spu),
+    //     CHCR_STEP(spu) ? "decrementing" : "incrementing",
+    //     BCR_SIZE(spu), BCR_BCNT(spu)
+    // );
 
-    log_fatal("DICR: force=%u, en=%02x, irqen=%u, flags=%02x",
-        (dma->dicr >> 15) & 1,
-        (dma->dicr >> 16) & 0x7f,
-        (dma->dicr >> 23) & 1,
-        (dma->dicr >> 24) & 0x7f
-    );
-    log_set_quiet(1);
+    // log_fatal("DICR: force=%u, en=%02x, irqen=%u, flags=%02x",
+    //     (dma->dicr >> 15) & 1,
+    //     (dma->dicr >> 16) & 0x7f,
+    //     (dma->dicr >> 23) & 1,
+    //     (dma->dicr >> 24) & 0x7f
+    // );
+    // log_set_quiet(1);
 
     uint32_t size = BCR_SIZE(spu);
     uint32_t blocks = BCR_BCNT(spu);
