@@ -75,8 +75,8 @@ typedef struct __attribute__((__packed__)) {
 
 typedef struct __attribute__((__packed__)) {
     union {
-        int32_t xy;
-        int16_t p[2];
+        uint32_t xy;
+        uint16_t p[2];
     };
 } gte_vec2_t;
 
