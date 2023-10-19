@@ -1677,11 +1677,20 @@ void psx_cpu_i_rfe(psx_cpu_t* cpu) {
 
 // COP2
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
+#define CLAMP(v, a, b) (((v) < (a)) ? (a) : (((v) > (b)) ? (b) : (v)))
 
 void gte_handle_irgb_write(psx_cpu_t* cpu) {
     cpu->cop2_dr.ir[1] = ((cpu->cop2_dr.irgb >> 0) & 0x1f) * 0x80;
     cpu->cop2_dr.ir[2] = ((cpu->cop2_dr.irgb >> 5) & 0x1f) * 0x80;
     cpu->cop2_dr.ir[3] = ((cpu->cop2_dr.irgb >> 10) & 0x1f) * 0x80;
+}
+
+void gte_handle_irgb_read(psx_cpu_t* cpu) {
+    int r = (cpu->cop2_dr.ir[1] / 0x80) & 0x1f;
+    int g = (cpu->cop2_dr.ir[2] / 0x80) & 0x1f;
+    int b = (cpu->cop2_dr.ir[3] / 0x80) & 0x1f;
+
+    cpu->cop2_dr.irgb = r | (g << 5) | (b << 10);
 }
 
 void gte_handle_sxyp_write(psx_cpu_t* cpu) {
@@ -1703,9 +1712,6 @@ void gte_handle_lzcs_write(psx_cpu_t* cpu) {
 }
 
 uint32_t gte_read_register(psx_cpu_t* cpu, uint32_t r) {
-    if (r == 24) {
-        log_fatal("MAC0 read %08x", cpu->cop2_dr.mac[0]);
-    }
     switch (r) {
         case 0 : return cpu->cop2_dr.v[0].xy;
         case 1 : return (int32_t)cpu->cop2_dr.v[0].z;
@@ -1735,7 +1741,7 @@ uint32_t gte_read_register(psx_cpu_t* cpu, uint32_t r) {
         case 25: return cpu->cop2_dr.mac[1];
         case 26: return cpu->cop2_dr.mac[2];
         case 27: return cpu->cop2_dr.mac[3];
-        case 28: return cpu->cop2_dr.irgb;
+        case 28: gte_handle_irgb_read(cpu); return cpu->cop2_dr.irgb;
         case 29: return cpu->cop2_dr.irgb; // IRGB mirror
         case 30: return cpu->cop2_dr.lzcs;
         case 31: return cpu->cop2_dr.lzcr;
@@ -1919,14 +1925,14 @@ void psx_cpu_i_ctc2(psx_cpu_t* cpu) {
 
 #define R_FLAG cpu->cop2_cr.flag
 
-int32_t gte_clamp_mac0(psx_cpu_t* cpu, int64_t value) {
+uint32_t gte_clamp_mac0(psx_cpu_t* cpu, int64_t value) {
     if (value < -0x80000000) {
         R_FLAG |= 0x8000;
     } else if (value > 0x7fffffff) {
         R_FLAG |= 0x10000;
     }
 
-    return value & 0xffffffff;
+    return value;
 }
 
 int32_t gte_clamp_mac(psx_cpu_t* cpu, int i, int64_t value) {
@@ -2227,8 +2233,9 @@ void gte_rtp(psx_cpu_t* cpu, int i, int dq) {
     R_SY2 = gte_clamp_sxy(cpu, 2, y);
 
     if (dq) {
-        R_MAC0 = gte_clamp_mac0(cpu, h_div_sz * I64(R_DQA) + I64(R_DQB));
-        R_IR0 = gte_clamp_ir0(cpu, R_MAC0 >> 12);
+        int64_t mac0 = I64(R_DQB) + (h_div_sz * I64(R_DQA));
+        R_MAC0 = gte_clamp_mac0(cpu, mac0);
+        R_IR0 = gte_clamp_ir0(cpu, mac0 >> 12);
     }
 }
 
