@@ -134,7 +134,7 @@ struct __attribute__((__packed__)) psx_cpu_t {
         gte_matrix_t lr;
         gte_vec3_t fc;
         uint32_t ofx, ofy;
-        uint16_t h;
+        uint32_t h;
         int16_t dqa;
         int32_t dqb;
         int16_t zsf3, zsf4;
@@ -146,6 +146,8 @@ struct __attribute__((__packed__)) psx_cpu_t {
     int gte_mmat;
     int gte_mvec;
     int gte_tvec;
+    int64_t s_mac0;
+    int64_t s_mac3;
 
     psx_bus_t* bus;
 
@@ -236,9 +238,9 @@ int psx_cpu_check_irq(psx_cpu_t*);
 
 /*
     00h INT     Interrupt
-    01h MOD     Tlb modification (none such in PSX)
-    02h TLBL    Tlb load         (none such in PSX)
-    03h TLBS    Tlb store        (none such in PSX)
+    01h MOD     TLB modification (none such in PSX)
+    02h TLBL    TLB load         (none such in PSX)
+    03h TLBS    TLB store        (none such in PSX)
     04h AdEL    Address error, Data load or Instruction fetch
     05h AdES    Address error, Data store
                 The address errors occur when attempting to read
