@@ -2321,7 +2321,31 @@ void psx_gte_i_dpcs(psx_cpu_t* cpu) {
 }
 
 void psx_gte_i_intpl(psx_cpu_t* cpu) {
-    log_fatal("intpl: Unimplemented GTE instruction");
+    R_FLAG = 0;
+
+    int64_t mac1 = gte_clamp_mac(cpu, 1, (((int64_t)R_RFC) << 12) - (I64(R_IR1) << 12));
+    int64_t mac2 = gte_clamp_mac(cpu, 2, (((int64_t)R_GFC) << 12) - (I64(R_IR2) << 12));
+    int64_t mac3 = gte_clamp_mac(cpu, 3, (((int64_t)R_BFC) << 12) - (I64(R_IR3) << 12));
+
+    int64_t ir1 = gte_clamp_ir(cpu, 1, mac1, 0);
+    int64_t ir2 = gte_clamp_ir(cpu, 2, mac2, 0);
+    int64_t ir3 = gte_clamp_ir(cpu, 3, mac3, 0);
+
+    R_MAC1 = gte_clamp_mac(cpu, 1, (I64(R_IR1) << 12) + (I64(R_IR0) * ir1));
+    R_MAC2 = gte_clamp_mac(cpu, 2, (I64(R_IR2) << 12) + (I64(R_IR0) * ir2));
+    R_MAC3 = gte_clamp_mac(cpu, 3, (I64(R_IR3) << 12) + (I64(R_IR0) * ir3));
+
+    R_IR1 = gte_clamp_ir(cpu, 1, R_MAC1, cpu->gte_lm);
+    R_IR2 = gte_clamp_ir(cpu, 2, R_MAC2, cpu->gte_lm);
+    R_IR3 = gte_clamp_ir(cpu, 3, R_MAC3, cpu->gte_lm);
+
+    R_RGB0 = R_RGB1;
+    R_RGB1 = R_RGB2;
+    R_CD2 = R_CODE;
+
+    R_RC2 = gte_clamp_rgb(cpu, 1, R_MAC1 >> 4);
+    R_GC2 = gte_clamp_rgb(cpu, 2, R_MAC2 >> 4);
+    R_BC2 = gte_clamp_rgb(cpu, 3, R_MAC3 >> 4);
 }
 
 void psx_gte_i_mvmva(psx_cpu_t* cpu) {
