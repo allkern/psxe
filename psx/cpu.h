@@ -67,7 +67,7 @@ typedef void (*psx_cpu_kcall_hook_t)(psx_cpu_t*);
 typedef struct __attribute__((__packed__)) {
     union {
         uint32_t xy;
-        uint16_t p[2];
+        int16_t p[2];
     };
 
     int16_t z;
@@ -76,7 +76,7 @@ typedef struct __attribute__((__packed__)) {
 typedef struct __attribute__((__packed__)) {
     union {
         uint32_t xy;
-        uint16_t p[2];
+        int16_t p[2];
     };
 } gte_vec2_t;
 
@@ -94,7 +94,7 @@ typedef struct __attribute__((__packed__)) {
 typedef struct __attribute__((__packed__)) {
     union {
         uint32_t u32;
-        uint16_t c[2];
+        int16_t c[2];
     } m[4];
 
     int16_t m33;
@@ -143,9 +143,9 @@ struct __attribute__((__packed__)) psx_cpu_t {
 
     int gte_lm;
     int gte_sf;
-    int gte_mmat;
-    int gte_mvec;
-    int gte_tvec;
+    int gte_mx;
+    int gte_v;
+    int gte_cv;
     int64_t s_mac0;
     int64_t s_mac3;
 
