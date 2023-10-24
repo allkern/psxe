@@ -2148,7 +2148,6 @@ void psx_gte_i_invalid(psx_cpu_t* cpu) {
 #define R_BC2 cpu->cop2_dr.rgb[2].c[2]
 #define R_CD2 cpu->cop2_dr.rgb[2].c[3]
 #define R_L11 cpu->cop2_cr.l.m[0].c[0]
-#define R_L11 cpu->cop2_cr.l.m[0].c[0]
 #define R_L12 cpu->cop2_cr.l.m[0].c[1]
 #define R_L13 cpu->cop2_cr.l.m[1].c[0]
 #define R_L21 cpu->cop2_cr.l.m[1].c[1]
@@ -2157,6 +2156,18 @@ void psx_gte_i_invalid(psx_cpu_t* cpu) {
 #define R_L31 cpu->cop2_cr.l.m[3].c[0]
 #define R_L32 cpu->cop2_cr.l.m[3].c[1]
 #define R_L33 cpu->cop2_cr.l.m33
+#define R_RBK cpu->cop2_cr.bk.x
+#define R_GBK cpu->cop2_cr.bk.y
+#define R_BBK cpu->cop2_cr.bk.z
+#define R_LR1 cpu->cop2_cr.lr.m[0].c[0]
+#define R_LR2 cpu->cop2_cr.lr.m[0].c[1]
+#define R_LR3 cpu->cop2_cr.lr.m[1].c[0]
+#define R_LG1 cpu->cop2_cr.lr.m[1].c[1]
+#define R_LG2 cpu->cop2_cr.lr.m[2].c[0]
+#define R_LG3 cpu->cop2_cr.lr.m[2].c[1]
+#define R_LB1 cpu->cop2_cr.lr.m[3].c[0]
+#define R_LB2 cpu->cop2_cr.lr.m[3].c[1]
+#define R_LB3 cpu->cop2_cr.lr.m33
 
 #define GTE_RTP_DQ(i) { \
     R_FLAG = 0; \
@@ -2389,37 +2400,49 @@ void psx_gte_i_mvmva(psx_cpu_t* cpu) {
 #undef R_CV2
 #undef R_CV3
 
+// To-do: Fix flags
 void psx_gte_i_ncds(psx_cpu_t* cpu) {
     R_FLAG = 0;
 
-    // int64_t vx = (int64_t)((int16_t)cpu->cop2_dr.v[0].p[0]);
-    // int64_t vy = (int64_t)((int16_t)cpu->cop2_dr.v[0].p[1]);
-    // int64_t vz = (int64_t)cpu->cop2_dr.v[0].z;
+    int64_t vx = (int64_t)((int16_t)cpu->cop2_dr.v[0].p[0]);
+    int64_t vy = (int64_t)((int16_t)cpu->cop2_dr.v[0].p[1]);
+    int64_t vz = (int64_t)cpu->cop2_dr.v[0].z;
 
-    // R_MAC1 = gte_clamp_mac(cpu, 1, (int64_t)(R_L11 * vx) + (R_L12 * vy) + (R_L13 * vz));
-    // R_MAC2 = gte_clamp_mac(cpu, 2, (int64_t)(R_L21 * vx) + (R_L22 * vy) + (R_L23 * vz));
-    // R_MAC3 = gte_clamp_mac(cpu, 3, (int64_t)(R_L31 * vx) + (R_L32 * vy) + (R_L33 * vz));
-    // R_IR1 = Lm_B1(R_MAC1, lm);
-    // R_IR2 = Lm_B2(R_MAC2, lm);
-    // R_IR3 = Lm_B3(R_MAC3, lm);
-    // R_MAC1 = A1(int44((int64_t)R_RBK << 12) + (R_LR1 * R_IR1) + (R_LR2 * R_IR2) + (R_LR3 * R_IR3));
-    // R_MAC2 = A2(int44((int64_t)R_GBK << 12) + (R_LG1 * R_IR1) + (R_LG2 * R_IR2) + (R_LG3 * R_IR3));
-    // R_MAC3 = A3(int44((int64_t)R_BBK << 12) + (R_LB1 * R_IR1) + (R_LB2 * R_IR2) + (R_LB3 * R_IR3));
-    // R_IR1 = Lm_B1(R_MAC1, lm);
-    // R_IR2 = Lm_B2(R_MAC2, lm);
-    // R_IR3 = Lm_B3(R_MAC3, lm);
-    // R_MAC1 = A1(((R_RC << 4) * R_IR1) + (R_IR0 * Lm_B1(A1(((int64_t)R_RFC << 12) - ((R_RC << 4) * R_IR1)), 0)));
-    // R_MAC2 = A2(((R_GC << 4) * R_IR2) + (R_IR0 * Lm_B2(A2(((int64_t)R_GFC << 12) - ((R_GC << 4) * R_IR2)), 0)));
-    // R_MAC3 = A3(((R_BC << 4) * R_IR3) + (R_IR0 * Lm_B3(A3(((int64_t)R_BFC << 12) - ((R_BC << 4) * R_IR3)), 0)));
-    // R_IR1 = Lm_B1(R_MAC1, lm);
-    // R_IR2 = Lm_B2(R_MAC2, lm);
-    // R_IR3 = Lm_B3(R_MAC3, lm);
-    // R_RGB0 = R_RGB1;
-    // R_RGB1 = R_RGB2;
-    // R_CD2 = R_CODE;
-    // R_RC2 = Lm_C1(R_MAC1 >> 4);
-    // R_GC2 = Lm_C2(R_MAC2 >> 4);
-    // R_BC2 = Lm_C3(R_MAC3 >> 4);
+    R_MAC1 = gte_clamp_mac(cpu, 1, (I64(R_L11) * vx) + (I64(R_L12) * vy) + (I64(R_L13) * vz));
+    R_MAC2 = gte_clamp_mac(cpu, 2, (I64(R_L21) * vx) + (I64(R_L22) * vy) + (I64(R_L23) * vz));
+    R_MAC3 = gte_clamp_mac(cpu, 3, (I64(R_L31) * vx) + (I64(R_L32) * vy) + (I64(R_L33) * vz));
+
+    R_IR1 = gte_clamp_ir(cpu, 1, R_MAC1, cpu->gte_lm);
+    R_IR2 = gte_clamp_ir(cpu, 2, R_MAC2, cpu->gte_lm);
+    R_IR3 = gte_clamp_ir(cpu, 3, R_MAC3, cpu->gte_lm);
+
+    R_MAC1 = gte_clamp_mac(cpu, 1, (I64(R_RBK) << 12) + (I64(R_LR1) * I64(R_IR1)) + (I64(R_LR2) * I64(R_IR2)) + (I64(R_LR3) * I64(R_IR3)));
+    R_MAC2 = gte_clamp_mac(cpu, 2, (I64(R_GBK) << 12) + (I64(R_LG1) * I64(R_IR1)) + (I64(R_LG2) * I64(R_IR2)) + (I64(R_LG3) * I64(R_IR3)));
+    R_MAC3 = gte_clamp_mac(cpu, 3, (I64(R_BBK) << 12) + (I64(R_LB1) * I64(R_IR1)) + (I64(R_LB2) * I64(R_IR2)) + (I64(R_LB3) * I64(R_IR3)));
+
+    R_IR1 = gte_clamp_ir(cpu, 1, R_MAC1, cpu->gte_lm);
+    R_IR2 = gte_clamp_ir(cpu, 2, R_MAC2, cpu->gte_lm);
+    R_IR3 = gte_clamp_ir(cpu, 3, R_MAC3, cpu->gte_lm);
+
+    int64_t ir1 = gte_clamp_ir(cpu, 1, gte_clamp_mac(cpu, 1, ((I64(R_RFC) << 12) - ((I64(R_RC << 4)) * I64(R_IR1)))), 0);
+    int64_t ir2 = gte_clamp_ir(cpu, 2, gte_clamp_mac(cpu, 2, ((I64(R_GFC) << 12) - ((I64(R_GC << 4)) * I64(R_IR2)))), 0);
+    int64_t ir3 = gte_clamp_ir(cpu, 3, gte_clamp_mac(cpu, 3, ((I64(R_BFC) << 12) - ((I64(R_BC << 4)) * I64(R_IR3)))), 0);
+
+    R_MAC1 = gte_clamp_mac(cpu, 1, ((I64(R_RC << 4)) * I64(R_IR1)) + (I64(R_IR0) * ir1));
+    R_MAC2 = gte_clamp_mac(cpu, 2, ((I64(R_GC << 4)) * I64(R_IR2)) + (I64(R_IR0) * ir2));
+    R_MAC3 = gte_clamp_mac(cpu, 3, ((I64(R_BC << 4)) * I64(R_IR3)) + (I64(R_IR0) * ir3));
+
+    R_IR1 = gte_clamp_ir(cpu, 1, R_MAC1, cpu->gte_lm);
+    R_IR2 = gte_clamp_ir(cpu, 2, R_MAC2, cpu->gte_lm);
+    R_IR3 = gte_clamp_ir(cpu, 3, R_MAC3, cpu->gte_lm);
+
+    R_RGB0 = R_RGB1;
+    R_RGB1 = R_RGB2;
+    R_CD2 = R_CODE;
+
+    R_RC2 = gte_clamp_rgb(cpu, 1, R_MAC1 >> 4);
+    R_GC2 = gte_clamp_rgb(cpu, 2, R_MAC2 >> 4);
+    R_BC2 = gte_clamp_rgb(cpu, 3, R_MAC3 >> 4);
 }
 
 void psx_gte_i_cdp(psx_cpu_t* cpu) {
