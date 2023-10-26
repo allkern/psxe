@@ -177,7 +177,7 @@ void psx_dma_do_mdec_in(psx_dma_t* dma) {
         dma->mdec_in.madr += CHCR_STEP(mdec_in) ? -4 : 4;
     }
 
-    dma->mdec_in_irq_delay = 1;
+    dma->mdec_in_irq_delay = size;
 
     dma->mdec_in.chcr &= ~(CHCR_BUSY_MASK | CHCR_TRIG_MASK);
     dma->mdec_in.bcr = 0;
@@ -197,7 +197,7 @@ void psx_dma_do_mdec_out(psx_dma_t* dma) {
         dma->mdec_out.madr += CHCR_STEP(mdec_out) ? -4 : 4;
     }
 
-    dma->mdec_out_irq_delay = 1;
+    dma->mdec_out_irq_delay = size;
 
     dma->mdec_out.chcr &= ~(CHCR_BUSY_MASK | CHCR_TRIG_MASK);
     dma->mdec_out.bcr = 0;
@@ -372,7 +372,7 @@ void psx_dma_do_spu(psx_dma_t* dma) {
         // exit(1);
     }
 
-    dma->spu_irq_delay = 1;
+    dma->spu_irq_delay = BCR_SIZE(spu) * BCR_BCNT(spu);
 
     if (CHCR_TDIR(spu)) {
         for (int j = 0; j < blocks; j++) {
@@ -434,7 +434,7 @@ void psx_dma_do_otc(psx_dma_t* dma) {
         dma->otc.madr -= 4;
     }
 
-    dma->otc_irq_delay = BCR_SIZE(otc);
+    dma->otc_irq_delay = size;
 
     // Clear BCR and CHCR trigger and busy bits
     dma->otc.chcr = 0;
@@ -444,45 +444,50 @@ void psx_dma_do_otc(psx_dma_t* dma) {
 
 void psx_dma_update(psx_dma_t* dma, int cyc) {
     if (dma->cdrom_irq_delay) {
-        if (dma->dicr & DICR_DMA3EN)
-            dma->dicr |= DICR_DMA3FL;
+        dma->cdrom_irq_delay--;
 
-        dma->cdrom_irq_delay = 0;
+        if ((dma->dicr & DICR_DMA3EN) && !dma->cdrom_irq_delay)
+            dma->dicr |= DICR_DMA3FL;
     }
 
     if (dma->spu_irq_delay) {
-        if (dma->dicr & DICR_DMA4EN)
-            dma->dicr |= DICR_DMA4FL;
-        
-        dma->spu_irq_delay = 0;
+        dma->spu_irq_delay--;
+
+        if (!dma->spu_irq_delay)
+            if (dma->dicr & DICR_DMA4EN)
+                dma->dicr |= DICR_DMA4FL;
     }
 
     if (dma->gpu_irq_delay) {
-        if (dma->dicr & DICR_DMA2EN)
-            dma->dicr |= DICR_DMA2FL;
+        dma->gpu_irq_delay--;
 
-        dma->gpu_irq_delay = 0;
+        if (!dma->gpu_irq_delay)
+            if (dma->dicr & DICR_DMA2EN)
+                dma->dicr |= DICR_DMA2FL;
     }
 
     if (dma->otc_irq_delay) {
-        if (dma->dicr & DICR_DMA6EN)
-            dma->dicr |= DICR_DMA6FL;
+        dma->otc_irq_delay--;
 
-        dma->otc_irq_delay = 0;
+        if (!dma->otc_irq_delay)
+            if (dma->dicr & DICR_DMA6EN)
+                dma->dicr |= DICR_DMA6FL;
     }
 
     if (dma->mdec_in_irq_delay) {
-        if (dma->dicr & DICR_DMA0EN)
-            dma->dicr |= DICR_DMA0FL;
-        
-        dma->mdec_in_irq_delay = 0;
+        dma->mdec_in_irq_delay--;
+
+        if (!dma->mdec_in_irq_delay)
+            if (dma->dicr & DICR_DMA0EN)
+                dma->dicr |= DICR_DMA0FL;
     }
 
     if (dma->mdec_out_irq_delay) {
-        if (dma->dicr & DICR_DMA1EN)
-            dma->dicr |= DICR_DMA1FL;
-        
-        dma->mdec_out_irq_delay = 0;
+        dma->mdec_out_irq_delay--;
+
+        if (!dma->mdec_out_irq_delay)
+            if (dma->dicr & DICR_DMA1EN)
+                dma->dicr |= DICR_DMA1FL;
     }
 
     int prev_irq_signal = (dma->dicr & DICR_IRQSI) != 0;
