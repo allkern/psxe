@@ -215,7 +215,7 @@ uint8_t psx_cdrom_read8(psx_cdrom_t*, uint32_t);
 void psx_cdrom_write32(psx_cdrom_t*, uint32_t, uint32_t);
 void psx_cdrom_write16(psx_cdrom_t*, uint32_t, uint16_t);
 void psx_cdrom_write8(psx_cdrom_t*, uint32_t, uint8_t);
-void psx_cdrom_update(psx_cdrom_t*);
+void psx_cdrom_update(psx_cdrom_t*, int);
 void psx_cdrom_destroy(psx_cdrom_t*);
 void psx_cdrom_open(psx_cdrom_t*, const char*);
 void psx_cdrom_get_cdda_samples(psx_cdrom_t*, void*, int, psx_spu_t*);

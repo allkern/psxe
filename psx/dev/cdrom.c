@@ -1317,7 +1317,7 @@ void psx_cdrom_init(psx_cdrom_t* cdrom, psx_ic_t* ic) {
     cdrom->io_size = PSX_CDROM_SIZE;
 
     cdrom->ic = ic;
-    cdrom->status = STAT_PRMEMPT_MASK | STAT_PRMWRDY_MASK;
+    cdrom->status = STAT_PRMEMPT_MASK | STAT_PRMWRDY_MASK | STAT_RSLRRDY_MASK;
     cdrom->dfifo = malloc(CD_SECTOR_SIZE);
     cdrom->cdda_buf = malloc(CD_SECTOR_SIZE);
 }
@@ -1356,9 +1356,9 @@ void psx_cdrom_write8(psx_cdrom_t* cdrom, uint32_t offset, uint8_t value) {
     g_psx_cdrom_write_table[(STAT_INDEX << 2) | offset](cdrom, value);
 }
 
-void psx_cdrom_update(psx_cdrom_t* cdrom) {
+void psx_cdrom_update(psx_cdrom_t* cdrom, int cyc) {
     if (cdrom->irq_delay) {
-        cdrom->irq_delay -= 2;
+        cdrom->irq_delay -= cyc;
 
         if (cdrom->irq_delay <= 0) {
             if (cdrom->int_number) {

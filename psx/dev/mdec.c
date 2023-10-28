@@ -285,6 +285,7 @@ uint32_t psx_mdec_read32(psx_mdec_t* mdec, uint32_t offset) {
             } else {
                 mdec->output_empty = 1;
                 mdec->output_index = 0;
+                mdec->output_request = 0;
 
                 return 0xaabbccdd;
             }
@@ -303,7 +304,7 @@ uint32_t psx_mdec_read32(psx_mdec_t* mdec, uint32_t offset) {
             status |= mdec->input_full       << 30;
             status |= mdec->output_empty     << 31;
 
-            return 0x00000000;
+            return status;
         } break;
     }
 
@@ -325,7 +326,7 @@ uint8_t psx_mdec_read8(psx_mdec_t* mdec, uint32_t offset) {
 void psx_mdec_write32(psx_mdec_t* mdec, uint32_t offset, uint32_t value) {
     switch (offset) {
         case 0: {
-            if (mdec->busy) {
+            if (mdec->words_remaining) {
                 mdec->input[mdec->input_index++] = value;
 
                 --mdec->words_remaining;
@@ -333,7 +334,9 @@ void psx_mdec_write32(psx_mdec_t* mdec, uint32_t offset, uint32_t value) {
                 if (!mdec->words_remaining) {
                     mdec->output_empty = 0;
                     mdec->input_full = 1;
+                    mdec->input_request = 0;
                     mdec->busy = 0;
+                    mdec->output_request = mdec->enable_dma1;
 
                     g_mdec_cmd_table[mdec->cmd >> 29](mdec);
 
@@ -349,6 +352,7 @@ void psx_mdec_write32(psx_mdec_t* mdec, uint32_t offset, uint32_t value) {
             mdec->output_signed = (value >> 26) & 1;
             mdec->output_depth = (value >> 27) & 3;
             mdec->input_index = 0;
+            mdec->input_full = 0;
             mdec->busy = 1;
 
             log_set_quiet(0);
@@ -391,6 +395,7 @@ void psx_mdec_write32(psx_mdec_t* mdec, uint32_t offset, uint32_t value) {
             log_set_quiet(1);
 
             if (mdec->words_remaining) {
+                mdec->input_request = mdec->enable_dma0;
                 mdec->input_size = mdec->words_remaining * sizeof(uint32_t);
                 mdec->input_full = 0;
                 mdec->input_index = 0;
@@ -399,6 +404,9 @@ void psx_mdec_write32(psx_mdec_t* mdec, uint32_t offset, uint32_t value) {
         } break;
 
         case 4: {
+            mdec->enable_dma0 = (value & 0x40000000) != 0;
+            mdec->enable_dma1 = (value & 0x20000000) != 0;
+
             // Reset
             if (value & 0x80000000) {
                 // status = 80040000h
@@ -414,9 +422,6 @@ void psx_mdec_write32(psx_mdec_t* mdec, uint32_t offset, uint32_t value) {
                 mdec->output_empty    = 1;
                 mdec->current_block   = 4;
             }
-
-            mdec->output_request = (value & 0x20000000) != 0;
-            mdec->input_request = (value & 0x40000000) != 0;
         } break;
     }
 

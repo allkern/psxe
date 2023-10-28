@@ -444,22 +444,22 @@ void psx_dma_do_otc(psx_dma_t* dma) {
 
 void psx_dma_update(psx_dma_t* dma, int cyc) {
     if (dma->cdrom_irq_delay) {
-        dma->cdrom_irq_delay--;
+        dma->cdrom_irq_delay -= cyc;
 
         if ((dma->dicr & DICR_DMA3EN) && !dma->cdrom_irq_delay)
             dma->dicr |= DICR_DMA3FL;
     }
 
     if (dma->spu_irq_delay) {
-        dma->spu_irq_delay--;
+        dma->spu_irq_delay -= cyc;
 
-        if (!dma->spu_irq_delay)
+        if (dma->spu_irq_delay <= 0)
             if (dma->dicr & DICR_DMA4EN)
                 dma->dicr |= DICR_DMA4FL;
     }
 
     if (dma->gpu_irq_delay) {
-        dma->gpu_irq_delay--;
+        dma->gpu_irq_delay -= cyc;
 
         if (!dma->gpu_irq_delay)
             if (dma->dicr & DICR_DMA2EN)
@@ -467,7 +467,7 @@ void psx_dma_update(psx_dma_t* dma, int cyc) {
     }
 
     if (dma->otc_irq_delay) {
-        dma->otc_irq_delay--;
+        dma->otc_irq_delay -= cyc;
 
         if (!dma->otc_irq_delay)
             if (dma->dicr & DICR_DMA6EN)
@@ -475,7 +475,7 @@ void psx_dma_update(psx_dma_t* dma, int cyc) {
     }
 
     if (dma->mdec_in_irq_delay) {
-        dma->mdec_in_irq_delay--;
+        dma->mdec_in_irq_delay -= cyc;
 
         if (!dma->mdec_in_irq_delay)
             if (dma->dicr & DICR_DMA0EN)
@@ -483,7 +483,7 @@ void psx_dma_update(psx_dma_t* dma, int cyc) {
     }
 
     if (dma->mdec_out_irq_delay) {
-        dma->mdec_out_irq_delay--;
+        dma->mdec_out_irq_delay -= cyc;
 
         if (!dma->mdec_out_irq_delay)
             if (dma->dicr & DICR_DMA1EN)

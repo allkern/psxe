@@ -69,6 +69,9 @@ typedef struct {
     int input_full;
     int output_empty;
 
+    int enable_dma0;
+    int enable_dma1;
+
     int recv_color;
     uint8_t uv_quant_table[MDEC_QUANT_TABLE_SIZE];
     uint8_t y_quant_table[MDEC_QUANT_TABLE_SIZE];

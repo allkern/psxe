@@ -705,7 +705,7 @@ void psx_cpu_cycle(psx_cpu_t* cpu) {
     //         goto no_putchar;
 
     //     char buf[256];
-    
+
     //     sprintf(buf, g_psx_cpu_a_kcall_symtable[cpu->r[9]],
     //         cpu->r[4],
     //         cpu->r[5],
@@ -720,9 +720,9 @@ void psx_cpu_cycle(psx_cpu_t* cpu) {
     if ((cpu->pc & 0x3fffffff) == 0x000000b4) {
         if (cpu->b_function_hook) cpu->b_function_hook(cpu);
 
-        if ((cpu->r[9] == 0x3b) || (cpu->r[9] == 0x3d) || (cpu->r[9] == 0x3f) || (cpu->r[9] == 0x0b))
-            goto no_putchar;
-        
+        // if ((cpu->r[9] == 0x3b) || (cpu->r[9] == 0x3d) || (cpu->r[9] == 0x3f) || (cpu->r[9] == 0x0b) || (cpu->r[9] == 0x17))
+        //     goto no_putchar;
+
         // char buf[256];
 
         // sprintf(buf, g_psx_cpu_b_kcall_symtable[cpu->r[9]],
