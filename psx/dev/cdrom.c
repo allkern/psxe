@@ -284,7 +284,9 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
             int err = psx_disc_seek(cdrom->disc, msf);
 
             if (err) {
+                log_set_quiet(0);
                 log_fatal("CdlReadN: Out of bounds seek");
+                log_set_quiet(1);
 
                 cdrom->irq_delay = DELAY_1MS * 600;
                 cdrom->delayed_command = CDL_ERROR;
@@ -312,7 +314,9 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
             // circumvent this detection code, but it will work
             // for most intents and purposes 
             if (!correct_msf) {
+                log_set_quiet(0);
                 log_fatal("CdlReadN: Audio read");
+                log_set_quiet(1);
 
                 cdrom->irq_delay = DELAY_1MS * 600;
                 cdrom->delayed_command = CDL_ERROR;
@@ -802,6 +806,18 @@ void cdrom_cmd_seekp(psx_cdrom_t* cdrom) {
 
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
+            if (cdrom->pfifo_index) {
+                log_fatal("CdlSeekP: Expected exactly 0 parameters");
+
+                cdrom->irq_delay = DELAY_1MS;
+                cdrom->delayed_command = CDL_ERROR;
+                cdrom->state = CD_STATE_ERROR;
+                cdrom->error = ERR_PCOUNT;
+                cdrom->error_flags = GETSTAT_ERROR;
+
+                return;
+            }
+
             cdrom->irq_delay = DELAY_1MS;
             cdrom->state = CD_STATE_SEND_RESP1;
             cdrom->delayed_command = CDL_SEEKP;
@@ -814,6 +830,18 @@ void cdrom_cmd_seekp(psx_cdrom_t* cdrom) {
             cdrom->irq_delay = DELAY_1MS;
             cdrom->state = CD_STATE_SEND_RESP2;
             cdrom->delayed_command = CDL_SEEKP;
+
+            msf_t msf;
+
+            msf.m = cdrom->seek_mm;
+            msf.s = cdrom->seek_ss;
+            msf.f = cdrom->seek_ff;
+
+            msf_from_bcd(&msf);
+
+            psx_disc_seek(cdrom->disc, msf);
+
+            cdrom->seek_pending = 0;
         } break;
 
         case CD_STATE_SEND_RESP2: {
@@ -1189,7 +1217,7 @@ void cdrom_write_status(psx_cdrom_t* cdrom, uint8_t value) {
 }
 
 void cdrom_write_cmd(psx_cdrom_t* cdrom, uint8_t value) {
-    // log_set_quiet(0);
+    log_set_quiet(0);
     log_fatal("%s(%02x) %u params=[%02x, %02x, %02x, %02x, %02x, %02x]",
         g_psx_cdrom_command_names[value],
         value,
@@ -1201,7 +1229,7 @@ void cdrom_write_cmd(psx_cdrom_t* cdrom, uint8_t value) {
         cdrom->pfifo[4],
         cdrom->pfifo[5]
     );
-    // log_set_quiet(1);
+    log_set_quiet(1);
 
     cdrom->command = value;
     cdrom->state = CD_STATE_RECV_CMD;
@@ -1240,7 +1268,13 @@ void cdrom_write_ier(psx_cdrom_t* cdrom, uint8_t value) {
 }
 
 void cdrom_write_ifr(psx_cdrom_t* cdrom, uint8_t value) {
-    cdrom->ifr &= ~(value & 0x7);
+    cdrom->ifr &= ~(value & 0x1f);
+
+    // if (value & 0x7) {
+    //     log_set_quiet(0);
+    //     log_fatal("Acknowledge %02x", value & 0x7);
+    //     log_set_quiet(1);
+    // }
 
     // Clear Parameter FIFO
     if (value & 0x40) {
@@ -1361,20 +1395,23 @@ void psx_cdrom_update(psx_cdrom_t* cdrom, int cyc) {
         cdrom->irq_delay -= cyc;
 
         if (cdrom->irq_delay <= 0) {
-            if (cdrom->int_number) {
-                SET_BITS(ifr, IFR_INT, cdrom->int_number);
-
-                cdrom->int_number = 0;
-            }
-
-            log_fatal("CDROM INT%u", cdrom->ifr & 0x7);
             psx_ic_irq(cdrom->ic, IC_CDROM);
 
             cdrom->irq_delay = 0;
 
             if (cdrom->delayed_command) {
+                // log_set_quiet(0);
+                // log_fatal("%s(%02x) (Delayed)",
+                //     g_psx_cdrom_command_names[cdrom->delayed_command],
+                //     cdrom->delayed_command
+                // );
+                // log_set_quiet(1);
                 g_psx_cdrom_command_table[cdrom->delayed_command](cdrom);
             }
+
+            // log_set_quiet(0);
+            // log_fatal("CDROM INT%u", cdrom->ifr & 0x7);
+            // log_set_quiet(1);
         }
     }
 }

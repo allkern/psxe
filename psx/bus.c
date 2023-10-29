@@ -24,18 +24,18 @@ void psx_bus_destroy(psx_bus_t* bus) {
 }
 
 #define HANDLE_READ(dev, bits) \
-    if (RANGE(addr, bus->dev->io_base, (bus->dev->io_base + bus->dev->io_size))) \
-        return psx_ ## dev ## _read ## bits (bus->dev, addr - bus->dev->io_base);
-
+    if (RANGE(addr, bus->dev->io_base, (bus->dev->io_base + bus->dev->io_size))) { \
+        bus->access_cycles = bus->dev->bus_delay; \
+        return psx_ ## dev ## _read ## bits (bus->dev, addr - bus->dev->io_base); \
+    }
 #define HANDLE_WRITE(dev, bits) \
     if (RANGE(addr, bus->dev->io_base, (bus->dev->io_base + bus->dev->io_size))) { \
+        bus->access_cycles = bus->dev->bus_delay; \
         psx_ ## dev ## _write ## bits (bus->dev, addr - bus->dev->io_base, value); \
         return; \
     }
 
 uint32_t psx_bus_read32(psx_bus_t* bus, uint32_t addr) {
-    bus->access_cycles = 2;
-
     uint32_t vaddr = addr;
 
     addr &= g_psx_bus_region_mask_table[addr >> 29];

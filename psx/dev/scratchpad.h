@@ -10,6 +10,7 @@
 #define PSX_SCRATCHPAD_END   0x1f8003ff
 
 typedef struct {
+    uint32_t bus_delay;
     uint32_t io_base, io_size;
 
     uint8_t* buf;

@@ -17,6 +17,7 @@ typedef struct {
 } dma_channel_t;
 
 typedef struct {
+    uint32_t bus_delay;
     uint32_t io_base, io_size;
 
     psx_bus_t* bus;

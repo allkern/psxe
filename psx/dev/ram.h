@@ -13,6 +13,7 @@
 #define PSX_RAM_END     0x1effffff
 
 typedef struct {
+    uint32_t bus_delay;
     uint32_t io_base, io_size;
 
     psx_mc2_t* mc2;

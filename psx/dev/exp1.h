@@ -10,6 +10,7 @@
 #define PSX_EXP1_END   0x1f080000
 
 typedef struct {
+    uint32_t bus_delay;
     uint32_t io_base, io_size;
 
     psx_mc1_t* mc1;

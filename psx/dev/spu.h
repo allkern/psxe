@@ -34,6 +34,7 @@
 #define SPUR_MBASE   0x1a2
 
 typedef struct __attribute__((__packed__)) {
+    uint32_t bus_delay;
     uint32_t io_base, io_size;
 
     uint8_t* ram;

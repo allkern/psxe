@@ -11,6 +11,9 @@
 #include "../msf.h"
 #include "spu.h"
 
+// #define DELAY_1MS (0xc4e1)
+// #define READ_SINGLE_DELAY (0x6e1cd)
+// #define READ_DOUBLE_DELAY (0x36cd2)
 #define DELAY_1MS (PSX_CPU_CPS / 1000)
 #define READ_SINGLE_DELAY (PSX_CPU_CPS / 75)
 #define READ_DOUBLE_DELAY (PSX_CPU_CPS / (2 * 75))
@@ -149,6 +152,7 @@ enum {
 };
 
 typedef struct {
+    uint32_t bus_delay;
     uint32_t io_base, io_size;
 
     psx_ic_t* ic;

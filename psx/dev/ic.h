@@ -10,19 +10,19 @@
 #define PSX_IC_END   0x1F801077
 
 /*
-  0     IRQ0 VBLANK (PAL=50Hz, NTSC=60Hz)
-  1     IRQ1 GPU   Can be requested via GP0(1Fh) command (rarely used)
-  2     IRQ2 CDROM
-  3     IRQ3 DMA
-  4     IRQ4 TMR0  Timer 0 aka Root Counter 0 (Sysclk or Dotclk)
-  5     IRQ5 TMR1  Timer 1 aka Root Counter 1 (Sysclk or H-blank)
-  6     IRQ6 TMR2  Timer 2 aka Root Counter 2 (Sysclk or Sysclk/8)
-  7     IRQ7 Controller and Memory Card - Byte Received Interrupt
-  8     IRQ8 SIO
-  9     IRQ9 SPU
-  10    IRQ10 Controller - Lightpen Interrupt (reportedly also PIO...?)
-  11-15 Not used (always zero)
-  16-31 Garbage
+    0     IRQ0 VBLANK (PAL=50Hz, NTSC=60Hz)
+    1     IRQ1 GPU   Can be requested via GP0(1Fh) command (rarely used)
+    2     IRQ2 CDROM
+    3     IRQ3 DMA
+    4     IRQ4 TMR0  Timer 0 aka Root Counter 0 (Sysclk or Dotclk)
+    5     IRQ5 TMR1  Timer 1 aka Root Counter 1 (Sysclk or H-blank)
+    6     IRQ6 TMR2  Timer 2 aka Root Counter 2 (Sysclk or Sysclk/8)
+    7     IRQ7 Controller and Memory Card - Byte Received Interrupt
+    8     IRQ8 SIO
+    9     IRQ9 SPU
+    10    IRQ10 Controller - Lightpen Interrupt (reportedly also PIO...?)
+    11-15 Not used (always zero)
+    16-31 Garbage
 */
 enum {
     IC_VBLANK       = 0x001,
@@ -39,11 +39,12 @@ enum {
 };
 
 /*
-  1F801070h 2    I_STAT - Interrupt status register
-  1F801074h 2    I_MASK - Interrupt mask register
+    1F801070h 2    I_STAT - Interrupt status register
+    1F801074h 2    I_MASK - Interrupt mask register
 */
 
 typedef struct {
+    uint32_t bus_delay;
     uint32_t io_base, io_size;
 
     uint16_t stat;

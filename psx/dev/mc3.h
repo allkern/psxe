@@ -8,6 +8,7 @@
 #define PSX_MC3_END   0xfffe0133
 
 typedef struct {
+    uint32_t bus_delay;
     uint32_t io_base, io_size;
 
     uint32_t cache_control;

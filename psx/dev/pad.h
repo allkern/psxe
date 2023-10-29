@@ -126,6 +126,7 @@ enum {
 */
 
 typedef struct {
+    uint32_t bus_delay;
     uint32_t io_base, io_size;
 
     psx_ic_t* ic;

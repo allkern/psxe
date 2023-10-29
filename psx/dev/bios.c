@@ -14,6 +14,7 @@ void psx_bios_init(psx_bios_t* bios) {
 
     bios->io_base = PSX_BIOS_BEGIN;
     bios->io_size = PSX_BIOS_SIZE;
+    bios->bus_delay = 20;
 
     bios->buf = (uint8_t*)malloc(PSX_BIOS_SIZE);
 }

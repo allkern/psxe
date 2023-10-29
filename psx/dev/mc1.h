@@ -8,6 +8,7 @@
 #define PSX_MC1_END   0x1f801023
 
 typedef struct {
+    uint32_t bus_delay;
     uint32_t io_base, io_size;
 
     uint32_t exp1_base;

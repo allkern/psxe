@@ -774,7 +774,7 @@ void psx_cpu_cycle(psx_cpu_t* cpu) {
 
     g_psx_cpu_primary_table[OP](cpu);
 
-    cpu->last_cycles = 2;
+    cpu->last_cycles = 2 + psx_bus_get_access_cycles(cpu->bus);
     cpu->total_cycles += cpu->last_cycles;
 
     cpu->r[0] = 0;

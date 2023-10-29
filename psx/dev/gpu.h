@@ -86,6 +86,7 @@ typedef struct {
 } rect_data_t;
 
 struct psx_gpu_t {
+    uint32_t bus_delay;
     uint32_t io_base, io_size;
 
     void* udata[4];

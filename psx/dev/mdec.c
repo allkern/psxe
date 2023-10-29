@@ -347,6 +347,7 @@ void psx_mdec_write32(psx_mdec_t* mdec, uint32_t offset, uint32_t value) {
             }
 
             mdec->cmd = value;
+            mdec->output_request = 0;
             mdec->output_empty = 1;
             mdec->output_bit15 = (value >> 25) & 1;
             mdec->output_signed = (value >> 26) & 1;
