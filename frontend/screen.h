@@ -18,8 +18,13 @@ typedef struct {
 
     unsigned int saved_scale;
     unsigned int width, height, scale;
+    unsigned int image_width, image_height;
+    unsigned int image_xoff, image_yoff;
     unsigned int format;
+    unsigned int texture_width, texture_height;
 
+    int fullscreen;
+    int vertical_mode;
     int debug_mode;
     int open;
 } psxe_screen_t;

@@ -1,4 +1,5 @@
 #include "msf.h"
+#include "log.h"
 
 uint8_t msf_btoi(uint8_t b) {
     return ((b >> 4) * 10) + (b & 0xf);

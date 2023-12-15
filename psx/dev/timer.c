@@ -49,8 +49,6 @@ uint32_t psx_timer_read32(psx_timer_t* timer, uint32_t offset) {
     int index = offset >> 4;
     int reg = offset & 0xf;
 
-    //log_fatal("Timer %u %s read32", index, g_psx_timer_reg_names[reg]);
-
     switch (reg) {
         case 0: return timer->timer[index].counter;
         case 4: {
@@ -63,7 +61,7 @@ uint32_t psx_timer_read32(psx_timer_t* timer, uint32_t offset) {
 
     log_fatal("Unhandled 32-bit TIMER read at offset %08x", offset);
 
-    exit(1);
+    // exit(1);
 
     return 0x0;
 }
@@ -71,8 +69,6 @@ uint32_t psx_timer_read32(psx_timer_t* timer, uint32_t offset) {
 uint16_t psx_timer_read16(psx_timer_t* timer, uint32_t offset) {
     int index = offset >> 4;
     int reg = offset & 0xf;
-
-    //log_fatal("Timer %u %s read16 %04x", index, g_psx_timer_reg_names[reg], timer->timer[index].counter);
 
     switch (reg) {
         case 0: return timer->timer[index].counter;
@@ -86,15 +82,11 @@ uint16_t psx_timer_read16(psx_timer_t* timer, uint32_t offset) {
 
     log_fatal("Unhandled 16-bit TIMER read at offset %08x", offset);
 
-    exit(1);
-    
     return 0x0;
 }
 
 uint8_t psx_timer_read8(psx_timer_t* timer, uint32_t offset) {
     log_fatal("Unhandled 8-bit TIMER read at offset %08x", offset);
-
-    exit(1);
 
     return 0x0;
 }
@@ -103,8 +95,6 @@ void psx_timer_write32(psx_timer_t* timer, uint32_t offset, uint32_t value) {
     int index = offset >> 4;
     int reg = offset & 0xf;
 
-    //log_fatal("Timer %u %s write32 %08x", index, g_psx_timer_reg_names[reg], value);
-
     switch (reg) {
         case 0: {
             timer->timer[index].counter = value;
@@ -113,22 +103,19 @@ void psx_timer_write32(psx_timer_t* timer, uint32_t offset, uint32_t value) {
             timer->timer[index].mode = value;
             timer->timer[index].mode |= 0x400;
             timer->timer[index].irq_fired = 0;
+            timer->timer[index].counter = 0;
         } return;
         case 8: timer->timer[index].target = value; return;
     }
 
     log_fatal("Unhandled 32-bit TIMER write at offset %08x (%02x)", offset, value);
 
-    exit(1);
+    // exit(1);
 }
 
 void psx_timer_write16(psx_timer_t* timer, uint32_t offset, uint16_t value) {
-    return;
-
     int index = offset >> 4;
     int reg = offset & 0xf;
-
-    log_fatal("Timer %u %s write16 %04x", index, g_psx_timer_reg_names[reg], value);
 
     switch (reg) {
         case 0: {
@@ -138,6 +125,7 @@ void psx_timer_write16(psx_timer_t* timer, uint32_t offset, uint16_t value) {
             timer->timer[index].mode = value;
             timer->timer[index].mode |= 0x400;
             timer->timer[index].irq_fired = 0;
+            timer->timer[index].counter = 0;
         } return;
         case 8: {
             timer->timer[index].target = value;
@@ -146,13 +134,11 @@ void psx_timer_write16(psx_timer_t* timer, uint32_t offset, uint16_t value) {
 
     log_fatal("Unhandled 16-bit TIMER write at offset %08x (%02x)", offset, value);
 
-    exit(1);
+    // exit(1);
 }
 
 void psx_timer_write8(psx_timer_t* timer, uint32_t offset, uint8_t value) {
     log_fatal("Unhandled 8-bit TIMER write at offset %08x (%02x)", offset, value);
-
-    exit(1);
 }
 
 void timer_update_timer0(psx_timer_t* timer, int cyc) {
@@ -226,7 +212,7 @@ void timer_update_timer1(psx_timer_t* timer, int cyc) {
             T1_MODE |= 0x400;
         }
 
-        timer->timer[0].irq_fired = 1;
+        T1_IRQ_FIRED = 1;
 
         psx_ic_irq(timer->ic, IC_TIMER1);
     }

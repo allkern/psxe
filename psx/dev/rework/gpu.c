@@ -26,16 +26,18 @@ uint16_t gpu_to_bgr555(uint32_t color) {
 
 // #define BGR555(c) gpu_to_bgr555(c)
 
-int min3(int a, int b, int c) {
-    int m = a <= b ? a : b;
+#define VRAM(x, y) gpu->vram[(x) + ((y) * 1024)]
 
-    return m <= c ? m : c;
+int min3(int a, int b, int c) {
+    int m = a < b ? a : b;
+
+    return m < c ? m : c;
 }
 
 int max3(int a, int b, int c) {
-    int m = a >= b ? a : b;
+    int m = a > b ? a : b;
 
-    return m >= c ? m : c;
+    return m > c ? m : c;
 }
 
 psx_gpu_t* psx_gpu_create() {
@@ -50,9 +52,6 @@ void psx_gpu_init(psx_gpu_t* gpu, psx_ic_t* ic) {
 
     gpu->vram = (uint16_t*)malloc(PSX_GPU_VRAM_SIZE);
     gpu->state = GPU_STATE_RECV_CMD;
-
-    // Default window size, this is not normally needed
-    gpu->display_mode = 1;
 
     gpu->ic = ic;
 }
@@ -105,7 +104,7 @@ uint32_t psx_gpu_read32(psx_gpu_t* gpu, uint32_t offset) {
 
             return data;
         } break;
-        case 0x04: return gpu->gpustat | 0x1c000000;
+        case 0x04: return gpu->gpustat | 0x1e000000;
     }
 
     log_warn("Unhandled 32-bit GPU read at offset %08x", offset);
@@ -115,22 +114,18 @@ uint32_t psx_gpu_read32(psx_gpu_t* gpu, uint32_t offset) {
 
 uint16_t psx_gpu_read16(psx_gpu_t* gpu, uint32_t offset) {
     log_fatal("Unhandled 16-bit GPU read at offset %08x", offset);
-
-    exit(1);
 }
 
 uint8_t psx_gpu_read8(psx_gpu_t* gpu, uint32_t offset) {
     log_fatal("Unhandled 8-bit GPU read at offset %08x", offset);
-
-    exit(1);
 }
 
 int min(int x0, int x1) {
-    return (x0 <= x1) ? x0 : x1;
+    return (x0 < x1) ? x0 : x1;
 }
 
 int max(int x0, int x1) {
-    return (x0 >= x1) ? x0 : x1;
+    return (x0 > x1) ? x0 : x1;
 }
 
 #define EDGE(a, b, c) ((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x))
@@ -144,25 +139,23 @@ uint16_t gpu_fetch_texel(psx_gpu_t* gpu, uint16_t tx, uint16_t ty, uint32_t tpx,
     switch (depth) {
         // 4-bit
         case 0: {
-            uint16_t texel = gpu->vram[(tpx + (tx >> 2)) + ((tpy + ty) * 1024)];
+            uint16_t texel = VRAM(tpx + (tx >> 2), tpy + ty);
+            uint16_t index = (texel >> ((tx & 0x3) << 2)) & 0xf;
 
-            int index = (texel >> ((tx & 0x3) << 2)) & 0xf;
-
-            return gpu->vram[(clutx + index) + (cluty * 1024)];
+            return VRAM(clutx + index, cluty);
         } break;
 
         // 8-bit
         case 1: {
-            uint16_t texel = gpu->vram[(tpx + (tx >> 1)) + ((tpy + ty) * 1024)];
+            uint16_t texel = VRAM(tpx + (tx >> 1), tpy + ty);
+            uint16_t index = (texel >> ((tx & 0x1) << 3)) & 0xff;
 
-            int index = (texel >> ((tx & 0x1) << 3)) & 0xff;
-
-            return gpu->vram[(clutx + index) + (cluty * 1024)];
+            return VRAM(clutx + index, cluty);
         } break;
 
         // 15-bit
         default: {
-            return gpu->vram[(tpx + tx) + ((tpy + ty) * 1024)];
+            return VRAM(tpx + tx, tpy + ty);
         } break;
     }
 }
@@ -202,16 +195,10 @@ void gpu_render_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, 
     c.x += gpu->off_x;
     c.y += gpu->off_y;
 
-    int xmin = max(min3(a.x, b.x, c.x), gpu->draw_x1);
-    int ymin = max(min3(a.y, b.y, c.y), gpu->draw_y1);
-    int xmax = min(max3(a.x, b.x, c.x), gpu->draw_x2);
-    int ymax = min(max3(a.y, b.y, c.y), gpu->draw_y2);
-
-    // Hack
-    if (!(data.attrib & PA_TEXTURED)) {
-        ++xmax;
-        ++ymax;
-    }
+    int xmin = min3(a.x, b.x, c.x);
+    int ymin = min3(a.y, b.y, c.y);
+    int xmax = max3(a.x, b.x, c.x); 
+    int ymax = max3(a.y, b.y, c.y);
 
     float area = EDGE(a, b, c);
 
@@ -225,6 +212,12 @@ void gpu_render_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, 
             float z2 = EDGE(a, b, p);
 
             if ((z0 < 0) || (z1 < 0) || (z2 < 0))
+                continue;
+            
+            int bc = (x >= gpu->draw_x1) && (x <= gpu->draw_x2) &&
+                     (y >= gpu->draw_y1) && (y <= gpu->draw_y2);
+            
+            if (!bc)
                 continue;
 
             uint16_t color = 0;
@@ -301,13 +294,12 @@ void gpu_render_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, 
             int cb = ((color >> 10) & 0x1f) << 3;
 
             if (transp) {
-                uint16_t back = gpu->vram[x + (y * 1024)];
+                uint16_t back = VRAM(x, y);
 
                 int br = ((back >> 0 ) & 0x1f) << 3;
                 int bg = ((back >> 5 ) & 0x1f) << 3;
                 int bb = ((back >> 10) & 0x1f) << 3;
 
-                // Do we use transp or gpustat here?
                 switch (transp_mode) {
                     case 0: {
                         cr = (0.5f * br) + (0.5f * cr);
@@ -340,7 +332,7 @@ void gpu_render_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, 
                 color = BGR555(rgb);
             }
 
-            gpu->vram[x + (y * 1024)] = color;
+            VRAM(x, y) = color;
         }
     }
 }
@@ -422,7 +414,7 @@ void gpu_render_rect(psx_gpu_t* gpu, rect_data_t data) {
             int cb = ((color >> 10) & 0x1f) << 3;
 
             if (transp) {
-                uint16_t back = gpu->vram[x + (y * 1024)];
+                uint16_t back = VRAM(x, y);
 
                 int br = ((back >> 0 ) & 0x1f) << 3;
                 int bg = ((back >> 5 ) & 0x1f) << 3;
@@ -460,7 +452,7 @@ void gpu_render_rect(psx_gpu_t* gpu, rect_data_t data) {
                 color = BGR555(rgb);
             }
 
-            gpu->vram[x + (y * 1024)] = color;
+            VRAM(x, y) = color;
 
             skip:
 
@@ -485,8 +477,8 @@ void plotLineLow(psx_gpu_t* gpu, int x0, int y0, int x1, int y1, uint16_t color)
     int y = y0;
 
     for (int x = x0; x < x1; x++) {
-        if ((x < 1024) && (y < 512) && (x >= 0) && (y >= 0))
-            gpu->vram[x + (y * 1024)] = color;
+        if ((x >= gpu->draw_x1) && (x <= gpu->draw_x2) && (y >= gpu->draw_y1) && (y <= gpu->draw_y2))
+            VRAM(x, y) = color;
 
         if (d > 0) {
             y += yi;
@@ -509,8 +501,9 @@ void plotLineHigh(psx_gpu_t* gpu, int x0, int y0, int x1, int y1, uint16_t color
     int x = x0;
 
     for (int y = y0; y < y1; y++) {
-        if ((x < 1024) && (y < 512) && (x >= 0) && (y >= 0))
-            gpu->vram[x + (y * 1024)] = color;
+        if ((x >= gpu->draw_x1) && (x <= gpu->draw_x2) && (y >= gpu->draw_y1) && (y <= gpu->draw_y2))
+            VRAM(x, y) = color;
+
         if (d > 0) {
             x = x + xi;
             d += (2 * (dx - dy));
@@ -537,11 +530,6 @@ void plotLine(psx_gpu_t* gpu, int x0, int y0, int x1, int y1, uint16_t color) {
 }
 
 void gpu_render_flat_line(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, uint32_t color) {
-    v0.x += gpu->off_x;
-    v0.y += gpu->off_y;
-    v1.x += gpu->off_x;
-    v1.y += gpu->off_y;
-    
     plotLine(gpu, v0.x, v0.y, v1.x, v1.y, color);
 }
 
@@ -556,11 +544,9 @@ void gpu_render_flat_rectangle(psx_gpu_t* gpu, vertex_t v, uint32_t w, uint32_t 
     int xmax = min(xmin + w, gpu->draw_x2);
     int ymax = min(ymin + h, gpu->draw_y2);
 
-    for (uint32_t y = ymin; y < ymax; y++) {
-        for (uint32_t x = xmin; x < xmax; x++) {
-            gpu->vram[x + (y * 1024)] = color;
-        }
-    }
+    for (uint32_t y = ymin; y < ymax; y++)
+        for (uint32_t x = xmin; x < xmax; x++)
+            VRAM(x, y) = color;
 }
 
 void gpu_render_textured_rectangle(psx_gpu_t* gpu, vertex_t v, uint32_t w, uint32_t h, uint16_t clutx, uint16_t cluty, uint32_t color) {
@@ -824,16 +810,6 @@ void gpu_poly(psx_gpu_t* gpu) {
             int vertices = 3 + quad;
  
             gpu->cmd_args_remaining = (fields_per_vertex * vertices) - shaded;
-
-            // log_set_quiet(0);
-            // log_fatal("Poly: GP0(%02x) shaded=%u, quad=%u, textured=%u, argc=%u, fpv=%u, vertc=%u",
-            //     gpu->buf[0] >> 24,
-            //     shaded, quad, textured,
-            //     gpu->cmd_args_remaining,
-            //     fields_per_vertex,
-            //     vertices
-            // );
-            log_set_quiet(1);
         } break;
 
         case GPU_STATE_RECV_ARGS: {
@@ -879,15 +855,6 @@ void gpu_poly(psx_gpu_t* gpu) {
                     gpu_render_triangle(gpu, poly.v[0], poly.v[1], poly.v[2], poly);
                     gpu_render_triangle(gpu, poly.v[1], poly.v[2], poly.v[3], poly);
                 } else {
-                    // log_set_quiet(0);
-                    // log_fatal("v0=(%3u, %3u, %06x) v1=(%3u, %3u, %06x) v2=(%3u, %3u, %06x) co=%u vo=%u tco=%u tpo=%u",
-                    //     poly.v[0].x, poly.v[0].y, poly.v[0].c,
-                    //     poly.v[1].x, poly.v[1].y, poly.v[1].c,
-                    //     poly.v[2].x, poly.v[2].y, poly.v[2].c,
-                    //     color_offset, vert_offset,
-                    //     texc_offset, texp_offset
-                    // );
-                    log_set_quiet(1);
                     gpu_render_triangle(gpu, poly.v[0], poly.v[1], poly.v[2], poly);
                 }
 
@@ -897,7 +864,31 @@ void gpu_poly(psx_gpu_t* gpu) {
     }
 }
 
-void gpu_cmd_a0(psx_gpu_t* gpu) {
+void gpu_copy(psx_gpu_t* gpu) {
+    switch (gpu->state) {
+        case GPU_STATE_RECV_CMD: {
+            gpu->state = GPU_STATE_RECV_ARGS;
+            gpu->cmd_args_remaining = 3;
+        } break;
+
+        case GPU_STATE_RECV_ARGS: {
+            if (!gpu->cmd_args_remaining) {
+                uint32_t srcx = gpu->buf[1] & 0xffff;
+                uint32_t srcy = gpu->buf[1] >> 16;
+                uint32_t dstx = gpu->buf[2] & 0xffff;
+                uint32_t dsty = gpu->buf[2] >> 16;
+                uint32_t xsiz = gpu->buf[3] & 0xffff;
+                uint32_t ysiz = gpu->buf[3] >> 16;
+
+                for (int y = 0; y < ysiz; y++)
+                    for (int x = 0; x < xsiz; x++)
+                        VRAM(dstx + x, dsty + y) = VRAM(srcx + x, srcy + y);
+            }
+        } break;
+    }
+}
+
+void gpu_recv(psx_gpu_t* gpu) {
     switch (gpu->state) {
         case GPU_STATE_RECV_CMD: {
             gpu->state = GPU_STATE_RECV_ARGS;
@@ -928,7 +919,7 @@ void gpu_cmd_a0(psx_gpu_t* gpu) {
 
             // To-do: This is segfaulting for some reason
             //        Fix GPU edge cases in general
-            gpu->vram[xpos + (ypos * 1024)] = gpu->recv_data & 0xffff;
+            VRAM(xpos, ypos) = gpu->recv_data & 0xffff;
 
             ++gpu->xcnt;
 
@@ -943,7 +934,7 @@ void gpu_cmd_a0(psx_gpu_t* gpu) {
                 xpos = (gpu->xpos + gpu->xcnt) & 0x3ff;
             }
 
-            gpu->vram[xpos + (ypos * 1024)] = gpu->recv_data >> 16;
+            VRAM(xpos, ypos) = gpu->recv_data >> 16;
 
             ++gpu->xcnt;
             
@@ -960,6 +951,40 @@ void gpu_cmd_a0(psx_gpu_t* gpu) {
             if (!gpu->tsiz) {
                 gpu->xcnt = 0;
                 gpu->ycnt = 0;
+                gpu->state = GPU_STATE_RECV_CMD;
+            }
+        } break;
+    }
+}
+
+void gpu_send(psx_gpu_t* gpu) {
+    switch (gpu->state) {
+        case GPU_STATE_RECV_CMD: {
+            gpu->state = GPU_STATE_RECV_ARGS;
+            gpu->cmd_args_remaining = 2;
+        } break;
+
+        case GPU_STATE_RECV_ARGS: {
+            if (!gpu->cmd_args_remaining) {
+                gpu->c0_xcnt = 0;
+                gpu->c0_ycnt = 0;
+                uint32_t c0_xpos = gpu->buf[1] & 0xffff;
+                uint32_t c0_ypos = gpu->buf[1] >> 16;
+                gpu->c0_xsiz = gpu->buf[2] & 0xffff;
+                gpu->c0_ysiz = gpu->buf[2] >> 16;
+                c0_xpos = c0_xpos & 0x3ff;
+                c0_ypos = c0_ypos & 0x1ff;
+                gpu->c0_xsiz = ((gpu->c0_xsiz - 1) & 0x3ff) + 1;
+                gpu->c0_ysiz = ((gpu->c0_ysiz - 1) & 0x1ff) + 1;
+                gpu->c0_tsiz = ((gpu->c0_xsiz * gpu->c0_ysiz) + 1) & 0xfffffffe;
+                gpu->c0_addr = c0_xpos + (c0_ypos * 1024);
+
+                printf("c0addr=%08x c0xcnt=%u c0ycnt=%u\n",
+                    gpu->c0_addr,
+                    gpu->c0_xcnt,
+                    gpu->c0_ycnt
+                );
+
                 gpu->state = GPU_STATE_RECV_CMD;
             }
         } break;
@@ -1415,34 +1440,6 @@ void gpu_cmd_40(psx_gpu_t* gpu) {
     }
 }
 
-void gpu_cmd_c0(psx_gpu_t* gpu) {
-    switch (gpu->state) {
-        case GPU_STATE_RECV_CMD: {
-            gpu->state = GPU_STATE_RECV_ARGS;
-            gpu->cmd_args_remaining = 2;
-        } break;
-
-        case GPU_STATE_RECV_ARGS: {
-            if (!gpu->cmd_args_remaining) {
-                gpu->c0_xcnt = 0;
-                gpu->c0_ycnt = 0;
-                uint32_t c0_xpos = gpu->buf[1] & 0xffff;
-                uint32_t c0_ypos = gpu->buf[1] >> 16;
-                gpu->c0_xsiz = gpu->buf[2] & 0xffff;
-                gpu->c0_ysiz = gpu->buf[2] >> 16;
-                c0_xpos = c0_xpos & 0x3ff;
-                c0_ypos = c0_ypos & 0x1ff;
-                gpu->c0_xsiz = ((gpu->c0_xsiz - 1) & 0x3ff) + 1;
-                gpu->c0_ysiz = ((gpu->c0_ysiz - 1) & 0x1ff) + 1;
-                gpu->c0_tsiz = ((gpu->c0_xsiz * gpu->c0_ysiz) + 1) & 0xfffffffe;
-                gpu->c0_addr = c0_xpos + (c0_ypos * 1024);
-
-                gpu->state = GPU_STATE_RECV_CMD;
-            }
-        } break;
-    }
-}
-
 void gpu_cmd_02(psx_gpu_t* gpu) {
     switch (gpu->state) {
         case GPU_STATE_RECV_CMD: {
@@ -1469,8 +1466,8 @@ void gpu_cmd_02(psx_gpu_t* gpu) {
 
                 for (uint32_t y = gpu->v0.y; y < (gpu->v0.y + gpu->ysiz); y++) {
                     for (uint32_t x = gpu->v0.x; x < (gpu->v0.x + gpu->xsiz); x++) {
-                        if ((x < 1024) && (y < 512) && (x >= 0) && (y >= 0))
-                            gpu->vram[x + (y * 1024)] = color;
+                        if ((x >= gpu->draw_x1) && (x <= gpu->draw_x2) && (y >= gpu->draw_y1) && (y <= gpu->draw_y2))
+                            VRAM(x, y) = color;
                     }
                 }
 
@@ -1500,10 +1497,7 @@ void gpu_cmd_80(psx_gpu_t* gpu) {
 
                 for (int y = 0; y < ysiz; y++) {
                     for (int x = 0; x < xsiz; x++) {
-                        int dstb = ((dstx + x) < 1024) && ((dsty + y) < 512);
-                        int srcb = ((srcx + x) < 1024) && ((srcy + y) < 512);
-                        
-                        if (dstb && srcb)
+                        if ((x >= gpu->draw_x1) && (x <= gpu->draw_x2) && (y >= gpu->draw_y1) && (y <= gpu->draw_y2))
                             gpu->vram[(dstx + x) + (dsty + y) * 1024] = gpu->vram[(srcx + x) + (srcy + y) * 1024];
                     }
                 }
@@ -1517,56 +1511,53 @@ void gpu_cmd_80(psx_gpu_t* gpu) {
 void psx_gpu_update_cmd(psx_gpu_t* gpu) {
     int type = (gpu->buf[0] >> 29) & 7;
 
-    if (type == 3) {
-        gpu_rect(gpu);
-
-        return;
-    }
-
-    if (type == 1) {
-        gpu_poly(gpu);
-
-        return;
+    switch (type) {
+        case 1: gpu_poly(gpu); return;
+        case 3: gpu_rect(gpu); return;
+        case 4: gpu_copy(gpu); return;
+        case 5: gpu_recv(gpu); return;
+        case 6: gpu_send(gpu); return;
+        default: break;
     }
 
     switch (gpu->buf[0] >> 24) {
         case 0x00: /* nop */ break;
         case 0x01: /* Cache clear */ break;
         case 0x02: gpu_cmd_02(gpu); break;
-        case 0x24: gpu_cmd_24(gpu); break;
-        case 0x25: gpu_cmd_24(gpu); break;
-        case 0x26: gpu_cmd_24(gpu); break;
-        case 0x27: gpu_cmd_24(gpu); break;
-        case 0x28: gpu_cmd_28(gpu); break;
-        case 0x2a: gpu_cmd_28(gpu); break;
-        case 0x2c: gpu_cmd_2d(gpu); break;
-        case 0x2d: gpu_cmd_2d(gpu); break;
-        case 0x2e: gpu_cmd_2d(gpu); break;
-        case 0x2f: gpu_cmd_2d(gpu); break;
-        case 0x30: gpu_cmd_30(gpu); break;
-        case 0x32: gpu_cmd_30(gpu); break;
-        case 0x38: gpu_cmd_38(gpu); break;
-        case 0x3c: gpu_cmd_3c(gpu); break;
-        case 0x3e: gpu_cmd_3c(gpu); break;
+        // case 0x24: gpu_cmd_24(gpu); break;
+        // case 0x25: gpu_cmd_24(gpu); break;
+        // case 0x26: gpu_cmd_24(gpu); break;
+        // case 0x27: gpu_cmd_24(gpu); break;
+        // case 0x28: gpu_cmd_28(gpu); break;
+        // case 0x2a: gpu_cmd_28(gpu); break;
+        // case 0x2c: gpu_cmd_2d(gpu); break;
+        // case 0x2d: gpu_cmd_2d(gpu); break;
+        // case 0x2e: gpu_cmd_2d(gpu); break;
+        // case 0x2f: gpu_cmd_2d(gpu); break;
+        // case 0x30: gpu_cmd_30(gpu); break;
+        // case 0x32: gpu_cmd_30(gpu); break;
+        // case 0x38: gpu_cmd_38(gpu); break;
+        // case 0x3c: gpu_cmd_3c(gpu); break;
+        // case 0x3e: gpu_cmd_3c(gpu); break;
         case 0x40: gpu_cmd_40(gpu); break;
-        case 0x60: gpu_cmd_60(gpu); break;
-        case 0x62: gpu_cmd_60(gpu); break;
-        case 0x64: gpu_cmd_64(gpu); break;
-        case 0x65: gpu_cmd_64(gpu); break;
-        case 0x66: gpu_cmd_64(gpu); break;
-        case 0x67: gpu_cmd_64(gpu); break;
-        case 0x68: gpu_cmd_68(gpu); break;
-        case 0x74: gpu_cmd_74(gpu); break;
-        case 0x75: gpu_cmd_74(gpu); break;
-        case 0x76: gpu_cmd_74(gpu); break;
-        case 0x77: gpu_cmd_74(gpu); break;
-        case 0x7c: gpu_cmd_7c(gpu); break;
-        case 0x7d: gpu_cmd_7c(gpu); break;
-        case 0x7e: gpu_cmd_7c(gpu); break;
-        case 0x7f: gpu_cmd_7c(gpu); break;
-        case 0x80: gpu_cmd_80(gpu); break;
-        case 0xa0: gpu_cmd_a0(gpu); break;
-        case 0xc0: gpu_cmd_c0(gpu); break;
+        // case 0x60: gpu_cmd_60(gpu); break;
+        // case 0x62: gpu_cmd_60(gpu); break;
+        // case 0x64: gpu_cmd_64(gpu); break;
+        // case 0x65: gpu_cmd_64(gpu); break;
+        // case 0x66: gpu_cmd_64(gpu); break;
+        // case 0x67: gpu_cmd_64(gpu); break;
+        // case 0x68: gpu_cmd_68(gpu); break;
+        // case 0x74: gpu_cmd_74(gpu); break;
+        // case 0x75: gpu_cmd_74(gpu); break;
+        // case 0x76: gpu_cmd_74(gpu); break;
+        // case 0x77: gpu_cmd_74(gpu); break;
+        // case 0x7c: gpu_cmd_7c(gpu); break;
+        // case 0x7d: gpu_cmd_7c(gpu); break;
+        // case 0x7e: gpu_cmd_7c(gpu); break;
+        // case 0x7f: gpu_cmd_7c(gpu); break;
+        // case 0x80: gpu_cmd_80(gpu); break;
+        // case 0xa0: gpu_cmd_a0(gpu); break;
+        // case 0xc0: gpu_cmd_c0(gpu); break;
         case 0xe1: {
             gpu->gpustat &= 0xfffff800;
             gpu->gpustat |= gpu->buf[0] & 0x7ff;
@@ -1598,7 +1589,7 @@ void psx_gpu_update_cmd(psx_gpu_t* gpu) {
         default: {
             // log_set_quiet(0);
             // log_fatal("Unhandled GP0(%02Xh)", gpu->buf[0] >> 24);
-            // log_set_quiet(1);
+            log_set_quiet(1);
 
             // exit(1);
         } break;
@@ -1639,6 +1630,33 @@ void psx_gpu_write32(psx_gpu_t* gpu, uint32_t offset, uint32_t value) {
             uint8_t cmd = value >> 24;
 
             switch (cmd) {
+                case 0x00: {
+                    gpu->gpustat = 0x14802000;
+
+                    /*
+                        GP1(01h)      ;clear fifo
+                        GP1(02h)      ;ack irq (0)
+                        GP1(03h)      ;display off (1)
+                        GP1(04h)      ;dma off (0)
+                        GP1(05h)      ;display address (0)
+                        GP1(06h)      ;display x1,x2 (x1=200h, x2=200h+256*10)
+                        GP1(07h)      ;display y1,y2 (y1=010h, y2=010h+240)
+                        GP1(08h)      ;display mode 320x200 NTSC (0)
+                        GP0(E1h..E6h) ;rendering attributes (0)
+                    */
+
+                    gpu->disp_x1 = 0x200;
+                    gpu->disp_x2 = 0xc00;
+                    gpu->disp_y1 = 0x010;
+                    gpu->disp_y2 = 0x100;
+                    gpu->display_mode = 0;
+
+                    gpu->disp_x = 0;
+                    gpu->disp_y = 0;
+
+                    if (gpu->event_cb_table[GPU_EVENT_DMODE])
+                        gpu->event_cb_table[GPU_EVENT_DMODE](gpu);
+                } break;
                 case 0x04: {
                 } break;
                 case 0x05: {
@@ -1714,7 +1732,7 @@ void gpu_hblank_event(psx_gpu_t* gpu) {
     } else if (gpu->line == GPU_SCANS_PER_FRAME_NTSC) {
         if (gpu->event_cb_table[GPU_EVENT_VBLANK_END])
             gpu->event_cb_table[GPU_EVENT_VBLANK_END](gpu);
-        
+
         // psx_ic_irq(gpu->ic, IC_SPU);
 
         gpu->line = 0;
@@ -1726,7 +1744,8 @@ void psx_gpu_update(psx_gpu_t* gpu, int cyc) {
                       (gpu->cycles <= GPU_CYCLES_PER_SCANL_NTSC);
 
     // Convert CPU (~33.8 MHz) cycles to GPU (~53.7 MHz) cycles
-    gpu->cycles += (float)cyc * (PSX_GPU_CLOCK_FREQ_NTSC / PSX_CPU_FREQ);
+    // gpu->cycles += (float)cyc * (PSX_GPU_CLOCK_FREQ_NTSC / PSX_CPU_FREQ);
+    gpu->cycles += (float)cyc * (11.0f / 7.0f);
 
     int curr_hblank = (gpu->cycles >= GPU_CYCLES_PER_HDRAW_NTSC) &&
                       (gpu->cycles <= GPU_CYCLES_PER_SCANL_NTSC);
@@ -1745,7 +1764,7 @@ void psx_gpu_update(psx_gpu_t* gpu, int cyc) {
 }
 
 void* psx_gpu_get_display_buffer(psx_gpu_t* gpu) {
-    return gpu->vram; // + (gpu->disp_x + (gpu->disp_y * 1024));
+    return gpu->vram + (gpu->disp_x + (gpu->disp_y * 1024));
 }
 
 void psx_gpu_destroy(psx_gpu_t* gpu) {

@@ -26,7 +26,10 @@ void psx_load_exe(psx_t* psx, const char* path) {
 
 void psx_update(psx_t* psx) {
     psx_cpu_cycle(psx->cpu);
-    psx_cdrom_update(psx->cdrom, 22);
+
+    psx->cpu->last_cycles = 2;
+
+    psx_cdrom_update(psx->cdrom, 2);
     psx_gpu_update(psx->gpu, psx->cpu->last_cycles);
     psx_pad_update(psx->pad, psx->cpu->last_cycles);
     psx_timer_update(psx->timer, psx->cpu->last_cycles);
@@ -53,6 +56,18 @@ void* psx_get_vram(psx_t* psx) {
 }
 
 uint32_t psx_get_display_width(psx_t* psx) {
+    return psx->gpu->draw_x2 - psx->gpu->draw_x1;
+}
+
+uint32_t psx_get_display_height(psx_t* psx) {
+    return psx->gpu->draw_y2 - psx->gpu->draw_y1;
+}
+
+uint32_t psx_get_display_format(psx_t* psx) {
+    return (psx->gpu->display_mode >> 4) & 1;
+}
+
+uint32_t psx_get_dmode_width(psx_t* psx) {
     static int dmode_hres_table[] = {
         256, 320, 512, 640
     };
@@ -64,12 +79,19 @@ uint32_t psx_get_display_width(psx_t* psx) {
     }
 }
 
-uint32_t psx_get_display_height(psx_t* psx) {
+uint32_t psx_get_dmode_height(psx_t* psx) {
     return (psx->gpu->display_mode & 0x4) ? 480 : 240;
 }
 
-uint32_t psx_get_display_format(psx_t* psx) {
-    return (psx->gpu->display_mode >> 4) & 1;
+double psx_get_display_aspect(psx_t* psx) {
+    double width = psx_get_dmode_width(psx);
+    double height = psx_get_dmode_height(psx);
+    double aspect = width / height;
+
+    if (aspect > (4.0 / 3.0))
+        return 4.0 / 3.0;
+
+    return aspect;
 }
 
 void psx_init(psx_t* psx, const char* bios_path) {

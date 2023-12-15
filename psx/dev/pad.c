@@ -101,7 +101,7 @@ void pad_write_tx(psx_pad_t* pad, uint16_t data) {
 uint32_t pad_handle_stat_read(psx_pad_t* pad) {
     // log_set_quiet(0);
     // log_fatal("pad stat read");
-    // log_set_quiet(1);
+    log_set_quiet(1);
     return 0x07;
     psx_input_t* joy = pad->joy_slot[(pad->ctrl >> 13) & 1];
 

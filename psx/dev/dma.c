@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+#include <ctype.h>
 
 psx_dma_t* psx_dma_create() {
     return (psx_dma_t*)malloc(sizeof(psx_dma_t));
@@ -115,18 +116,15 @@ void psx_dma_write32(psx_dma_t* dma, uint32_t offset, uint32_t value) {
         switch (offset) {
             case 0x70: log_error("DMA control write %08x", value); dma->dpcr = value; break;
             case 0x74: {
-                // IRQ signal is read-only
-                value &= ~DICR_IRQSI;
-
-                // Reset flags
-                dma->dicr &= ~(value & DICR_FLAGS);
-
-                // Write other fields
+                uint32_t ack = value & DICR_FLAGS;
                 uint32_t flags = dma->dicr & DICR_FLAGS;
 
-                dma->dicr &= ~DICR_FLAGS;
-                dma->dicr |= value & (~DICR_FLAGS);
+                flags &= (~ack);
+                flags &= DICR_FLAGS;
+
+                dma->dicr &= 0x80000000;
                 dma->dicr |= flags;
+                dma->dicr |= value & 0xffffff;
             } break;
 
             default: {
@@ -199,7 +197,7 @@ void psx_dma_do_mdec_out(psx_dma_t* dma) {
 
     dma->mdec_out_irq_delay = size;
 
-    dma->mdec_out.chcr &= ~(CHCR_BUSY_MASK | CHCR_TRIG_MASK);
+    dma->mdec_out.chcr = 0;
     dma->mdec_out.bcr = 0;
 }
 
@@ -223,7 +221,8 @@ void psx_dma_do_gpu_linked(psx_dma_t* dma) {
 
         addr = hdr & 0xffffff;
 
-        if (addr == 0xffffff) break;
+        if (addr == 0xffffff)
+            break;
 
         hdr = psx_bus_read32(dma->bus, addr);
         size = hdr >> 24;
@@ -293,7 +292,8 @@ void psx_dma_do_gpu(psx_dma_t* dma) {
 void psx_dma_do_cdrom(psx_dma_t* dma) {
     if (!CHCR_BUSY(cdrom))
         return;
-    
+
+    // log_set_quiet(0);
     // log_fatal("CDROM DMA transfer: madr=%08x, dir=%s, sync=%s (%u), step=%s, size=%x",
     //     dma->cdrom.madr,
     //     CHCR_TDIR(cdrom) ? "to device" : "to RAM",
@@ -308,6 +308,7 @@ void psx_dma_do_cdrom(psx_dma_t* dma) {
     //     (dma->dicr >> 23) & 1,
     //     (dma->dicr >> 24) & 0x7f
     // );
+    // log_set_quiet(1);    
 
     uint32_t size = BCR_SIZE(cdrom);
 
@@ -318,6 +319,8 @@ void psx_dma_do_cdrom(psx_dma_t* dma) {
     }
 
     dma->cdrom_irq_delay = size * 24;
+
+    uint32_t base_addr = dma->cdrom.madr;
 
     if (!CHCR_TDIR(cdrom)) {
         for (int i = 0; i < size; i++) {
@@ -335,10 +338,27 @@ void psx_dma_do_cdrom(psx_dma_t* dma) {
     } else {
         log_fatal("Invalid CDROM DMA transfer direction");
     }
+
+    // size *= 4;
+
+    // for (int i = 0; i < size; i += 16) {
+    //     for (int k = 0; k < 16; k++) {
+    //         printf("%02x ", psx_bus_read8(dma->bus, base_addr + i + k));
+    //     }
+
+    //     printf("| ");
+
+    //     for (int k = 0; k < 16; k++) {
+    //         char c = psx_bus_read8(dma->bus, base_addr + i + k);
+
+    //         printf("%c ", isgraph(c) ? c : '.');
+    //     }
+
+    //     printf("\n");
+    // }
     
     // Clear BCR and CHCR trigger and busy bits
     dma->cdrom.chcr = 0;
-    //dma->otc.chcr &= ~(CHCR_BUSY_MASK | CHCR_TRIG_MASK);
     dma->cdrom.bcr = 0;
 }
 
@@ -361,7 +381,7 @@ void psx_dma_do_spu(psx_dma_t* dma) {
     //     (dma->dicr >> 23) & 1,
     //     (dma->dicr >> 24) & 0x7f
     // );
-    // log_set_quiet(1);
+    log_set_quiet(1);
 
     uint32_t size = BCR_SIZE(spu);
     uint32_t blocks = BCR_BCNT(spu);
@@ -424,7 +444,8 @@ void psx_dma_do_otc(psx_dma_t* dma) {
 
     uint32_t size = BCR_SIZE(otc);
 
-    if (!size) size = 0x10000;
+    if (!size)
+        size = 0x10000;
 
     for (int i = size; i > 0; i--) {
         uint32_t addr = (i != 1) ? (dma->otc.madr - 4) : 0xffffff;
@@ -444,7 +465,7 @@ void psx_dma_do_otc(psx_dma_t* dma) {
 
 void psx_dma_update(psx_dma_t* dma, int cyc) {
     if (dma->cdrom_irq_delay) {
-        dma->cdrom_irq_delay -= cyc;
+        dma->cdrom_irq_delay = 0;
 
         if ((dma->dicr & DICR_DMA3EN) && !dma->cdrom_irq_delay)
             dma->dicr |= DICR_DMA3FL;
@@ -459,7 +480,7 @@ void psx_dma_update(psx_dma_t* dma, int cyc) {
     }
 
     if (dma->gpu_irq_delay) {
-        dma->gpu_irq_delay -= cyc;
+        dma->gpu_irq_delay = 0;
 
         if (!dma->gpu_irq_delay)
             if (dma->dicr & DICR_DMA2EN)
@@ -467,7 +488,7 @@ void psx_dma_update(psx_dma_t* dma, int cyc) {
     }
 
     if (dma->otc_irq_delay) {
-        dma->otc_irq_delay -= cyc;
+        dma->otc_irq_delay = 0;
 
         if (!dma->otc_irq_delay)
             if (dma->dicr & DICR_DMA6EN)
@@ -475,7 +496,7 @@ void psx_dma_update(psx_dma_t* dma, int cyc) {
     }
 
     if (dma->mdec_in_irq_delay) {
-        dma->mdec_in_irq_delay -= cyc;
+        dma->mdec_in_irq_delay = 0;
 
         if (!dma->mdec_in_irq_delay)
             if (dma->dicr & DICR_DMA0EN)
@@ -483,7 +504,7 @@ void psx_dma_update(psx_dma_t* dma, int cyc) {
     }
 
     if (dma->mdec_out_irq_delay) {
-        dma->mdec_out_irq_delay -= cyc;
+        dma->mdec_out_irq_delay = 0;
 
         if (!dma->mdec_out_irq_delay)
             if (dma->dicr & DICR_DMA1EN)

@@ -162,6 +162,8 @@ void yuv_to_rgb(psx_mdec_t* mdec, uint8_t* buf, int xx, int yy) {
 void mdec_nop(psx_mdec_t* mdec) { /* Do nothing */ }
 
 void mdec_decode_macroblock(psx_mdec_t* mdec) {
+    return;
+
     if (mdec->output_depth < 2) {
         rl_decode_block(mdec->yblk, mdec->input, mdec->y_quant_table, mdec->scale_table);
 
@@ -277,17 +279,19 @@ uint32_t psx_mdec_read32(psx_mdec_t* mdec, uint32_t offset) {
             if (mdec->output_words_remaining) {
                 --mdec->output_words_remaining;
 
-                log_set_quiet(0);
-                log_fatal("output read %08x", 0);
-                log_set_quiet(1);
+                // log_set_quiet(0);
+                // log_fatal("output read %08x", 0);
+                // log_set_quiet(1);
 
-                return ((uint32_t*)mdec->output)[mdec->output_index++];
+                return 0xaaaaaaaa;
+
+                // return ((uint32_t*)mdec->output)[mdec->output_index++];
             } else {
                 mdec->output_empty = 1;
                 mdec->output_index = 0;
                 mdec->output_request = 0;
 
-                return 0xaabbccdd;
+                return 0xaaaaaaaa;
             }
         } break;
         case 4: {
@@ -313,14 +317,10 @@ uint32_t psx_mdec_read32(psx_mdec_t* mdec, uint32_t offset) {
 
 uint16_t psx_mdec_read16(psx_mdec_t* mdec, uint32_t offset) {
     log_fatal("Unhandled 16-bit MDEC read offset=%u", offset);
-
-    exit(1);
 }
 
 uint8_t psx_mdec_read8(psx_mdec_t* mdec, uint32_t offset) {
     log_fatal("Unhandled 8-bit MDEC read offset=%u", offset);
-
-    exit(1);
 }
 
 void psx_mdec_write32(psx_mdec_t* mdec, uint32_t offset, uint32_t value) {
@@ -338,7 +338,7 @@ void psx_mdec_write32(psx_mdec_t* mdec, uint32_t offset, uint32_t value) {
                     mdec->busy = 0;
                     mdec->output_request = mdec->enable_dma1;
 
-                    g_mdec_cmd_table[mdec->cmd >> 29](mdec);
+                    // g_mdec_cmd_table[mdec->cmd >> 29](mdec);
 
                     free(mdec->input);
                 }
@@ -356,7 +356,7 @@ void psx_mdec_write32(psx_mdec_t* mdec, uint32_t offset, uint32_t value) {
             mdec->input_full = 0;
             mdec->busy = 1;
 
-            log_set_quiet(0);
+            //log_set_quiet(0);
             switch (mdec->cmd >> 29) {
                 case MDEC_CMD_NOP: {
                     mdec->busy = 0;
@@ -393,7 +393,7 @@ void psx_mdec_write32(psx_mdec_t* mdec, uint32_t offset, uint32_t value) {
                     );
                 } break;
             }
-            log_set_quiet(1);
+            //log_set_quiet(1);
 
             if (mdec->words_remaining) {
                 mdec->input_request = mdec->enable_dma0;
@@ -431,14 +431,10 @@ void psx_mdec_write32(psx_mdec_t* mdec, uint32_t offset, uint32_t value) {
 
 void psx_mdec_write16(psx_mdec_t* mdec, uint32_t offset, uint16_t value) {
     log_fatal("Unhandled 16-bit MDEC write offset=%u, value=%04x", offset, value);
-
-    exit(1);
 }
 
 void psx_mdec_write8(psx_mdec_t* mdec, uint32_t offset, uint8_t value) {
     log_fatal("Unhandled 8-bit MDEC write offset=%u, value=%02x", offset, value);
-
-    exit(1);
 }
 
 void psx_mdec_destroy(psx_mdec_t* mdec) {

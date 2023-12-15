@@ -21,6 +21,12 @@ uint16_t screen_get_button(SDL_Keycode k) {
     return 0;
 }
 
+int screen_get_base_width(psxe_screen_t* screen) {
+    int width = psx_get_dmode_width(screen->psx);
+
+    return (width == 256) ? 256 : 320;
+}
+
 psxe_screen_t* psxe_screen_create() {
     return (psxe_screen_t*)malloc(sizeof(psxe_screen_t));
 }
@@ -42,9 +48,12 @@ void psxe_screen_init(psxe_screen_t* screen, psx_t* psx) {
     screen->psx = psx;
     screen->pad = psx_get_pad(psx);
 
-    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+    screen->texture_width = PSX_GPU_FB_WIDTH;
+    screen->texture_height = PSX_GPU_FB_HEIGHT;
 
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
     SDL_SetHint("SDL_HINT_RENDER_SCALE_QUALITY", "0");
+    SDL_SetRenderDrawColor(screen->renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
 }
 
 void psxe_screen_reload(psxe_screen_t* screen) {
@@ -58,8 +67,13 @@ void psxe_screen_reload(psxe_screen_t* screen) {
         screen->width = PSX_GPU_FB_WIDTH;
         screen->height = PSX_GPU_FB_HEIGHT;
     } else {
-        screen->width = 320;
-        screen->height = 240;
+        if (screen->vertical_mode) {
+            screen->width = 240;
+            screen->height = screen_get_base_width(screen);
+        } else {
+            screen->width = screen_get_base_width(screen);
+            screen->height = 240;
+        }
     }
 
     screen->window = SDL_CreateWindow(
@@ -80,7 +94,7 @@ void psxe_screen_reload(psxe_screen_t* screen) {
         screen->renderer,
         screen->format,
         SDL_TEXTUREACCESS_STREAMING,
-        PSX_GPU_FB_WIDTH, PSX_GPU_FB_HEIGHT
+        screen->texture_width, screen->texture_height
     );
 
     // Check for retina displays
@@ -95,6 +109,8 @@ void psxe_screen_reload(psxe_screen_t* screen) {
         SDL_RenderSetScale(screen->renderer, width_scale, height_scale);
     }
 
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, 0);
+
     screen->open = 1;
 }
 
@@ -107,6 +123,9 @@ void psxe_screen_toggle_debug_mode(psxe_screen_t* screen) {
 
     psxe_screen_set_scale(screen, screen->saved_scale);
 
+    screen->texture_width = PSX_GPU_FB_WIDTH;
+    screen->texture_height = PSX_GPU_FB_HEIGHT;
+
     psxe_gpu_dmode_event_cb(screen->psx->gpu);
 }
 
@@ -114,8 +133,38 @@ void psxe_screen_update(psxe_screen_t* screen) {
     void* display_buf = screen->debug_mode ?
         psx_get_vram(screen->psx) : psx_get_display_buffer(screen->psx);
 
-    SDL_UpdateTexture(screen->texture, NULL, display_buf, PSX_GPU_FB_STRIDE);
-    SDL_RenderCopy(screen->renderer, screen->texture, NULL, NULL);
+    // Update texture
+    int pitch;
+    uint8_t* ptr = NULL;
+
+    SDL_LockTexture(screen->texture, NULL, &ptr, &pitch);
+
+    for (int y = 0; y < screen->texture_height; y++)
+        memcpy(ptr + (y * pitch), display_buf + (y * PSX_GPU_FB_STRIDE), pitch);
+
+    SDL_UnlockTexture(screen->texture);
+
+    SDL_RenderClear(screen->renderer);
+
+    if (!screen->debug_mode) {
+        SDL_Rect dstrect;
+
+        dstrect.x = screen->image_xoff;
+        dstrect.y = screen->image_yoff;
+        dstrect.w = screen->image_width;
+        dstrect.h = screen->image_height;
+
+        SDL_RenderCopyEx(
+            screen->renderer,
+            screen->texture,
+            NULL, &dstrect,
+            screen->vertical_mode ? 270 : 0,
+            NULL, SDL_FLIP_NONE
+        );
+    } else {
+        SDL_RenderCopy(screen->renderer, screen->texture, NULL, NULL);
+    }
+
     SDL_RenderPresent(screen->renderer);
 
     SDL_Event event;
@@ -137,8 +186,8 @@ void psxe_screen_update(psxe_screen_t* screen) {
                     case SDLK_F2: {
                         SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormat(
                             0,
-                            screen->width * screen->scale,
-                            screen->height * screen->scale,
+                            screen->width,
+                            screen->height,
                             16,
                             SDL_PIXELFORMAT_BGR555
                         );
@@ -153,6 +202,26 @@ void psxe_screen_update(psxe_screen_t* screen) {
                         SDL_SaveBMP(surface, "snap/screenshot.bmp");
 
                         SDL_FreeSurface(surface);
+                    } break;
+
+                    case SDLK_F3: {
+                        screen->vertical_mode = !screen->vertical_mode;
+
+                        psxe_gpu_dmode_event_cb(screen->psx->gpu);
+                    } break;
+
+                    case SDLK_F4: {
+                        screen->fullscreen = !screen->fullscreen;
+
+                        SDL_SetWindowFullscreen(
+                            screen->window,
+                            screen->fullscreen ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0
+                        );
+
+                        psxe_gpu_dmode_event_cb(screen->psx->gpu);
+
+                        SDL_SetRenderDrawColor(screen->renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
+                        SDL_RenderClear(screen->renderer);
                     } break;
                 }
 
@@ -196,7 +265,7 @@ void psxe_gpu_dmode_event_cb(psx_gpu_t* gpu) {
     int texture_height;
 
     screen->format = psx_get_display_format(screen->psx) ?
-        SDL_PIXELFORMAT_BGR555 : SDL_PIXELFORMAT_RGB888;
+        SDL_PIXELFORMAT_RGB24 : SDL_PIXELFORMAT_BGR555;
 
     if (screen->debug_mode) {
         screen->width = PSX_GPU_FB_WIDTH;
@@ -204,32 +273,59 @@ void psxe_gpu_dmode_event_cb(psx_gpu_t* gpu) {
         texture_width = PSX_GPU_FB_WIDTH;
         texture_height = PSX_GPU_FB_HEIGHT;
     } else {
-        screen->width = 320;
-        screen->height = 240;
-        texture_width = psx_get_display_width(screen->psx);
-        texture_height = psx_get_display_height(screen->psx);
-    }
+        if (screen->fullscreen) {
+            screen->width = 1920;
+            screen->height = 1080;
 
-    // if (screen->width > 512) {
-    //     screen->scale = 1;
-    // } else {
-    //     screen->scale = screen->saved_scale;
-    // }
+            if (screen->vertical_mode) {
+                screen->image_width = screen->height;
+                screen->image_height = (double)screen->height / psx_get_display_aspect(screen->psx);
+
+                int off = (screen->image_width - screen->image_height) / 2;
+
+                screen->image_xoff = (screen->width / 2) - (screen->image_width / 2);
+                screen->image_yoff = off;
+            } else {
+                screen->image_width = (double)screen->height * psx_get_display_aspect(screen->psx);
+                screen->image_height = screen->height;
+                screen->image_xoff = (screen->width / 2) - (screen->image_width / 2);
+                screen->image_yoff = 0;
+            }
+        } else {
+            if (screen->vertical_mode) {
+                screen->width = 240 * screen->scale;
+                screen->height = screen_get_base_width(screen) * screen->scale;
+                screen->image_width = screen->height;
+                screen->image_height = screen->width;
+
+                int off = (screen->image_width - screen->image_height) / 2;
+
+                screen->image_xoff = -off;
+                screen->image_yoff = off;
+            } else {
+                screen->width = screen_get_base_width(screen) * screen->scale;
+                screen->height = 240 * screen->scale;
+                screen->image_width = screen->width;
+                screen->image_height = screen->height;
+                screen->image_xoff = 0;
+                screen->image_yoff = 0;
+            }
+        }
+
+        screen->texture_width = psx_get_display_width(screen->psx);
+        screen->texture_height = psx_get_display_height(screen->psx);
+    }
 
     SDL_DestroyTexture(screen->texture);
 
     screen->texture = SDL_CreateTexture(
         screen->renderer,
-        SDL_PIXELFORMAT_BGR555,
+        screen->format,
         SDL_TEXTUREACCESS_STREAMING,
-        texture_width, texture_height
+        screen->texture_width, screen->texture_height
     );
 
-    SDL_SetWindowSize(
-        screen->window,
-        screen->width * screen->scale,
-        screen->height * screen->scale
-    );
+    SDL_SetWindowSize(screen->window, screen->width, screen->height);
 }
 
 void psxe_gpu_vblank_event_cb(psx_gpu_t* gpu) {

@@ -427,6 +427,7 @@ void psx_spu_write8(psx_spu_t* spu, uint32_t offset, uint8_t value) {
 }
 
 void psx_spu_destroy(psx_spu_t* spu) {
+    printf("psx_spu_destroy called\n");
     free(spu->ram);
     free(spu);
 }
@@ -565,16 +566,21 @@ uint32_t psx_spu_get_sample(psx_spu_t* spu) {
                     spu->data[v].current_addr = spu->data[v].repeat_addr;
                     spu->data[v].playing = 0;
                     spu->voice[v].envcvol = 0;
+
+                    adsr_load_release(spu, v);
                 } break;
 
                 case 3: {
                     spu->endx |= (1 << v);
                     spu->data[v].current_addr = spu->data[v].repeat_addr;
+
+                    adsr_load_release(spu, v);
                 } break;
             }
 
-            if (spu->data[v].block_flags & 4)
+            if (spu->data[v].block_flags & 4) {
                 spu->data[v].repeat_addr = spu->data[v].current_addr;
+            }
 
             spu_read_block(spu, v);
         }

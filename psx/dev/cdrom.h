@@ -205,6 +205,26 @@ typedef struct {
     int cdda_sectors_played;
     int cdda_track;
 
+    // XA-ADPCM
+    uint8_t* xa_sector_buf;
+    msf_t xa_msf;
+    int xa_playing;
+    uint8_t xa_file;
+    uint8_t xa_channel;
+    uint8_t xa_coding;
+    int16_t* xa_left_buf;
+    int16_t* xa_right_buf;
+    int16_t* xa_mono_buf;
+    int16_t* xa_decoded_buf;
+    int16_t* xa_left_ring_buf;
+    int16_t* xa_right_ring_buf;
+    int16_t* xa_stereo_resample_buf;
+    int16_t* xa_mono_resample_buf;
+    uint32_t xa_sample_idx;
+    uint32_t xa_remaining_samples;
+    uint32_t xa_step;
+    uint32_t xa_ringbuf_pos;
+
     const char* path;
     psx_disc_t* disc;
 
@@ -283,8 +303,10 @@ void cdrom_cmd_init(psx_cdrom_t*);
 void cdrom_cmd_unmute(psx_cdrom_t*);
 void cdrom_cmd_setfilter(psx_cdrom_t*);
 void cdrom_cmd_setmode(psx_cdrom_t*);
+void cdrom_cmd_getparam(psx_cdrom_t*);
 void cdrom_cmd_getlocl(psx_cdrom_t*);
 void cdrom_cmd_getlocp(psx_cdrom_t*);
+void cdrom_cmd_setsession(psx_cdrom_t*);
 void cdrom_cmd_gettn(psx_cdrom_t*);
 void cdrom_cmd_gettd(psx_cdrom_t*);
 void cdrom_cmd_seekl(psx_cdrom_t*);

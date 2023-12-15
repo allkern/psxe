@@ -700,6 +700,8 @@ void psx_cpu_init(psx_cpu_t* cpu, psx_bus_t* bus) {
 }
 
 void psx_cpu_cycle(psx_cpu_t* cpu) {
+    cpu->last_cycles = 0;
+
     // if ((cpu->pc & 0x3fffffff) == 0x000000a4) {
     //     if (cpu->r[9] == 0x2f)
     //         goto no_putchar;
@@ -762,6 +764,7 @@ void psx_cpu_cycle(psx_cpu_t* cpu) {
     }
 
     cpu->opcode = psx_bus_read32(cpu->bus, cpu->pc);
+    cpu->last_cycles = psx_bus_get_access_cycles(cpu->bus);
 
     cpu->pc = cpu->next_pc;
     cpu->next_pc += 4;
@@ -774,7 +777,10 @@ void psx_cpu_cycle(psx_cpu_t* cpu) {
 
     g_psx_cpu_primary_table[OP](cpu);
 
-    cpu->last_cycles = 2 + psx_bus_get_access_cycles(cpu->bus);
+    // Discard instruction access cycles
+    psx_bus_get_access_cycles(cpu->bus);
+
+    cpu->last_cycles = 1;
     cpu->total_cycles += cpu->last_cycles;
 
     cpu->r[0] = 0;
@@ -1113,8 +1119,6 @@ void psx_cpu_i_lwl(psx_cpu_t* cpu) {
 
     uint32_t aligned = psx_bus_read32(cpu->bus, addr & ~0x3);
 
-    cpu->load_v = cpu->r[T];
-
     switch (addr & 0x3) {
         case 0: cpu->load_v = (cpu->load_v & 0x00ffffff) | (aligned << 24); break;
         case 1: cpu->load_v = (cpu->load_v & 0x0000ffff) | (aligned << 16); break;
@@ -1174,8 +1178,6 @@ void psx_cpu_i_lwr(psx_cpu_t* cpu) {
     uint32_t addr = cpu->r[S] + IMM16S;
 
     uint32_t aligned = psx_bus_read32(cpu->bus, addr & ~0x3);
-
-    cpu->load_v = cpu->r[T];
 
     switch (addr & 0x3) {
         case 0: cpu->load_v =                               aligned       ; break;
