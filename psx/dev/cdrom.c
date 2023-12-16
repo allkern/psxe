@@ -1547,21 +1547,26 @@ void psx_cdrom_init(psx_cdrom_t* cdrom, psx_ic_t* ic) {
     cdrom->xa_left_buf = malloc(XA_STEREO_SAMPLES * sizeof(int16_t));
     cdrom->xa_right_buf = malloc(XA_STEREO_SAMPLES * sizeof(int16_t));
     cdrom->xa_mono_buf = malloc(XA_MONO_SAMPLES * sizeof(int16_t));
-    cdrom->xa_decoded_buf = malloc(XA_DECODED_SAMPLES * sizeof(int16_t));
-    cdrom->xa_left_ring_buf = malloc(XA_RINGBUF_SIZE * sizeof(int16_t));
-    cdrom->xa_right_ring_buf = malloc(XA_RINGBUF_SIZE * sizeof(int16_t));
-    cdrom->xa_stereo_resample_buf = malloc(XA_STEREO_RESAMPLE_SIZE * sizeof(int16_t));
-    cdrom->xa_mono_resample_buf = malloc(XA_MONO_RESAMPLE_SIZE * sizeof(int16_t));
+    // cdrom->xa_decoded_buf = malloc(XA_DECODED_SAMPLES * sizeof(int16_t));
+    // cdrom->xa_left_ring_buf = malloc(XA_RINGBUF_SIZE * sizeof(int16_t));
+    // cdrom->xa_right_ring_buf = malloc(XA_RINGBUF_SIZE * sizeof(int16_t));
+    // cdrom->xa_stereo_resample_buf = malloc(XA_STEREO_RESAMPLE_SIZE * sizeof(int16_t));
+    // cdrom->xa_mono_resample_buf = malloc(XA_MONO_RESAMPLE_SIZE * sizeof(int16_t));
+    cdrom->xa_upsample_buf = malloc((14112 + 6) * sizeof(int16_t));
+    cdrom->xa_resample_buf = malloc(2352 * sizeof(int16_t));
     cdrom->xa_step = 6;
 
     memset(cdrom->xa_left_buf, 0, XA_STEREO_SAMPLES * sizeof(int16_t));
     memset(cdrom->xa_right_buf, 0, XA_STEREO_SAMPLES * sizeof(int16_t));
     memset(cdrom->xa_mono_buf, 0, XA_MONO_SAMPLES * sizeof(int16_t));
-    memset(cdrom->xa_decoded_buf, 0, XA_DECODED_SAMPLES * sizeof(int16_t));
-    memset(cdrom->xa_left_ring_buf, 0, XA_RINGBUF_SIZE * sizeof(int16_t));
-    memset(cdrom->xa_right_ring_buf, 0, XA_RINGBUF_SIZE * sizeof(int16_t));
-    memset(cdrom->xa_stereo_resample_buf, 0, XA_STEREO_RESAMPLE_SIZE * sizeof(int16_t));
-    memset(cdrom->xa_mono_resample_buf, 0, XA_MONO_RESAMPLE_SIZE * sizeof(int16_t));
+    memset(cdrom->xa_upsample_buf, 0, (14112 + 6) * sizeof(int16_t));
+    memset(cdrom->xa_resample_buf, 0, 2352 * sizeof(int16_t));
+
+    // memset(cdrom->xa_decoded_buf, 0, XA_DECODED_SAMPLES * sizeof(int16_t));
+    // memset(cdrom->xa_left_ring_buf, 0, XA_RINGBUF_SIZE * sizeof(int16_t));
+    // memset(cdrom->xa_right_ring_buf, 0, XA_RINGBUF_SIZE * sizeof(int16_t));
+    // memset(cdrom->xa_stereo_resample_buf, 0, XA_STEREO_RESAMPLE_SIZE * sizeof(int16_t));
+    // memset(cdrom->xa_mono_resample_buf, 0, XA_MONO_RESAMPLE_SIZE * sizeof(int16_t));
 }
 
 uint32_t psx_cdrom_read32(psx_cdrom_t* cdrom, uint32_t offset) {
@@ -1847,7 +1852,7 @@ void cdrom_decode_xa_sector(psx_cdrom_t* cdrom, void* buf) {
     int16_t* right_ptr = cdrom->xa_right_buf;
     int16_t* mono_ptr = cdrom->xa_mono_buf;
 
-    for (int i = 0; i < 12; i++) {
+    for (int i = 0; i < 18; i++) {
         for (int blk = 0; blk < 4; blk++) {
             if (stereo) {
                 cdrom_decode_xa_block(cdrom, src, blk, 0, left, left_h);
@@ -1875,10 +1880,22 @@ void cdrom_decode_xa_sector(psx_cdrom_t* cdrom, void* buf) {
 
     if (stereo) {
         for (int i = 0; i < XA_STEREO_SAMPLES; i++) {
-            *ptr++ = cdrom->xa_left_buf[i];
-            *ptr++ = cdrom->xa_right_buf[i];
+            int j = i * 7;
+
+            cdrom->xa_upsample_buf[j] = cdrom->xa_left_buf[i];
+
+            // Nearest neighbor
+            for (int k = 0; k < 7; k++)
+                cdrom->xa_upsample_buf[j+k] = cdrom->xa_left_buf[i];
         }
+
+        for (int i = 0; i < 2352; i++)
+            cdrom->xa_resample_buf[i] = cdrom->xa_upsample_buf[i*6];
+
+        cdrom->xa_remaining_samples = 2352;
     } else {
+        exit(1);
+
         for (int i = 0; i < XA_MONO_SAMPLES; i++) {
             *ptr++ = cdrom->xa_mono_buf[i];
             *ptr++ = cdrom->xa_mono_buf[i];
@@ -1959,17 +1976,21 @@ void psx_cdrom_get_cdda_samples(psx_cdrom_t* cdrom, void* buf, int size, psx_spu
         return;
 
     if (cdrom->xa_playing) {
-        return;
+        int16_t* ptr = (int16_t*)buf;
 
-        if (!cdrom->xa_remaining_samples) {
-            cdrom_fetch_xa_sector(cdrom);
+        for (int i = 0; i < (size >> 2); i++) {
+            if (!cdrom->xa_remaining_samples) {
+                cdrom_fetch_xa_sector(cdrom);
+                cdrom_decode_xa_sector(cdrom, buf);
 
-            cdrom->xa_remaining_samples = 4;
+                cdrom->xa_sample_idx = 0;
+            }
+
+            *ptr++ = cdrom->xa_resample_buf[(cdrom->xa_sample_idx) % 2352];
+            *ptr++ = cdrom->xa_resample_buf[(cdrom->xa_sample_idx++) % 2352];
+
+            --cdrom->xa_remaining_samples;
         }
-
-        cdrom_decode_xa_sector(cdrom, buf);
-
-        --cdrom->xa_remaining_samples;
 
         // int16_t* ptr = (int16_t*)buf;
 

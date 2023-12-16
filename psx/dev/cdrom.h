@@ -221,9 +221,11 @@ typedef struct {
     int16_t* xa_stereo_resample_buf;
     int16_t* xa_mono_resample_buf;
     uint32_t xa_sample_idx;
-    uint32_t xa_remaining_samples;
+    int xa_remaining_samples;
     uint32_t xa_step;
     uint32_t xa_ringbuf_pos;
+    int16_t* xa_resample_buf;
+    int16_t* xa_upsample_buf;
 
     const char* path;
     psx_disc_t* disc;
