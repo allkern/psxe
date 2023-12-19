@@ -133,17 +133,18 @@ void psxe_screen_update(psxe_screen_t* screen) {
     void* display_buf = screen->debug_mode ?
         psx_get_vram(screen->psx) : psx_get_display_buffer(screen->psx);
 
-    // Update texture
-    int pitch;
-    uint8_t* ptr = NULL;
+    // // Update texture with Lock/UnlockTexture
+    // int pitch;
+    // uint8_t* ptr = NULL;
 
-    SDL_LockTexture(screen->texture, NULL, &ptr, &pitch);
+    // SDL_LockTexture(screen->texture, NULL, &ptr, &pitch);
 
-    for (int y = 0; y < screen->texture_height; y++)
-        memcpy(ptr + (y * pitch), display_buf + (y * PSX_GPU_FB_STRIDE), pitch);
+    // for (int y = 0; y < screen->texture_height; y++)
+    //     memcpy(ptr + (y * pitch), display_buf + (y * PSX_GPU_FB_STRIDE), pitch);
 
-    SDL_UnlockTexture(screen->texture);
+    // SDL_UnlockTexture(screen->texture);
 
+    SDL_UpdateTexture(screen->texture, NULL, display_buf, PSX_GPU_FB_STRIDE);
     SDL_RenderClear(screen->renderer);
 
     if (!screen->debug_mode) {
@@ -261,17 +262,14 @@ void psxe_screen_destroy(psxe_screen_t* screen) {
 void psxe_gpu_dmode_event_cb(psx_gpu_t* gpu) {
     psxe_screen_t* screen = gpu->udata[0];
 
-    int texture_width;
-    int texture_height;
-
     screen->format = psx_get_display_format(screen->psx) ?
         SDL_PIXELFORMAT_RGB24 : SDL_PIXELFORMAT_BGR555;
 
     if (screen->debug_mode) {
         screen->width = PSX_GPU_FB_WIDTH;
         screen->height = PSX_GPU_FB_HEIGHT;
-        texture_width = PSX_GPU_FB_WIDTH;
-        texture_height = PSX_GPU_FB_HEIGHT;
+        screen->texture_width = PSX_GPU_FB_WIDTH;
+        screen->texture_height = PSX_GPU_FB_HEIGHT;
     } else {
         if (screen->fullscreen) {
             screen->width = 1920;

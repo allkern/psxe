@@ -15,7 +15,11 @@ void psx_exe_load(psx_cpu_t* cpu, const char* path) {
     // Read header
     psx_exe_hdr_t hdr;
     
-    fread((char*)&hdr, 1, sizeof(psx_exe_hdr_t), file);
+    if (!fread((char*)&hdr, 1, sizeof(psx_exe_hdr_t), file)) {
+        perror("Error reading PS-EXE header");
+
+        exit(1);
+    }
 
     // Seek to program start 
     fseek(file, 0x800, SEEK_SET);
@@ -23,7 +27,11 @@ void psx_exe_load(psx_cpu_t* cpu, const char* path) {
     // Read to RAM directly
     uint32_t offset = hdr.ramdest & 0x7fffffff;
 
-    fread(cpu->bus->ram->buf + offset, 1, hdr.filesz, file);
+    if (!fread(cpu->bus->ram->buf + offset, 1, hdr.filesz, file)) {
+        perror("Error reading PS-EXE data");
+
+        exit(1);
+    }
 
     // Load initial register values
     cpu->pc = hdr.ipc;

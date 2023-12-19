@@ -24,7 +24,6 @@ psx_disc_t* psx_disc_create() {
 }
 
 int psx_disc_seek(psx_disc_t* disc, msf_t msf) {
-    log_fatal("DISC seek %02u:%02u:%02u", msf.m, msf.s, msf.f);
     return disc->seek_func(disc->udata, msf);
 }
 

@@ -63,7 +63,7 @@ void cdrom_cmd_error(psx_cdrom_t* cdrom) {
     cdrom->state = CD_STATE_RECV_CMD;
 }
 void cdrom_cmd_unimplemented(psx_cdrom_t* cdrom) {
-    log_fatal("Unimplemented CDROM command (%u)", cdrom->command);
+    printf("Unimplemented CDROM command (%u)\n", cdrom->command);
 
     exit(1);
 }
@@ -1218,19 +1218,19 @@ void cdrom_write_status(psx_cdrom_t* cdrom, uint8_t value) {
 }
 
 void cdrom_write_cmd(psx_cdrom_t* cdrom, uint8_t value) {
-    log_set_quiet(0);
-    log_fatal("%s(%02x) %u params=[%02x, %02x, %02x, %02x, %02x, %02x]",
-        g_psx_cdrom_command_names[value],
-        value,
-        cdrom->pfifo_index,
-        cdrom->pfifo[0],
-        cdrom->pfifo[1],
-        cdrom->pfifo[2],
-        cdrom->pfifo[3],
-        cdrom->pfifo[4],
-        cdrom->pfifo[5]
-    );
-    log_set_quiet(1);
+    // log_set_quiet(0);
+    // log_fatal("%s(%02x) %u params=[%02x, %02x, %02x, %02x, %02x, %02x]",
+    //     g_psx_cdrom_command_names[value],
+    //     value,
+    //     cdrom->pfifo_index,
+    //     cdrom->pfifo[0],
+    //     cdrom->pfifo[1],
+    //     cdrom->pfifo[2],
+    //     cdrom->pfifo[3],
+    //     cdrom->pfifo[4],
+    //     cdrom->pfifo[5]
+    // );
+    // log_set_quiet(1);
 
     cdrom->command = value;
     cdrom->state = CD_STATE_RECV_CMD;
@@ -1270,12 +1270,6 @@ void cdrom_write_ier(psx_cdrom_t* cdrom, uint8_t value) {
 
 void cdrom_write_ifr(psx_cdrom_t* cdrom, uint8_t value) {
     cdrom->ifr &= ~(value & 0x1f);
-
-    // if (value & 0x7) {
-    //     log_set_quiet(0);
-    //     log_fatal("Acknowledge %02x", value & 0x7);
-    //     log_set_quiet(1);
-    // }
 
     // Clear Parameter FIFO
     if (value & 0x40) {
@@ -1400,19 +1394,8 @@ void psx_cdrom_update(psx_cdrom_t* cdrom, int cyc) {
 
             cdrom->irq_delay = 0;
 
-            if (cdrom->delayed_command) {
-                // log_set_quiet(0);
-                // log_fatal("%s(%02x) (Delayed)",
-                //     g_psx_cdrom_command_names[cdrom->delayed_command],
-                //     cdrom->delayed_command
-                // );
-                log_set_quiet(1);
+            if (cdrom->delayed_command)
                 g_psx_cdrom_command_table[cdrom->delayed_command](cdrom);
-            }
-
-            // log_set_quiet(0);
-            // log_fatal("CDROM INT%u", cdrom->ifr & 0x7);
-            log_set_quiet(1);
         }
     }
 }

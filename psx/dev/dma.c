@@ -184,6 +184,12 @@ void psx_dma_do_mdec_in(psx_dma_t* dma) {
 void psx_dma_do_mdec_out(psx_dma_t* dma) {
     if (!CHCR_BUSY(mdec_out))
         return;
+    
+    printf("MDEC out madr=%08x size=%04x bcnt=%04x\n",
+        dma->mdec_out.madr,
+        BCR_SIZE(mdec_out),
+        BCR_BCNT(mdec_out)
+    );
 
     size_t size = BCR_SIZE(mdec_out) * BCR_BCNT(mdec_out);
 
@@ -257,7 +263,7 @@ void psx_dma_do_gpu_request(psx_dma_t* dma) {
 }
 
 void psx_dma_do_gpu_burst(psx_dma_t* dma) {
-    log_fatal("GPU DMA burst sync mode unimplemented");
+    printf("GPU DMA burst sync mode unimplemented\n");
 
     exit(1);
 }
@@ -313,14 +319,12 @@ void psx_dma_do_cdrom(psx_dma_t* dma) {
     uint32_t size = BCR_SIZE(cdrom);
 
     if (!size) {
-        log_fatal("0 sized CDROM DMA");
+        printf("0 sized CDROM DMA\n");
 
         exit(1);
     }
 
     dma->cdrom_irq_delay = size * 24;
-
-    uint32_t base_addr = dma->cdrom.madr;
 
     if (!CHCR_TDIR(cdrom)) {
         for (int i = 0; i < size; i++) {
@@ -338,24 +342,6 @@ void psx_dma_do_cdrom(psx_dma_t* dma) {
     } else {
         log_fatal("Invalid CDROM DMA transfer direction");
     }
-
-    // size *= 4;
-
-    // for (int i = 0; i < size; i += 16) {
-    //     for (int k = 0; k < 16; k++) {
-    //         printf("%02x ", psx_bus_read8(dma->bus, base_addr + i + k));
-    //     }
-
-    //     printf("| ");
-
-    //     for (int k = 0; k < 16; k++) {
-    //         char c = psx_bus_read8(dma->bus, base_addr + i + k);
-
-    //         printf("%c ", isgraph(c) ? c : '.');
-    //     }
-
-    //     printf("\n");
-    // }
     
     // Clear BCR and CHCR trigger and busy bits
     dma->cdrom.chcr = 0;
@@ -381,7 +367,7 @@ void psx_dma_do_spu(psx_dma_t* dma) {
     //     (dma->dicr >> 23) & 1,
     //     (dma->dicr >> 24) & 0x7f
     // );
-    log_set_quiet(1);
+    // log_set_quiet(1);
 
     uint32_t size = BCR_SIZE(spu);
     uint32_t blocks = BCR_BCNT(spu);

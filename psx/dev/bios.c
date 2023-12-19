@@ -28,7 +28,11 @@ void psx_bios_load(psx_bios_t* bios, const char* path) {
         exit(1);
     }
 
-    fread(bios->buf, 1, PSX_BIOS_SIZE, file);
+    if (!fread(bios->buf, 1, PSX_BIOS_SIZE, file)) {
+        perror("Error reading BIOS file");
+
+        exit(1);
+    }
 
     log_info("Loaded BIOS file \"%s\"", path);
 

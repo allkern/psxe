@@ -87,7 +87,7 @@ void psx_ic_write16(psx_ic_t* ic, uint32_t offset, uint16_t value) {
 }
 
 void psx_ic_write8(psx_ic_t* ic, uint32_t offset, uint8_t value) {
-    log_fatal("Unhandled 8-bit IC write at offset %08x (%02x)", offset, value);
+    printf("Unhandled 8-bit IC write at offset %08x (%02x)\n", offset, value);
 
     exit(1);
 }

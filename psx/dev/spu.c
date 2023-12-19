@@ -406,7 +406,7 @@ void psx_spu_write32(psx_spu_t* spu, uint32_t offset, uint32_t value) {
     if (spu_handle_write(spu, offset, value))
         return;
 
-    const uint8_t* ptr = (uint8_t*)&spu->voice[0].volumel;
+    const uint8_t* ptr = (uint8_t*)&spu->voice[0];
 
     *((uint32_t*)(ptr + offset)) = value;
 }
@@ -640,11 +640,16 @@ uint32_t psx_spu_get_sample(psx_spu_t* spu) {
 
 void psx_spu_update_cdda_buffer(psx_spu_t* spu, void* buf) {
     int16_t* ptr = buf;
-    int16_t* ram = spu->ram;
+    int16_t* ram = (int16_t*)spu->ram;
 
     for (int i = 0; i < 0x400;) {
-        ram[i] = ptr[i++];
-        ram[i + 0x400] = ptr[i++];
+        ram[i] = ptr[i];
+
+        ++i;
+
+        ram[i + 0x400] = ptr[i];
+
+        ++i;
     }
 }
 

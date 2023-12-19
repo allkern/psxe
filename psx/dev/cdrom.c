@@ -390,7 +390,9 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
             if (cdrom->mode & MODE_XA_ADPCM) {
                 cdrom->xa_playing = 1;
 
-                printf("Play XA-ADPCM encoded song at %02u:%02u:%02x, filter=%u, file=%02x, channel=%02x\n",
+                SET_BITS(status, STAT_ADPBUSY_MASK, STAT_ADPBUSY_MASK);
+
+                printf("Play XA-ADPCM encoded song at %02u:%02u:%02u, filter=%u, file=%02x, channel=%02x\n",
                     cdrom->xa_msf.m,
                     cdrom->xa_msf.s,
                     cdrom->xa_msf.f,
@@ -590,6 +592,8 @@ void cdrom_cmd_pause(psx_cdrom_t* cdrom) {
             cdrom->cdda_playing = 0;
             cdrom->xa_playing = 0;
 
+            SET_BITS(status, STAT_ADPBUSY_MASK, 0);
+
             cdrom->irq_delay = DELAY_1MS;
             cdrom->state = CD_STATE_SEND_RESP1;
             cdrom->delayed_command = CDL_PAUSE;
@@ -700,8 +704,8 @@ void cdrom_cmd_setfilter(psx_cdrom_t* cdrom) {
                 return;
             }
 
-            cdrom->xa_file = PFIFO_POP;
             cdrom->xa_channel = PFIFO_POP;
+            cdrom->xa_file = PFIFO_POP;
 
             cdrom->irq_delay = DELAY_1MS;
             cdrom->delayed_command = CDL_SETFILTER;
@@ -836,7 +840,7 @@ void cdrom_cmd_setsession(psx_cdrom_t* cdrom) {
             cdrom->delayed_command = CDL_SETSESSION;
             cdrom->state = CD_STATE_SEND_RESP1;
 
-            PFIFO_POP;
+            cdrom->pfifo_index = 0;
         } break;
 
         case CD_STATE_SEND_RESP1: {
@@ -1188,7 +1192,9 @@ void cdrom_cmd_reads(psx_cdrom_t* cdrom) {
             if (cdrom->mode & MODE_XA_ADPCM) {
                 cdrom->xa_playing = 1;
 
-                printf("Play XA-ADPCM encoded song at %02u:%02u:%02x, filter=%u, file=%02x, channel=%02x\n",
+                SET_BITS(status, STAT_ADPBUSY_MASK, STAT_ADPBUSY_MASK);
+
+                printf("Play XA-ADPCM encoded song at %02u:%02u:%02u, filter=%u, file=%02x, channel=%02x\n",
                     cdrom->xa_msf.m,
                     cdrom->xa_msf.s,
                     cdrom->xa_msf.f,
@@ -1196,6 +1202,9 @@ void cdrom_cmd_reads(psx_cdrom_t* cdrom) {
                     cdrom->xa_file,
                     cdrom->xa_channel
                 );
+
+                cdrom->state = CD_STATE_RECV_CMD;
+                cdrom->delayed_command = CDL_NONE;
             }
 
             int err = psx_disc_seek(cdrom->disc, msf);
@@ -1309,7 +1318,7 @@ cdrom_cmd_t g_psx_cdrom_command_table[] = {
     cdrom_cmd_stop,
     cdrom_cmd_pause,
     cdrom_cmd_init,
-    cdrom_cmd_unimplemented,
+    cdrom_cmd_unmute,
     cdrom_cmd_unmute,
     cdrom_cmd_setfilter,
     cdrom_cmd_setmode,
@@ -1355,22 +1364,10 @@ uint8_t cdrom_read_dfifo(psx_cdrom_t* cdrom) {
     if (!cdrom->dfifo_full)
         return 0;
 
-    // int data_sector_size = cdrom->dfifo[0x12] & MODE_SECTOR_SIZE;
     int sector_size_bit = cdrom->mode & MODE_SECTOR_SIZE;
-
-    uint8_t m = cdrom->dfifo[0x0c];
-    uint8_t s = cdrom->dfifo[0x0d];
-    uint8_t f = cdrom->dfifo[0x0e];
 
     uint32_t sector_size = sector_size_bit ? 0x924 : 0x800;
     uint32_t offset = sector_size_bit ? 12 : 24;
-
-    // if ((m == 0) && (s == 2) && (f == 0x18)) {
-    //     if ((cdrom->dfifo_index & 0xf) == 0)
-    //         printf("\n");
-
-    //     printf("%02x ", cdrom->dfifo[offset + (cdrom->dfifo_index)]);
-    // }
 
     if (cdrom->dfifo_index < sector_size) {
         SET_BITS(status, STAT_DRQSTS_MASK, STAT_DRQSTS_MASK);
@@ -1383,7 +1380,7 @@ uint8_t cdrom_read_dfifo(psx_cdrom_t* cdrom) {
         return data;
     }
 
-    return 0x00;
+    return 0;
 }
 
 uint8_t cdrom_read_ier(psx_cdrom_t* cdrom) {
@@ -1449,12 +1446,6 @@ void cdrom_write_ier(psx_cdrom_t* cdrom, uint8_t value) {
 
 void cdrom_write_ifr(psx_cdrom_t* cdrom, uint8_t value) {
     cdrom->ifr &= ~(value & 0x1f);
-
-    // if (value & 0x7) {
-    //     log_set_quiet(0);
-    //     log_fatal("Acknowledge %02x", value & 0x7);
-    //     log_set_quiet(1);
-    // }
 
     // Clear Parameter FIFO
     if (value & 0x40) {
@@ -1547,26 +1538,21 @@ void psx_cdrom_init(psx_cdrom_t* cdrom, psx_ic_t* ic) {
     cdrom->xa_left_buf = malloc(XA_STEREO_SAMPLES * sizeof(int16_t));
     cdrom->xa_right_buf = malloc(XA_STEREO_SAMPLES * sizeof(int16_t));
     cdrom->xa_mono_buf = malloc(XA_MONO_SAMPLES * sizeof(int16_t));
-    // cdrom->xa_decoded_buf = malloc(XA_DECODED_SAMPLES * sizeof(int16_t));
-    // cdrom->xa_left_ring_buf = malloc(XA_RINGBUF_SIZE * sizeof(int16_t));
-    // cdrom->xa_right_ring_buf = malloc(XA_RINGBUF_SIZE * sizeof(int16_t));
-    // cdrom->xa_stereo_resample_buf = malloc(XA_STEREO_RESAMPLE_SIZE * sizeof(int16_t));
-    // cdrom->xa_mono_resample_buf = malloc(XA_MONO_RESAMPLE_SIZE * sizeof(int16_t));
     cdrom->xa_upsample_buf = malloc((14112 + 6) * sizeof(int16_t));
-    cdrom->xa_resample_buf = malloc(2352 * sizeof(int16_t));
+    cdrom->xa_left_resample_buf = malloc(2352 * sizeof(int16_t));
+    cdrom->xa_right_resample_buf = malloc(2352 * sizeof(int16_t));
     cdrom->xa_step = 6;
+
+    // We will use this whenever we implement proper
+    // XA interpolation
+    (void)g_zigzag_table;
 
     memset(cdrom->xa_left_buf, 0, XA_STEREO_SAMPLES * sizeof(int16_t));
     memset(cdrom->xa_right_buf, 0, XA_STEREO_SAMPLES * sizeof(int16_t));
     memset(cdrom->xa_mono_buf, 0, XA_MONO_SAMPLES * sizeof(int16_t));
     memset(cdrom->xa_upsample_buf, 0, (14112 + 6) * sizeof(int16_t));
-    memset(cdrom->xa_resample_buf, 0, 2352 * sizeof(int16_t));
-
-    // memset(cdrom->xa_decoded_buf, 0, XA_DECODED_SAMPLES * sizeof(int16_t));
-    // memset(cdrom->xa_left_ring_buf, 0, XA_RINGBUF_SIZE * sizeof(int16_t));
-    // memset(cdrom->xa_right_ring_buf, 0, XA_RINGBUF_SIZE * sizeof(int16_t));
-    // memset(cdrom->xa_stereo_resample_buf, 0, XA_STEREO_RESAMPLE_SIZE * sizeof(int16_t));
-    // memset(cdrom->xa_mono_resample_buf, 0, XA_MONO_RESAMPLE_SIZE * sizeof(int16_t));
+    memset(cdrom->xa_left_resample_buf, 0, 2352 * sizeof(int16_t));
+    memset(cdrom->xa_right_resample_buf, 0, 2352 * sizeof(int16_t));
 }
 
 uint32_t psx_cdrom_read32(psx_cdrom_t* cdrom, uint32_t offset) {
@@ -1637,13 +1623,13 @@ void psx_cdrom_update(psx_cdrom_t* cdrom, int cyc) {
                 //     g_psx_cdrom_command_names[cdrom->delayed_command],
                 //     cdrom->delayed_command
                 // );
-                log_set_quiet(1);
+                // log_set_quiet(1);
                 g_psx_cdrom_command_table[cdrom->delayed_command](cdrom);
             }
 
             // log_set_quiet(0);
             // log_fatal("CDROM INT%u", cdrom->ifr & 0x7);
-            log_set_quiet(1);
+            // log_set_quiet(1);
         }
     }
 }
@@ -1769,6 +1755,26 @@ static const int g_spu_neg_adpcm_table[] = {
     0,   0,  -52, -55,  -60
 };
 
+void cdrom_resample_xa_buf(psx_cdrom_t* cdrom, int16_t* dst, int16_t* src) {
+    // To-do: Account for 18KHz samples and mono
+    // int f18khz = ((cdrom->xa_sector_buf[0x13] >> 2) & 1) == 1;
+
+    for (int i = 0; i < XA_STEREO_SAMPLES; i++) {
+        int j = i * 7;
+
+        cdrom->xa_upsample_buf[j] = src[i];
+
+        // Nearest neighbor
+        for (int k = 0; k < 7; k++)
+            cdrom->xa_upsample_buf[j+k] = src[i];
+    }
+
+    for (int i = 0; i < 2352; i++)
+        dst[i] = cdrom->xa_upsample_buf[i*6];
+
+    cdrom->xa_remaining_samples = 2352;
+}
+
 void cdrom_decode_xa_block(psx_cdrom_t* cdrom, int idx, int blk, int nib, int16_t* buf, int16_t* h) {
     int shift  = 12 - (cdrom->xa_sector_buf[idx + 4 + blk * 2 + nib] & 0x0F);
     int filter =      (cdrom->xa_sector_buf[idx + 4 + blk * 2 + nib] & 0x30) >> 4;
@@ -1791,53 +1797,7 @@ void cdrom_decode_xa_block(psx_cdrom_t* cdrom, int idx, int blk, int nib, int16_
     }
 }
 
-int16_t cdrom_xa_interpolate(psx_cdrom_t* cdrom, int table, int channel) {
-    int16_t* ringbuf = channel ? cdrom->xa_right_ring_buf : cdrom->xa_left_ring_buf;
-
-    int sum = 0;
-
-    for (int i = 0; i < 29; i++) {
-        int16_t* zigzag = g_zigzag_table[table];
-
-        sum += (ringbuf[(cdrom->xa_ringbuf_pos - i) & 0x1f] * zigzag[i]) / 0x8000;
-    }
-
-    return (sum > INT16_MAX) ? INT16_MAX : ((sum < INT16_MIN) ? INT16_MIN : sum);
-}
-
-int16_t* cdrom_resample_xa_sector(psx_cdrom_t* cdrom, int16_t* buf, int stereo, int f18khz, int channel) {
-    int16_t* ringbuf = channel ? cdrom->xa_right_ring_buf : cdrom->xa_left_ring_buf;
-    int16_t* resample_buf = stereo ? cdrom->xa_stereo_resample_buf : cdrom->xa_mono_resample_buf;
-
-    int sample_count = stereo ? XA_STEREO_SAMPLES : XA_MONO_SAMPLES;
-
-    for (int i = 0; i < sample_count; i++) {
-        ringbuf[cdrom->xa_ringbuf_pos++ & 0x1f] = buf[i];
-
-        cdrom->xa_step--;
-
-        if (!cdrom->xa_step) {
-            cdrom->xa_step = 6;
-
-            for (int table = 0; table < 7; table++) {
-                int16_t sample = cdrom_xa_interpolate(cdrom, table, channel);
-
-                *resample_buf++ = sample;
-
-                if (f18khz)
-                    *resample_buf++ = sample;
-            }
-        }
-    }
-
-    return resample_buf;
-}
-
 void cdrom_decode_xa_sector(psx_cdrom_t* cdrom, void* buf) {
-    int16_t* ptr = (int16_t*)buf;
-
-    cdrom->xa_coding = cdrom->xa_sector_buf[0x13];
-
     int src = 24;
 
     int16_t left[28];
@@ -1845,16 +1805,13 @@ void cdrom_decode_xa_sector(psx_cdrom_t* cdrom, void* buf) {
     int16_t left_h[2] = { 0, 0 };
     int16_t right_h[2] = { 0, 0 };
 
-    int stereo = (cdrom->xa_coding & 1) == 1;
-    int f18khz = ((cdrom->xa_coding >> 2) & 1) == 1;
-
     int16_t* left_ptr = cdrom->xa_left_buf;
     int16_t* right_ptr = cdrom->xa_right_buf;
     int16_t* mono_ptr = cdrom->xa_mono_buf;
 
     for (int i = 0; i < 18; i++) {
         for (int blk = 0; blk < 4; blk++) {
-            if (stereo) {
+            if (cdrom->xa_sector_buf[0x13] & 1) {
                 cdrom_decode_xa_block(cdrom, src, blk, 0, left, left_h);
                 cdrom_decode_xa_block(cdrom, src, blk, 1, right, right_h);
 
@@ -1877,74 +1834,16 @@ void cdrom_decode_xa_sector(psx_cdrom_t* cdrom, void* buf) {
 
         src += 128;
     }
-
-    if (stereo) {
-        for (int i = 0; i < XA_STEREO_SAMPLES; i++) {
-            int j = i * 7;
-
-            cdrom->xa_upsample_buf[j] = cdrom->xa_left_buf[i];
-
-            // Nearest neighbor
-            for (int k = 0; k < 7; k++)
-                cdrom->xa_upsample_buf[j+k] = cdrom->xa_left_buf[i];
-        }
-
-        for (int i = 0; i < 2352; i++)
-            cdrom->xa_resample_buf[i] = cdrom->xa_upsample_buf[i*6];
-
-        cdrom->xa_remaining_samples = 2352;
-    } else {
-        exit(1);
-
-        for (int i = 0; i < XA_MONO_SAMPLES; i++) {
-            *ptr++ = cdrom->xa_mono_buf[i];
-            *ptr++ = cdrom->xa_mono_buf[i];
-        }
-    }
-    
-    // if (stereo) {
-    //     int16_t* resample_buf;
-
-    //     resample_buf = cdrom_resample_xa_sector(cdrom, cdrom->xa_left_buf, 1, f18khz, 0);
-
-    //     for (int i = 0, j = 0; i < XA_STEREO_RESAMPLE_SIZE; i++) {
-    //         int16_t sample = resample_buf[i];
-
-    //         cdrom->xa_decoded_buf[j] = sample;
-
-    //         j += 2;
-    //     }
-
-    //     resample_buf = cdrom_resample_xa_sector(cdrom, cdrom->xa_right_buf, 1, f18khz, 1);
-
-    //     for (int i = 0, j = 1; i < XA_STEREO_RESAMPLE_SIZE; i++) {
-    //         int16_t sample = resample_buf[i];
-
-    //         cdrom->xa_decoded_buf[j] = sample;
-
-    //         j += 2;
-    //     }
-        
-    //     cdrom->xa_remaining_samples = XA_STEREO_RESAMPLE_SIZE;
-    // } else {
-    //     int16_t* resample_buf;
-
-    //     resample_buf = cdrom_resample_xa_sector(cdrom, cdrom->xa_mono_buf, 0, f18khz, 0);
-
-    //     for (int i = 0, j = 0; i < XA_MONO_RESAMPLE_SIZE; i++) {
-    //         int16_t sample = resample_buf[i];
-
-    //         cdrom->xa_decoded_buf[j++] = sample;
-    //         cdrom->xa_decoded_buf[j++] = sample;
-    //     }
-
-    //     cdrom->xa_remaining_samples = XA_MONO_RESAMPLE_SIZE;
-    // }
 }
 
 void cdrom_fetch_xa_sector(psx_cdrom_t* cdrom) {
     while (true) {
-        psx_disc_seek(cdrom->disc, cdrom->xa_msf);
+        if (psx_disc_seek(cdrom->disc, cdrom->xa_msf)) {
+            cdrom->xa_playing = 0;
+
+            return;
+        }
+
         psx_disc_read_sector(cdrom->disc, cdrom->xa_sector_buf);
 
         msf_add_f(&cdrom->xa_msf, 1);
@@ -1982,33 +1881,17 @@ void psx_cdrom_get_cdda_samples(psx_cdrom_t* cdrom, void* buf, int size, psx_spu
             if (!cdrom->xa_remaining_samples) {
                 cdrom_fetch_xa_sector(cdrom);
                 cdrom_decode_xa_sector(cdrom, buf);
+                cdrom_resample_xa_buf(cdrom, cdrom->xa_left_resample_buf, cdrom->xa_left_buf);
+                cdrom_resample_xa_buf(cdrom, cdrom->xa_right_resample_buf, cdrom->xa_right_buf);
 
                 cdrom->xa_sample_idx = 0;
             }
 
-            *ptr++ = cdrom->xa_resample_buf[(cdrom->xa_sample_idx) % 2352];
-            *ptr++ = cdrom->xa_resample_buf[(cdrom->xa_sample_idx++) % 2352];
+            *ptr++ = cdrom->xa_left_resample_buf[(cdrom->xa_sample_idx) % 2352];
+            *ptr++ = cdrom->xa_right_resample_buf[(cdrom->xa_sample_idx++) % 2352];
 
             --cdrom->xa_remaining_samples;
         }
-
-        // int16_t* ptr = (int16_t*)buf;
-
-        // memset(buf, 0, size);
-
-        // if (!cdrom->xa_remaining_samples) {
-        //     cdrom->xa_sample_idx = 0;
-
-        //     cdrom_fetch_xa_sector(cdrom);
-        //     cdrom_decode_xa_sector(cdrom, buf);
-        // }
-
-        // // for (int i = 0; i < (size >> 2); i++) {
-        // //     *ptr++ = cdrom->xa_decoded_buf[cdrom->xa_sample_idx++];
-        // //     *ptr++ = cdrom->xa_decoded_buf[cdrom->xa_sample_idx++];
-        // // }
-
-        // cdrom->xa_remaining_samples -= size >> 2;
 
         return;
     }

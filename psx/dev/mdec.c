@@ -77,12 +77,12 @@ uint16_t* rl_decode_block(int16_t* blk, uint16_t* src, uint8_t* quant, int16_t* 
     
     uint16_t n = *src;
 
-    src += 2;
+    ++src;
 
     while (n == 0xfe00) {
         n = *src;
 
-        src += 2;
+        ++src;
     }
 
     int q_scale = (n >> 10) & 0x3f;
@@ -104,7 +104,7 @@ uint16_t* rl_decode_block(int16_t* blk, uint16_t* src, uint8_t* quant, int16_t* 
 
         n = *src;
 
-        src += 2;
+        ++src;
 
         k += ((n >> 10) & 0x3f) + 1;
 
@@ -162,10 +162,13 @@ void yuv_to_rgb(psx_mdec_t* mdec, uint8_t* buf, int xx, int yy) {
 void mdec_nop(psx_mdec_t* mdec) { /* Do nothing */ }
 
 void mdec_decode_macroblock(psx_mdec_t* mdec) {
-    return;
-
     if (mdec->output_depth < 2) {
-        rl_decode_block(mdec->yblk, mdec->input, mdec->y_quant_table, mdec->scale_table);
+        size_t block_size = (mdec->output_depth == 3) ? 512 : 768;
+        size_t size = block_size;
+
+        mdec->output = malloc(size);
+
+        rl_decode_block(mdec->yblk, (uint16_t*)mdec->input, mdec->y_quant_table, mdec->scale_table);
 
         for (int i = 0; i < 64; i++) {
             int16_t y = mdec->yblk[i] & 0xff;
@@ -182,59 +185,49 @@ void mdec_decode_macroblock(psx_mdec_t* mdec) {
         mdec->output_empty = 0;
         mdec->output_index = 0;
     } else {
-        uint16_t* in = mdec->input;
-        uint8_t* out;
+        uint16_t* in = (uint16_t*)mdec->input;
 
         size_t block_size = (mdec->output_depth == 3) ? 512 : 768;
         size_t size = block_size;
 
-        unsigned int bytes_processed = 0;
+        ptrdiff_t bytes_processed = 0;
+
+        int block_count = 1;
 
         while (bytes_processed < mdec->input_size) {
             if (!mdec->output) {
-                mdec->output = malloc(size);
-
-                out = mdec->output;
+                mdec->output = malloc(block_count * size);
             } else {
-                mdec->output = realloc(mdec->output, size);
+                mdec->output = realloc(mdec->output, block_count * size);
             }
-            
+
             in = rl_decode_block(mdec->crblk, in, mdec->uv_quant_table, mdec->scale_table);
             in = rl_decode_block(mdec->cbblk, in, mdec->uv_quant_table, mdec->scale_table);
             in = rl_decode_block(mdec->yblk, in, mdec->y_quant_table, mdec->scale_table);
-            yuv_to_rgb(mdec, out, 0, 0);
+            yuv_to_rgb(mdec, &mdec->output[(block_count * size) - block_size], 0, 0);
             in = rl_decode_block(mdec->yblk, in, mdec->y_quant_table, mdec->scale_table);
-            yuv_to_rgb(mdec, out, 0, 8);
+            yuv_to_rgb(mdec, &mdec->output[(block_count * size) - block_size], 0, 8);
             in = rl_decode_block(mdec->yblk, in, mdec->y_quant_table, mdec->scale_table);
-            yuv_to_rgb(mdec, out, 8, 0);
+            yuv_to_rgb(mdec, &mdec->output[(block_count * size) - block_size], 8, 0);
             in = rl_decode_block(mdec->yblk, in, mdec->y_quant_table, mdec->scale_table);
-            yuv_to_rgb(mdec, out, 8, 8);
-
-            size += block_size;
-            out += block_size;
+            yuv_to_rgb(mdec, &mdec->output[(block_count * size) - block_size], 8, 8);
 
             bytes_processed = (uintptr_t)in - (uintptr_t)mdec->input;
 
-            log_set_quiet(0);
-            log_fatal("Decompressed 1 macroblock (%u total bytes processed) output=%p, output+size=%p, output ptr=%p",
-                bytes_processed, mdec->output, mdec->output + size, out
-            );
-            log_set_quiet(1);
+            ++block_count;
         }
 
-        mdec->output_words_remaining = size >> 2;
+        mdec->output_words_remaining = ((block_count - 1) * block_size) >> 2;
         mdec->output_empty = 0;
         mdec->output_index = 0;
 
-        log_set_quiet(0);
-        log_fatal("Finished decoding %u-bit MDEC data input=(%p-%p=%04x, %04x)",
-            (mdec->output_depth == 3) ? 15 : 24,
-            in,
-            mdec->input,
-            (uintptr_t)in - (uintptr_t)mdec->input,
-            mdec->input_size
-        );
-        log_set_quiet(1);
+        // log_set_quiet(0);
+        // log_fatal("Finished decoding %u-bit MDEC data input=(%04x -> %08x)",
+        //     (mdec->output_depth == 3) ? 15 : 24,
+        //     mdec->input_size,
+        //     mdec->output_words_remaining
+        // );
+        // log_set_quiet(1);
     }
 }
 
@@ -283,11 +276,9 @@ uint32_t psx_mdec_read32(psx_mdec_t* mdec, uint32_t offset) {
                 // log_fatal("output read %08x", 0);
                 // log_set_quiet(1);
 
-                return 0xaaaaaaaa;
-
-                // return ((uint32_t*)mdec->output)[mdec->output_index++];
+                return ((uint32_t*)mdec->output)[mdec->output_index++];
             } else {
-                mdec->output_empty = 1;
+                mdec->output_empty = 0;
                 mdec->output_index = 0;
                 mdec->output_request = 0;
 
@@ -317,10 +308,14 @@ uint32_t psx_mdec_read32(psx_mdec_t* mdec, uint32_t offset) {
 
 uint16_t psx_mdec_read16(psx_mdec_t* mdec, uint32_t offset) {
     log_fatal("Unhandled 16-bit MDEC read offset=%u", offset);
+
+    exit(1);
 }
 
 uint8_t psx_mdec_read8(psx_mdec_t* mdec, uint32_t offset) {
     log_fatal("Unhandled 8-bit MDEC read offset=%u", offset);
+
+    exit(1);
 }
 
 void psx_mdec_write32(psx_mdec_t* mdec, uint32_t offset, uint32_t value) {
@@ -338,7 +333,7 @@ void psx_mdec_write32(psx_mdec_t* mdec, uint32_t offset, uint32_t value) {
                     mdec->busy = 0;
                     mdec->output_request = mdec->enable_dma1;
 
-                    // g_mdec_cmd_table[mdec->cmd >> 29](mdec);
+                    g_mdec_cmd_table[mdec->cmd >> 29](mdec);
 
                     free(mdec->input);
                 }
@@ -368,7 +363,7 @@ void psx_mdec_write32(psx_mdec_t* mdec, uint32_t offset, uint32_t value) {
                 case MDEC_CMD_DECODE: {
                     mdec->words_remaining = mdec->cmd & 0xffff;
 
-                    log_fatal("MDEC %08x: decode macroblock %04x",
+                    printf("MDEC %08x: decode macroblock %04x\n",
                         mdec->cmd,
                         mdec->words_remaining
                     );
@@ -393,7 +388,7 @@ void psx_mdec_write32(psx_mdec_t* mdec, uint32_t offset, uint32_t value) {
                     );
                 } break;
             }
-            //log_set_quiet(1);
+            // log_set_quiet(1);
 
             if (mdec->words_remaining) {
                 mdec->input_request = mdec->enable_dma0;

@@ -224,7 +224,8 @@ typedef struct {
     int xa_remaining_samples;
     uint32_t xa_step;
     uint32_t xa_ringbuf_pos;
-    int16_t* xa_resample_buf;
+    int16_t* xa_left_resample_buf;
+    int16_t* xa_right_resample_buf;
     int16_t* xa_upsample_buf;
 
     const char* path;

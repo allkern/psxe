@@ -824,16 +824,6 @@ void gpu_poly(psx_gpu_t* gpu) {
             int vertices = 3 + quad;
  
             gpu->cmd_args_remaining = (fields_per_vertex * vertices) - shaded;
-
-            // log_set_quiet(0);
-            // log_fatal("Poly: GP0(%02x) shaded=%u, quad=%u, textured=%u, argc=%u, fpv=%u, vertc=%u",
-            //     gpu->buf[0] >> 24,
-            //     shaded, quad, textured,
-            //     gpu->cmd_args_remaining,
-            //     fields_per_vertex,
-            //     vertices
-            // );
-            log_set_quiet(1);
         } break;
 
         case GPU_STATE_RECV_ARGS: {
@@ -879,15 +869,6 @@ void gpu_poly(psx_gpu_t* gpu) {
                     gpu_render_triangle(gpu, poly.v[0], poly.v[1], poly.v[2], poly);
                     gpu_render_triangle(gpu, poly.v[1], poly.v[2], poly.v[3], poly);
                 } else {
-                    // log_set_quiet(0);
-                    // log_fatal("v0=(%3u, %3u, %06x) v1=(%3u, %3u, %06x) v2=(%3u, %3u, %06x) co=%u vo=%u tco=%u tpo=%u",
-                    //     poly.v[0].x, poly.v[0].y, poly.v[0].c,
-                    //     poly.v[1].x, poly.v[1].y, poly.v[1].c,
-                    //     poly.v[2].x, poly.v[2].y, poly.v[2].c,
-                    //     color_offset, vert_offset,
-                    //     texc_offset, texp_offset
-                    // );
-                    log_set_quiet(1);
                     gpu_render_triangle(gpu, poly.v[0], poly.v[1], poly.v[2], poly);
                 }
 

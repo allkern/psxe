@@ -376,7 +376,12 @@ int psxd_cue_load(psxd_cue_t* cue, const char* path) {
         cue->buf = cue_alloc_block(cue->buf, &offset, track->size);
 
         fseek(track_file, 0, SEEK_SET);
-        fread(cue->buf + (offset - track->size), 1, track->size, track_file);
+        
+        if (!fread(cue->buf + (offset - track->size), 1, track->size, track_file)) {
+            perror("Error reading CUE image file data");
+
+            exit(1);
+        }
 
         fclose(track_file);
         free(full_path);
@@ -407,7 +412,7 @@ int psxd_cue_seek(void* udata, msf_t msf) {
 
     cue->seek_offset = sectors * CD_SECTOR_SIZE;
 
-    log_fatal("CUE seek to %02u:%02u:%02u (%08x < %08x)", msf.m, msf.s, msf.f, cue->seek_offset, cue->buf_size);
+    // log_fatal("CUE seek to %02u:%02u:%02u (%08x < %08x)", msf.m, msf.s, msf.f, cue->seek_offset, cue->buf_size);
 
     if (cue->seek_offset >= cue->buf_size)
         return DISC_ERR_ADDR_OUT_OF_BOUNDS;

@@ -38,7 +38,11 @@ int psxd_bin_load(psxd_bin_t* bin, const char* path) {
 
     bin->buf = malloc(bin->buf_size);
 
-    fread(bin->buf, 1, bin->buf_size, file);
+    if (!fread(bin->buf, 1, bin->buf_size, file)) {
+        perror("Error reading BIN CD image file data");
+
+        exit(1);
+    }
 
     msf_from_address(&bin->end, bin->buf_size);
 

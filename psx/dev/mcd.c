@@ -23,7 +23,11 @@ void psx_mcd_init(psx_mcd_t* mcd, const char* path) {
     if (!file)
         return;
 
-    fread(mcd->buf, 1, MCD_MEMORY_SIZE, file);
+    if (!fread(mcd->buf, 1, MCD_MEMORY_SIZE, file)) {
+        perror("Error reading memory card data");
+
+        exit(1);
+    }
 
     fclose(file);
 }
@@ -47,7 +51,7 @@ uint8_t psx_mcd_read(psx_mcd_t* mcd) {
 
             // log_set_quiet(0);
             // log_fatal("mcd read %02x", mcd->tx_data);
-            log_set_quiet(1);
+            // log_set_quiet(1);
 
             return mcd->tx_data;
         } break;
@@ -75,7 +79,7 @@ uint8_t psx_mcd_read(psx_mcd_t* mcd) {
 
             // log_set_quiet(0);
             // log_fatal("mcd read %02x", data);
-            log_set_quiet(1);
+            // log_set_quiet(1);
 
             return data;
         } break;
@@ -86,7 +90,7 @@ uint8_t psx_mcd_read(psx_mcd_t* mcd) {
 
             // log_set_quiet(0);
             // log_fatal("mcd read %02x", 'G');
-            log_set_quiet(1);
+            // log_set_quiet(1);
 
             return 'G';
         } break;
@@ -108,7 +112,7 @@ uint8_t psx_mcd_read(psx_mcd_t* mcd) {
 
             // log_set_quiet(0);
             // log_fatal("mcd read %02x", mcd->rx_data);
-            log_set_quiet(1);
+            // log_set_quiet(1);
 
             return mcd->rx_data;
         } break;
@@ -121,7 +125,7 @@ uint8_t psx_mcd_read(psx_mcd_t* mcd) {
 
             // log_set_quiet(0);
             // log_fatal("mcd read %02x", 'G');
-            log_set_quiet(1);
+            // log_set_quiet(1);
 
             return 'G';
         } break;
@@ -132,7 +136,7 @@ uint8_t psx_mcd_read(psx_mcd_t* mcd) {
 
     // log_set_quiet(0);
     // log_fatal("mcd read %02x", mcd->tx_data);
-    log_set_quiet(1);
+    // log_set_quiet(1);
 
     return mcd->tx_data;
 }
