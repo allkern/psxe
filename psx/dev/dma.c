@@ -184,12 +184,6 @@ void psx_dma_do_mdec_in(psx_dma_t* dma) {
 void psx_dma_do_mdec_out(psx_dma_t* dma) {
     if (!CHCR_BUSY(mdec_out))
         return;
-    
-    printf("MDEC out madr=%08x size=%04x bcnt=%04x\n",
-        dma->mdec_out.madr,
-        BCR_SIZE(mdec_out),
-        BCR_BCNT(mdec_out)
-    );
 
     size_t size = BCR_SIZE(mdec_out) * BCR_BCNT(mdec_out);
 
