@@ -190,7 +190,7 @@ void mdec_decode_macroblock(psx_mdec_t* mdec) {
         size_t block_size = (mdec->output_depth == 3) ? 512 : 768;
         size_t size = block_size;
 
-        ptrdiff_t bytes_processed = 0;
+        unsigned long bytes_processed = 0;
 
         int block_count = 1;
 

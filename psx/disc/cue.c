@@ -68,7 +68,16 @@ static const char* g_psxd_cue_tokens[] = {
 void cue_add_track(psxd_cue_t* cue) {
     ++cue->num_tracks;
 
-    cue->track = realloc(cue->track, cue->num_tracks * sizeof(cue_track_t*));
+    cue_track_t** new_track = realloc(cue->track, cue->num_tracks * sizeof(cue_track_t*));
+
+    if (!new_track) {
+        printf("Fatal error: Couldn't allocate a new CUE track\n");
+
+        exit(1);
+    }
+
+    cue->track = new_track;
+
     cue->track[cue->num_tracks - 1] = malloc(sizeof(cue_track_t));
 
     memset(cue->track[cue->num_tracks - 1], 0, sizeof(cue_track_t));
@@ -218,13 +227,13 @@ int cue_parse(psxd_cue_t* cue, FILE* file) {
         return cue->error;
     
     int track = atoi(cue->buf) - 1;
-    
+
     if (track != cue->num_tracks)
         ERROR_OUT(PE_NON_SEQUENTIAL_TRACKS);
     
     cue_add_track(cue);
 
-    cue->track[track]->filename = malloc(strlen(cue->current_file));
+    cue->track[track]->filename = malloc(strlen(cue->current_file) + 1);
 
     // Copy current file to track filename
     strcpy(cue->track[track]->filename, cue->current_file);
@@ -313,15 +322,15 @@ char* cue_get_directory(const char* path) {
 }
 
 int psxd_cue_load(psxd_cue_t* cue, const char* path) {
-    log_fatal("Parsing CUE...");
-
     FILE* file = fopen(path, "rb");
 
-    if (ferror(file) || !file) {
-        fclose(file);
+    if (!file) {
+        log_fatal("Couldn't open file \'%s\'", path);
 
         return 1;
     }
+
+    log_fatal("Parsing CUE...");
 
     if (cue_parse(cue, file)) {
         log_fatal("CUE error %s (%u)",

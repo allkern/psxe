@@ -346,6 +346,9 @@ void gpu_render_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, 
 }
 
 void gpu_render_rect(psx_gpu_t* gpu, rect_data_t data) {
+    if ((data.v0.x >= 1024) || (data.v0.y >= 512))
+        return;
+
     uint16_t width, height;
 
     switch ((data.attrib >> 3) & 3) {
@@ -394,9 +397,8 @@ void gpu_render_rect(psx_gpu_t* gpu, rect_data_t data) {
                 if (!texel)
                     goto skip;
 
-                if (transp) {
+                if (transp)
                     transp = (texel & 0x8000) != 0;
-                }
 
                 int tr = ((texel >> 0 ) & 0x1f) << 3;
                 int tg = ((texel >> 5 ) & 0x1f) << 3;
@@ -802,7 +804,7 @@ void gpu_rect(psx_gpu_t* gpu) {
 
                 if (textured && raw)
                     rect.v0.c = 0x808080;
-                
+
                 gpu_render_rect(gpu, rect);
 
                 gpu->state = GPU_STATE_RECV_CMD;

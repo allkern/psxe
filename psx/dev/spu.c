@@ -427,7 +427,6 @@ void psx_spu_write8(psx_spu_t* spu, uint32_t offset, uint8_t value) {
 }
 
 void psx_spu_destroy(psx_spu_t* spu) {
-    printf("psx_spu_destroy called\n");
     free(spu->ram);
     free(spu);
 }

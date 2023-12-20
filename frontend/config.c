@@ -72,6 +72,10 @@ void psxe_cfg_init(psxe_config_t* cfg) {
     memset(cfg, 0, sizeof(psxe_config_t));
 }
 
+void psxe_cfg_destroy(psxe_config_t* cfg) {
+    free(cfg);
+}
+
 void psxe_cfg_load_defaults(psxe_config_t* cfg) {
     cfg->bios = NULL;
     cfg->bios_search = "bios";

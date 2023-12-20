@@ -91,6 +91,8 @@ int main(int argc, const char* argv[]) {
         psx_load_exe(psx, cfg->exe);
     }
 
+    psxe_cfg_destroy(cfg);
+
     while (psxe_screen_is_open(screen)) {
         psx_update(psx);
     }
