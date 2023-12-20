@@ -116,6 +116,19 @@ uint16_t* rl_decode_block(int16_t* blk, uint16_t* src, uint8_t* quant, int16_t* 
     return src;
 }
 
+//   for y=0 to 7
+//     for x=0 to 7
+//       R=[Crblk+((x+xx)/2)+((y+yy)/2)*8], B=[Cbblk+((x+xx)/2)+((y+yy)/2)*8]
+//       G=(-0.3437*B)+(-0.7143*R), R=(1.402*R), B=(1.772*B)
+//       Y=[Yblk+(x)+(y)*8]
+//       R=MinMax(-128,127,(Y+R))
+//       G=MinMax(-128,127,(Y+G))
+//       B=MinMax(-128,127,(Y+B))
+//       if unsigned then BGR=BGR xor 808080h  ;aka add 128 to the R,G,B values
+//       dst[(x+xx)+(y+yy)*16]=BGR
+//     next x
+//   next y
+
 void yuv_to_rgb(psx_mdec_t* mdec, uint8_t* buf, int xx, int yy) {
     for (int y = 0; y < 8; y++) {
         for (int x = 0; x < 8; x++) {
@@ -206,9 +219,9 @@ void mdec_decode_macroblock(psx_mdec_t* mdec) {
             in = rl_decode_block(mdec->yblk, in, mdec->y_quant_table, mdec->scale_table);
             yuv_to_rgb(mdec, &mdec->output[(block_count * size) - block_size], 0, 0);
             in = rl_decode_block(mdec->yblk, in, mdec->y_quant_table, mdec->scale_table);
-            yuv_to_rgb(mdec, &mdec->output[(block_count * size) - block_size], 0, 8);
-            in = rl_decode_block(mdec->yblk, in, mdec->y_quant_table, mdec->scale_table);
             yuv_to_rgb(mdec, &mdec->output[(block_count * size) - block_size], 8, 0);
+            in = rl_decode_block(mdec->yblk, in, mdec->y_quant_table, mdec->scale_table);
+            yuv_to_rgb(mdec, &mdec->output[(block_count * size) - block_size], 0, 8);
             in = rl_decode_block(mdec->yblk, in, mdec->y_quant_table, mdec->scale_table);
             yuv_to_rgb(mdec, &mdec->output[(block_count * size) - block_size], 8, 8);
 
