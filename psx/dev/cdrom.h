@@ -186,6 +186,7 @@ typedef struct {
     uint8_t mode;
 
     int irq_delay;
+    int irq_disable;
     uint8_t command;
     uint8_t delayed_command;
     uint8_t int_number;
@@ -218,14 +219,13 @@ typedef struct {
     int16_t* xa_decoded_buf;
     int16_t* xa_left_ring_buf;
     int16_t* xa_right_ring_buf;
-    int16_t* xa_stereo_resample_buf;
-    int16_t* xa_mono_resample_buf;
     uint32_t xa_sample_idx;
     int xa_remaining_samples;
     uint32_t xa_step;
     uint32_t xa_ringbuf_pos;
     int16_t* xa_left_resample_buf;
     int16_t* xa_right_resample_buf;
+    int16_t* xa_mono_resample_buf;
     int16_t* xa_upsample_buf;
 
     const char* path;

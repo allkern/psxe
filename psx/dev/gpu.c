@@ -116,13 +116,17 @@ uint32_t psx_gpu_read32(psx_gpu_t* gpu, uint32_t offset) {
 uint16_t psx_gpu_read16(psx_gpu_t* gpu, uint32_t offset) {
     log_fatal("Unhandled 16-bit GPU read at offset %08x", offset);
 
-    exit(1);
+    return 0;
+
+    // exit(1);
 }
 
 uint8_t psx_gpu_read8(psx_gpu_t* gpu, uint32_t offset) {
     log_fatal("Unhandled 8-bit GPU read at offset %08x", offset);
 
-    exit(1);
+    return 0;
+
+    // exit(1);
 }
 
 int min(int x0, int x1) {
@@ -1728,7 +1732,7 @@ void psx_gpu_update(psx_gpu_t* gpu, int cyc) {
 }
 
 void* psx_gpu_get_display_buffer(psx_gpu_t* gpu) {
-    return gpu->vram + (gpu->draw_x1 + (gpu->draw_y1 * 1024));
+    return gpu->vram + (gpu->disp_x + (gpu->disp_y * 1024));
 }
 
 void psx_gpu_destroy(psx_gpu_t* gpu) {
