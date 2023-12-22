@@ -224,6 +224,14 @@ void psxe_screen_update(psxe_screen_t* screen) {
                         SDL_SetRenderDrawColor(screen->renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
                         SDL_RenderClear(screen->renderer);
                     } break;
+
+                    case SDLK_F5: {
+                        psx_soft_reset(screen->psx);
+                    } break;
+
+                    case SDLK_F6: {
+                        psx_swap_disc(screen->psx, ".\\roms\\Street Fighter II Movie (Japan) (Disc 2)\\Street Fighter II Movie (Japan) (Disc 2).cue");
+                    } break;
                 }
 
                 uint16_t mask = screen_get_button(event.key.keysym.sym);

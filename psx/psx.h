@@ -46,6 +46,7 @@ uint32_t psx_get_display_height(psx_t*);
 uint32_t psx_get_display_format(psx_t*);
 double psx_get_display_aspect(psx_t*);
 uint32_t* psx_take_screenshot(psx_t*);
+void psx_swap_disc(psx_t*, const char*);
 psx_bios_t* psx_get_bios(psx_t*);
 psx_ram_t* psx_get_ram(psx_t*);
 psx_dma_t* psx_get_dma(psx_t*);

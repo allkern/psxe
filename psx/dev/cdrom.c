@@ -1561,9 +1561,9 @@ void psx_cdrom_init(psx_cdrom_t* cdrom, psx_ic_t* ic) {
     cdrom->xa_right_buf = malloc(XA_STEREO_SAMPLES * sizeof(int16_t));
     cdrom->xa_mono_buf = malloc(XA_MONO_SAMPLES * sizeof(int16_t));
     cdrom->xa_upsample_buf = malloc(((14112 * 2) + 6) * sizeof(int16_t));
-    cdrom->xa_left_resample_buf = malloc(2352 * sizeof(int16_t));
-    cdrom->xa_right_resample_buf = malloc(2352 * sizeof(int16_t));
-    cdrom->xa_mono_resample_buf = malloc(XA_MONO_RESAMPLE_SIZE * sizeof(int16_t));
+    cdrom->xa_left_resample_buf = malloc((XA_STEREO_RESAMPLE_SIZE * 2) * sizeof(int16_t));
+    cdrom->xa_right_resample_buf = malloc((XA_STEREO_RESAMPLE_SIZE * 2) * sizeof(int16_t));
+    cdrom->xa_mono_resample_buf = malloc((XA_MONO_RESAMPLE_SIZE * 2) * sizeof(int16_t));
     cdrom->xa_step = 6;
 
     // We will use this whenever we implement proper
@@ -1574,9 +1574,9 @@ void psx_cdrom_init(psx_cdrom_t* cdrom, psx_ic_t* ic) {
     memset(cdrom->xa_right_buf, 0, XA_STEREO_SAMPLES * sizeof(int16_t));
     memset(cdrom->xa_mono_buf, 0, XA_MONO_SAMPLES * sizeof(int16_t));
     memset(cdrom->xa_upsample_buf, 0, ((14112 * 2) + 6) * sizeof(int16_t));
-    memset(cdrom->xa_left_resample_buf, 0, 2352 * sizeof(int16_t));
-    memset(cdrom->xa_right_resample_buf, 0, 2352 * sizeof(int16_t));
-    memset(cdrom->xa_mono_resample_buf, 0, XA_MONO_RESAMPLE_SIZE * sizeof(int16_t));
+    memset(cdrom->xa_left_resample_buf, 0, (XA_STEREO_RESAMPLE_SIZE * 2) * sizeof(int16_t));
+    memset(cdrom->xa_right_resample_buf, 0, (XA_STEREO_RESAMPLE_SIZE * 2) * sizeof(int16_t));
+    memset(cdrom->xa_mono_resample_buf, 0, (XA_MONO_RESAMPLE_SIZE * 2) * sizeof(int16_t));
 }
 
 uint32_t psx_cdrom_read32(psx_cdrom_t* cdrom, uint32_t offset) {
@@ -1784,29 +1784,12 @@ static const int g_spu_neg_adpcm_table[] = {
 };
 
 void cdrom_resample_xa_buf(psx_cdrom_t* cdrom, int16_t* dst, int16_t* src, int stereo) {
-    // To-do: Account for 18KHz samples
-    // int f18khz = ((cdrom->xa_sector_buf[0x13] >> 2) & 1) == 1;
+    int f18khz = ((cdrom->xa_sector_buf[0x13] >> 2) & 1) == 1;
+    int sample_count = stereo ? XA_STEREO_SAMPLES : XA_MONO_SAMPLES;
+    int resample_count = stereo ? XA_STEREO_RESAMPLE_SIZE : XA_MONO_RESAMPLE_SIZE;
 
-    if (stereo) {
-        for (int i = 0; i < XA_STEREO_SAMPLES; i++) {
-            int j = i * 7;
-
-            cdrom->xa_upsample_buf[j] = src[i];
-
-            // Nearest neighbor
-            for (int k = 0; k < 7; k++)
-                cdrom->xa_upsample_buf[j+k] = src[i];
-        }
-
-        for (int i = 0; i < XA_STEREO_RESAMPLE_SIZE; i++)
-            dst[i] = cdrom->xa_upsample_buf[i*6];
-
-        cdrom->xa_remaining_samples = XA_STEREO_RESAMPLE_SIZE;
-
-        return;
-    }
-
-    for (int i = 0; i < XA_MONO_SAMPLES; i++) {
+    // Upsampling
+    for (int i = 0; i < sample_count; i++) {
         int j = i * 7;
 
         cdrom->xa_upsample_buf[j] = src[i];
@@ -1816,10 +1799,17 @@ void cdrom_resample_xa_buf(psx_cdrom_t* cdrom, int16_t* dst, int16_t* src, int s
             cdrom->xa_upsample_buf[j+k] = src[i];
     }
 
-    for (int i = 0; i < XA_MONO_RESAMPLE_SIZE; i++)
-        dst[i] = cdrom->xa_upsample_buf[i*6];
+    if (f18khz) {
+        for (int i = 0; i < resample_count; i++) {
+            *dst++ = cdrom->xa_upsample_buf[i*3];
+            *dst++ = cdrom->xa_upsample_buf[i*3];
+        }
+    } else {
+        for (int i = 0; i < resample_count; i++)
+            dst[i] = cdrom->xa_upsample_buf[i*6];
+    }
 
-    cdrom->xa_remaining_samples = XA_MONO_RESAMPLE_SIZE;
+    cdrom->xa_remaining_samples = resample_count * (f18khz + 1);
 }
 
 void cdrom_decode_xa_block(psx_cdrom_t* cdrom, int idx, int blk, int nib, int16_t* buf, int16_t* h) {

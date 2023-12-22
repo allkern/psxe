@@ -56,11 +56,21 @@ void* psx_get_vram(psx_t* psx) {
 }
 
 uint32_t psx_get_display_width(psx_t* psx) {
-    return psx->gpu->draw_x2 - psx->gpu->draw_x1;
+    // int draw = psx->gpu->draw_x2 - psx->gpu->draw_x1;
+    // int dmode = psx_get_dmode_width(psx);
+
+    // return (draw > dmode) ? dmode : draw;
+
+    return psx_get_dmode_width(psx);
 }
 
 uint32_t psx_get_display_height(psx_t* psx) {
-    return psx->gpu->draw_y2 - psx->gpu->draw_y1;
+    // int draw = psx->gpu->draw_y2 - psx->gpu->draw_y1;
+    // int dmode = psx_get_dmode_height(psx);
+
+    // return (draw > dmode) ? dmode : draw;
+
+    return psx_get_dmode_height(psx);
 }
 
 uint32_t psx_get_display_format(psx_t* psx) {
@@ -86,6 +96,10 @@ uint32_t psx_get_dmode_height(psx_t* psx) {
 double psx_get_display_aspect(psx_t* psx) {
     double width = psx_get_dmode_width(psx);
     double height = psx_get_dmode_height(psx);
+
+    if (height > width)
+        return 4.0 / 3.0;
+
     double aspect = width / height;
 
     if (aspect > (4.0 / 3.0))
@@ -160,15 +174,24 @@ void psx_hard_reset(psx_t* psx) {
 }
 
 void psx_soft_reset(psx_t* psx) {
-    log_fatal("Soft reset not yet implemented");
-
-    exit(1);
+    psx_cpu_init(psx->cpu, psx->bus);
 }
 
 uint32_t* psx_take_screenshot(psx_t* psx) {
     log_fatal("Screenshots not yet supported");
 
     exit(1);
+}
+
+void psx_swap_disc(psx_t* psx, const char* path) {
+    psx_cdrom_destroy(psx->cdrom);
+
+    psx->cdrom = psx_cdrom_create();
+
+    psx_bus_init_cdrom(psx->bus, psx->cdrom);
+
+    psx_cdrom_init(psx->cdrom, psx->ic);
+    psx_cdrom_open(psx->cdrom, path);
 }
 
 void psx_destroy(psx_t* psx) {
