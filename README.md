@@ -4,7 +4,8 @@ A simple and portable Sony PlayStation emulator and emulation library written in
 ## Screenshots
 | Windows  | Ubuntu | macOS |
 | ------------- | ------------- | ------------- 
-| ![Windows](https://github.com/allkern/psx/assets/15825466/7aea1203-33cf-4b26-aedb-4d9bead44d67) | ![Ubuntu](https://github.com/allkern/psx/assets/15825466/27ac5d8d-7945-4c92-b950-19a35fcbdc81) | ![macOS](https://github.com/allkern/psx/assets/15825466/12378267-15a8-4a18-b170-eeaf5a8d153f) |
+| ![Mega Man X6 (USA)](https://github.com/allkern/psxe/assets/15825466/34dde8f9-eedb-4b44-a08d-c17026df2ff2) | ![Bloody Roar 2 - Bringer of the New Age (Europe)](https://github.com/allkern/psxe/assets/15825466/41a6dc67-b0ba-442f-bed6-7b207c0db4dd) | ![Parodius (Europe)](https://github.com/allkern/psxe/assets/15825466/9ab291d9-ec47-4997-92d3-23e38982ae45) |
+| ![Spyro 2 - Ripto's Rage (USA)](https://github.com/allkern/psxe/assets/15825466/e161ab66-af57-4327-9a94-8b2591a0012a) | ![Namco Museum Vol. 1 (USA)](https://github.com/allkern/psxe/assets/15825466/67ea61e4-5f30-470c-a978-23e0755850b6) | ![Darius Gaiden (Japan)](https://github.com/allkern/psxe/assets/15825466/0c55118c-ab42-40e5-b34a-7594528080bf) |
 
 ### CI status
 ![Windows](https://github.com/allkern/psx/actions/workflows/windows.yml/badge.svg)
