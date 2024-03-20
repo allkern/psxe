@@ -23,6 +23,7 @@ typedef struct {
     unsigned int format;
     unsigned int texture_width, texture_height;
 
+    int bilinear;
     int fullscreen;
     int vertical_mode;
     int debug_mode;

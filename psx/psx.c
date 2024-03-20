@@ -108,13 +108,18 @@ double psx_get_display_aspect(psx_t* psx) {
     return aspect;
 }
 
-void psx_init(psx_t* psx, const char* bios_path) {
+void atcons_tx(void* udata, char c) {
+    putchar(c);
+}
+
+void psx_init(psx_t* psx, const char* bios_path, const char* exp_path) {
     memset(psx, 0, sizeof(psx_t));
 
     psx->bios = psx_bios_create();
     psx->ram = psx_ram_create();
     psx->dma = psx_dma_create();
     psx->exp1 = psx_exp1_create();
+    psx->exp2 = psx_exp2_create();
     psx->mc1 = psx_mc1_create();
     psx->mc2 = psx_mc2_create();
     psx->mc3 = psx_mc3_create();
@@ -135,6 +140,7 @@ void psx_init(psx_t* psx, const char* bios_path) {
     psx_bus_init_ram(psx->bus, psx->ram);
     psx_bus_init_dma(psx->bus, psx->dma);
     psx_bus_init_exp1(psx->bus, psx->exp1);
+    psx_bus_init_exp2(psx->bus, psx->exp2);
     psx_bus_init_mc1(psx->bus, psx->mc1);
     psx_bus_init_mc2(psx->bus, psx->mc2);
     psx_bus_init_mc3(psx->bus, psx->mc3);
@@ -155,7 +161,8 @@ void psx_init(psx_t* psx, const char* bios_path) {
     psx_mc3_init(psx->mc3);
     psx_ram_init(psx->ram, psx->mc2);
     psx_dma_init(psx->dma, psx->bus, psx->ic);
-    psx_exp1_init(psx->exp1, psx->mc1);
+    psx_exp1_init(psx->exp1, psx->mc1, exp_path);
+    psx_exp2_init(psx->exp2, atcons_tx, NULL);
     psx_ic_init(psx->ic, psx->cpu);
     psx_scratchpad_init(psx->scratchpad);
     psx_gpu_init(psx->gpu, psx->ic);
@@ -165,6 +172,10 @@ void psx_init(psx_t* psx, const char* bios_path) {
     psx_pad_init(psx->pad, psx->ic);
     psx_mdec_init(psx->mdec);
     psx_cpu_init(psx->cpu, psx->bus);
+}
+
+void psx_load_expansion(psx_t* psx, const char* path) {
+    psx_exp1_init(psx->exp1, psx->mc1, path);
 }
 
 void psx_hard_reset(psx_t* psx) {
@@ -229,6 +240,10 @@ psx_dma_t* psx_get_dma(psx_t* psx) {
 
 psx_exp1_t* psx_get_exp1(psx_t* psx) {
     return psx->exp1;
+}
+
+psx_exp2_t* psx_get_exp2(psx_t* psx) {
+    return psx->exp2;
 }
 
 psx_mc1_t* psx_get_mc1(psx_t* psx) {

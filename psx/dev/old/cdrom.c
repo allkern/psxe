@@ -93,9 +93,9 @@ void cdrom_cmd_getstat(psx_cdrom_t* cdrom) {
             SET_BITS(ifr, IFR_INT, IFR_INT3);
             RESP_PUSH(GETSTAT_MOTOR | (cdrom->disc ? 0 : GETSTAT_TRAYOPEN));
 
-            if (cdrom->read_ongoing) {
+            if (cdrom->ongoing_read_command) {
                 cdrom->state = CD_STATE_SEND_RESP2;
-                cdrom->delayed_command = CDL_READN;
+                cdrom->delayed_command = cdrom->ongoing_read_command;
                 cdrom->irq_delay = DELAY_1MS;
             } else {
                 cdrom->delayed_command = CDL_NONE;
@@ -121,13 +121,13 @@ void cdrom_cmd_setloc(psx_cdrom_t* cdrom) {
                 return;
             }
 
-            if (!cdrom->read_ongoing) {
+            if (!cdrom->ongoing_read_command) {
                 cdrom->irq_delay = DELAY_1MS;
                 cdrom->delayed_command = CDL_SETLOC;
                 cdrom->state = CD_STATE_SEND_RESP1;
             } else {
                 cdrom->irq_delay = DELAY_1MS;
-                cdrom->delayed_command = CDL_READN;
+                cdrom->delayed_command = cdrom->ongoing_read_command;
                 cdrom->state = CD_STATE_SEND_RESP2;
             }
 
@@ -174,7 +174,7 @@ void cdrom_cmd_setloc(psx_cdrom_t* cdrom) {
             int m = PFIFO_POP;
 
             if (!(VALID_BCD(m) && VALID_BCD(s) && VALID_BCD(f) && (f < 0x75))) {
-                cdrom->read_ongoing = false;
+                cdrom->ongoing_read_command = CDL_NONE;
                 cdrom->irq_delay = DELAY_1MS;
                 cdrom->delayed_command = CDL_ERROR;
                 cdrom->state = CD_STATE_ERROR;
@@ -257,7 +257,7 @@ void cdrom_cmd_play(psx_cdrom_t* cdrom) {
 }
 void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
     cdrom->delayed_command = CDL_NONE;
-    cdrom->read_ongoing = 1;
+    cdrom->ongoing_read_command = 1;
 
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
@@ -396,7 +396,7 @@ void cdrom_cmd_motoron(psx_cdrom_t* cdrom) {
 
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
-            cdrom->read_ongoing = 0;
+            cdrom->ongoing_read_command = CDL_NONE;
             cdrom->cdda_playing = 0;
 
             cdrom->irq_delay = DELAY_1MS;
@@ -429,7 +429,7 @@ void cdrom_cmd_stop(psx_cdrom_t* cdrom) {
 
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
-            cdrom->read_ongoing = 0;
+            cdrom->ongoing_read_command = CDL_NONE;
             cdrom->cdda_playing = 0;
 
             cdrom->irq_delay = DELAY_1MS;
@@ -468,7 +468,7 @@ void cdrom_cmd_pause(psx_cdrom_t* cdrom) {
 
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
-            cdrom->read_ongoing = 0;
+            cdrom->ongoing_read_command = CDL_NONE;
             cdrom->cdda_playing = 0;
 
             cdrom->irq_delay = DELAY_1MS;
@@ -504,7 +504,7 @@ void cdrom_cmd_init(psx_cdrom_t* cdrom) {
             cdrom->irq_delay = DELAY_1MS;
             cdrom->state = CD_STATE_SEND_RESP1;
             cdrom->delayed_command = CDL_INIT;
-            cdrom->read_ongoing = 0;
+            cdrom->ongoing_read_command = CDL_NONE;
             cdrom->mode = 0;
             cdrom->dfifo_index = 0;
             cdrom->dfifo_full = 0;
@@ -965,7 +965,7 @@ void cdrom_cmd_getid(psx_cdrom_t* cdrom) {
 }
 void cdrom_cmd_reads(psx_cdrom_t* cdrom) {
     cdrom->delayed_command = CDL_NONE;
-    cdrom->read_ongoing = 1;
+    cdrom->ongoing_read_command = 1;
 
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {

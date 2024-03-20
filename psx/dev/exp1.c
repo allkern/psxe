@@ -9,7 +9,7 @@ psx_exp1_t* psx_exp1_create() {
     return (psx_exp1_t*)malloc(sizeof(psx_exp1_t));
 }
 
-void psx_exp1_init(psx_exp1_t* exp1, psx_mc1_t* mc1) {
+void psx_exp1_init(psx_exp1_t* exp1, psx_mc1_t* mc1, const char* path) {
     memset(exp1, 0, sizeof(psx_exp1_t));
 
     exp1->io_base = PSX_EXP1_BEGIN;
@@ -19,6 +19,23 @@ void psx_exp1_init(psx_exp1_t* exp1, psx_mc1_t* mc1) {
     exp1->rom = (uint8_t*)malloc(PSX_EXP1_SIZE);
 
     memset(exp1->rom, 0xff, PSX_EXP1_SIZE);
+
+    if (path)
+        psx_exp1_load(exp1, path);
+}
+
+void psx_exp1_load(psx_exp1_t* exp1, const char* path) {
+    FILE* file = fopen(path, "rb");
+
+    if (!file) {
+        perror("Error opening expansion ROM file \'%s\'");
+
+        exit(1);
+    }
+
+    fread(exp1->rom, 1, PSX_EXP1_SIZE, file);
+
+    fclose(file);
 }
 
 uint32_t psx_exp1_read32(psx_exp1_t* exp1, uint32_t offset) {

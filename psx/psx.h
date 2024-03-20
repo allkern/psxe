@@ -12,6 +12,7 @@ typedef struct {
     psx_ram_t* ram;
     psx_dma_t* dma;
     psx_exp1_t* exp1;
+    psx_exp2_t* exp2;
     psx_mc1_t* mc1;
     psx_mc2_t* mc2;
     psx_mc3_t* mc3;
@@ -28,7 +29,8 @@ typedef struct {
 } psx_t;
 
 psx_t* psx_create();
-void psx_init(psx_t*, const char*);
+void psx_init(psx_t*, const char*, const char*);
+void psx_load_expansion(psx_t*, const char*);
 void psx_load_bios(psx_t*, const char*);
 void psx_hard_reset(psx_t*);
 void psx_soft_reset(psx_t*);
@@ -51,6 +53,7 @@ psx_bios_t* psx_get_bios(psx_t*);
 psx_ram_t* psx_get_ram(psx_t*);
 psx_dma_t* psx_get_dma(psx_t*);
 psx_exp1_t* psx_get_exp1(psx_t*);
+psx_exp2_t* psx_get_exp2(psx_t*);
 psx_mc1_t* psx_get_mc1(psx_t*);
 psx_mc2_t* psx_get_mc2(psx_t*);
 psx_mc3_t* psx_get_mc3(psx_t*);

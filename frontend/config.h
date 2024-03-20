@@ -24,6 +24,7 @@ typedef struct {
     const char* region;
     const char* psxe_version;
     const char* cd_path;
+    const char* exp_path;
 } psxe_config_t;
 
 psxe_config_t* psxe_cfg_create();

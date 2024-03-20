@@ -77,7 +77,7 @@ void psxe_cfg_destroy(psxe_config_t* cfg) {
 }
 
 void psxe_cfg_load_defaults(psxe_config_t* cfg) {
-    cfg->bios = NULL;
+    cfg->bios = "bios.bin";
     cfg->bios_search = "bios";
     cfg->exe = NULL;
     cfg->help_model = 0;
@@ -91,6 +91,7 @@ void psxe_cfg_load_defaults(psxe_config_t* cfg) {
     cfg->log_level = LOG_FATAL;
     cfg->quiet = 0;
     cfg->cd_path = NULL;
+    cfg->exp_path = NULL;
 }
 
 void psxe_cfg_load(psxe_config_t* cfg, int argc, const char* argv[]) {
@@ -111,6 +112,7 @@ void psxe_cfg_load(psxe_config_t* cfg, int argc, const char* argv[]) {
     const char* region = NULL;
     const char* psxe_version = NULL;
     const char* cd_path = NULL;
+    const char* exp_path = NULL;
 
     static const char *const usages[] = {
         "psxe [options] path-to-cdrom",
@@ -124,15 +126,16 @@ void psxe_cfg_load(psxe_config_t* cfg, int argc, const char* argv[]) {
         OPT_BOOLEAN ('v', "version"       , &version       , "Display version and build information", NULL, 0, 0),
         OPT_GROUP("Basic options"),
         OPT_BOOLEAN ('a', "use-args"      , &use_args      , "Ignore settings file, use CLI args instead", NULL, 0, 0),
-        OPT_STRING  ('b', "bios"          , &bios          , "Use this BIOS file (ignores -B, -M)", NULL, 0, 0),
+        OPT_STRING  ('b', "bios"          , &bios          , "Specify a BIOS file (ignores -B, -M)", NULL, 0, 0),
         OPT_BOOLEAN ('B', "bios-folder"   , &bios_search   , "Specify a BIOS search folder", NULL, 0, 0),
         OPT_STRING  ('c', "console-source", &console_source, "Select console source (auto, null, kernel, atcons)"),
+        OPT_STRING  ('e', "exp-rom"       , &exp_path      , "Specify an expansion ROM file"),
         OPT_INTEGER ('L', "log-level"     , &log_level     , "Set log level"),
         OPT_STRING  ('M', "model"         , &model         , "Specify console model (SPCH-XXXX)", NULL, 0, 0),
         OPT_STRING  ('r', "region"        , &region        , "Specify console region"),
         OPT_STRING  ('S', "settings-file" , &settings_path , "Specify settings file path", NULL, 0, 0),
         OPT_BOOLEAN ('q', "quiet"         , &quiet         , "Silence all logs (ignores -L)"),
-        OPT_STRING  ('x', "exe"           , &exe           , "Boot this PS-X EXE file"),
+        OPT_STRING  ('x', "exe"           , &exe           , "Launch a PS-X EXE file"),
         OPT_STRING  (0  , "cdrom"         , &cd_path       , "Specify a CDROM image"),
         OPT_END()
     };
@@ -274,6 +277,9 @@ void psxe_cfg_load(psxe_config_t* cfg, int argc, const char* argv[]) {
 
     if (psxe_version)
         cfg->psxe_version = psxe_version;
+
+    if (exp_path)
+        cfg->exp_path = exp_path;
 }
 
 // To-do: Implement BIOS searching

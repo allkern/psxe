@@ -31,6 +31,24 @@ void msf_adjust(msf_t* msf) {
     }
 }
 
+void msf_adjust_sub(msf_t* msf) {
+    if ((int)msf->f < 0) {
+        int f = ((int)msf->f) * -1;
+        int s = (f / 60) + 1;
+
+        msf->s -= s;
+        msf->f += CD_SECTORS_PS * f;
+    }
+
+    if ((int)msf->s < 0) {
+        int s = ((int)msf->s) * -1;
+        int m = (s / 60) + 1;
+
+        msf->m -= m;
+        msf->s += 60 * m;
+    }
+}
+
 void msf_to_bcd(msf_t* msf) {
     msf->m = ITOB(msf->m);
     msf->s = ITOB(msf->s);

@@ -165,25 +165,43 @@ void psx_dma_do_mdec_in(psx_dma_t* dma) {
     if (!CHCR_BUSY(mdec_in))
         return;
 
+    // printf("dma mdec in size=%04x bcnt=%04x step=%u madr=%08x\n",
+    //     BCR_SIZE(mdec_in),
+    //     BCR_BCNT(mdec_in),
+    //     CHCR_STEP(mdec_in),
+    //     dma->mdec_in.madr
+    // );
+
     size_t size = BCR_SIZE(mdec_in) * BCR_BCNT(mdec_in);
+
+    int step = CHCR_STEP(mdec_in) ? -4 : 4;
 
     for (int i = 0; i < size; i++) {
         uint32_t data = psx_bus_read32(dma->bus, dma->mdec_in.madr);
 
         psx_bus_write32(dma->bus, 0x1f801820, data);
 
-        dma->mdec_in.madr += CHCR_STEP(mdec_in) ? -4 : 4;
+        dma->mdec_in.madr += step;
     }
 
     dma->mdec_in_irq_delay = size;
 
-    dma->mdec_in.chcr &= ~(CHCR_BUSY_MASK | CHCR_TRIG_MASK);
+    dma->mdec_in.chcr = 0;
     dma->mdec_in.bcr = 0;
 }
 
 void psx_dma_do_mdec_out(psx_dma_t* dma) {
     if (!CHCR_BUSY(mdec_out))
         return;
+
+    // printf("dma mdec out size=%04x bcnt=%04x step=%u madr=%08x\n",
+    //     BCR_SIZE(mdec_out),
+    //     BCR_BCNT(mdec_out),
+    //     CHCR_STEP(mdec_out),
+    //     dma->mdec_out.madr
+    // );
+
+    // printf("mdec out transfer\n");
 
     size_t size = BCR_SIZE(mdec_out) * BCR_BCNT(mdec_out);
 
@@ -293,8 +311,7 @@ void psx_dma_do_cdrom(psx_dma_t* dma) {
     if (!CHCR_BUSY(cdrom))
         return;
 
-    // log_set_quiet(0);
-    // log_fatal("CDROM DMA transfer: madr=%08x, dir=%s, sync=%s (%u), step=%s, size=%x",
+    // printf("CDROM DMA transfer: madr=%08x, dir=%s, sync=%s (%u), step=%s, size=%x\n",
     //     dma->cdrom.madr,
     //     CHCR_TDIR(cdrom) ? "to device" : "to RAM",
     //     g_psx_dma_sync_type_name_table[CHCR_SYNC(cdrom)], CHCR_SYNC(cdrom),
@@ -302,13 +319,12 @@ void psx_dma_do_cdrom(psx_dma_t* dma) {
     //     BCR_SIZE(cdrom)
     // );
 
-    // log_fatal("DICR: force=%u, en=%02x, irqen=%u, flags=%02x",
+    // printf("DICR: force=%u, en=%02x, irqen=%u, flags=%02x\n",
     //     (dma->dicr >> 15) & 1,
     //     (dma->dicr >> 16) & 0x7f,
     //     (dma->dicr >> 23) & 1,
     //     (dma->dicr >> 24) & 0x7f
     // );
-    // log_set_quiet(1);    
 
     uint32_t size = BCR_SIZE(cdrom);
 

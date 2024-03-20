@@ -444,21 +444,23 @@ int psxd_cue_get_track_addr(void* udata, msf_t* msf, int track) {
 
     track = BTOI(track);
 
+    if (track > cue->num_tracks)
+        return DISC_ERR_TRACK_OUT_OF_BOUNDS;
+
     if (!msf)
         return 0;
 
     if (!track) {
         msf->m = cue->end.m;
         msf->s = cue->end.s;
+        msf->f = 0;
 
         return 0;
     }
 
-    if (track > cue->num_tracks)
-        return DISC_ERR_TRACK_OUT_OF_BOUNDS;
-    
     msf->m = cue->track[track - 1]->disc_offset.m;
     msf->s = cue->track[track - 1]->disc_offset.s;
+    msf->f = 0;
 
     return 0;
 }

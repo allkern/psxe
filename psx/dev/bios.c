@@ -15,8 +15,6 @@ void psx_bios_init(psx_bios_t* bios) {
     bios->io_base = PSX_BIOS_BEGIN;
     bios->io_size = PSX_BIOS_SIZE;
     bios->bus_delay = 18;
-
-    bios->buf = (uint8_t*)malloc(PSX_BIOS_SIZE);
 }
 
 void psx_bios_load(psx_bios_t* bios, const char* path) {
@@ -28,7 +26,21 @@ void psx_bios_load(psx_bios_t* bios, const char* path) {
         exit(1);
     }
 
-    if (!fread(bios->buf, 1, PSX_BIOS_SIZE, file)) {
+    // Almost all PS1 BIOS ROMs are 512 KiB in size.
+    // There's (at least) one exception, and that is SCPH-5903.
+    // This is a special asian model PS1 that had built-in support
+    // for Video CD (VCD) playback. Its BIOS is double the normal
+    // size
+    fseek(file, 0, SEEK_END);
+
+    size_t size = ftell(file);
+
+    fseek(file, 0, SEEK_SET);
+
+    bios->buf = malloc(size);
+    bios->io_size = size;
+
+    if (!fread(bios->buf, 1, size, file)) {
         perror("Error reading BIOS file");
 
         exit(1);

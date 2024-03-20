@@ -48,6 +48,7 @@ uint32_t psx_bus_read32(psx_bus_t* bus, uint32_t addr) {
     HANDLE_READ(ram, 32);
     HANDLE_READ(dma, 32);
     HANDLE_READ(exp1, 32);
+    HANDLE_READ(exp2, 32);
     HANDLE_READ(mc1, 32);
     HANDLE_READ(mc2, 32);
     HANDLE_READ(mc3, 32);
@@ -82,6 +83,7 @@ uint16_t psx_bus_read16(psx_bus_t* bus, uint32_t addr) {
     HANDLE_READ(ram, 16);
     HANDLE_READ(dma, 16);
     HANDLE_READ(exp1, 16);
+    HANDLE_READ(exp2, 16);
     HANDLE_READ(mc1, 16);
     HANDLE_READ(mc2, 16);
     HANDLE_READ(mc3, 16);
@@ -112,6 +114,7 @@ uint8_t psx_bus_read8(psx_bus_t* bus, uint32_t addr) {
     HANDLE_READ(ram, 8);
     HANDLE_READ(dma, 8);
     HANDLE_READ(exp1, 8);
+    HANDLE_READ(exp2, 8);
     HANDLE_READ(mc1, 8);
     HANDLE_READ(mc2, 8);
     HANDLE_READ(mc3, 8);
@@ -146,6 +149,7 @@ void psx_bus_write32(psx_bus_t* bus, uint32_t addr, uint32_t value) {
     HANDLE_WRITE(ram, 32);
     HANDLE_WRITE(dma, 32);
     HANDLE_WRITE(exp1, 32);
+    HANDLE_WRITE(exp2, 32);
     HANDLE_WRITE(mc1, 32);
     HANDLE_WRITE(mc2, 32);
     HANDLE_WRITE(mc3, 32);
@@ -178,6 +182,7 @@ void psx_bus_write16(psx_bus_t* bus, uint32_t addr, uint16_t value) {
     HANDLE_WRITE(ram, 16);
     HANDLE_WRITE(dma, 16);
     HANDLE_WRITE(exp1, 16);
+    HANDLE_WRITE(exp2, 16);
     HANDLE_WRITE(mc1, 16);
     HANDLE_WRITE(mc2, 16);
     HANDLE_WRITE(mc3, 16);
@@ -206,6 +211,7 @@ void psx_bus_write8(psx_bus_t* bus, uint32_t addr, uint8_t value) {
     HANDLE_WRITE(ram, 8);
     HANDLE_WRITE(dma, 8);
     HANDLE_WRITE(exp1, 8);
+    HANDLE_WRITE(exp2, 8);
     HANDLE_WRITE(mc1, 8);
     HANDLE_WRITE(mc2, 8);
     HANDLE_WRITE(mc3, 8);
@@ -237,6 +243,10 @@ void psx_bus_init_dma(psx_bus_t* bus, psx_dma_t* dma) {
 
 void psx_bus_init_exp1(psx_bus_t* bus, psx_exp1_t* exp1) {
     bus->exp1 = exp1;
+}
+
+void psx_bus_init_exp2(psx_bus_t* bus, psx_exp2_t* exp2) {
+    bus->exp2 = exp2;
 }
 
 void psx_bus_init_mc1(psx_bus_t* bus, psx_mc1_t* mc1) {

@@ -34,7 +34,7 @@ int main(int argc, const char* argv[]) {
     log_set_level(cfg->log_level);
 
     psx_t* psx = psx_create();
-    psx_init(psx, cfg->bios);
+    psx_init(psx, cfg->bios, cfg->exp_path);
 
     psx_cdrom_t* cdrom = psx_get_cdrom(psx);
 

@@ -89,6 +89,7 @@ typedef struct {
 
 void msf_copy(msf_t*, msf_t);
 void msf_adjust(msf_t*);
+void msf_adjust_sub(msf_t*);
 void msf_to_bcd(msf_t*);
 void msf_from_bcd(msf_t*);
 uint32_t msf_to_address(msf_t);

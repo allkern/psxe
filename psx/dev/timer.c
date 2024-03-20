@@ -26,6 +26,32 @@
 #define T2_PAUSED timer->timer[2].paused
 #define T2_IRQ_FIRED timer->timer[2].irq_fired
 
+// bool should_I_pause_the_timer(psx_timer_t* timer) {
+//   if ((timer->mode & 1) == 0) return false;
+//   switch ((timer->mode >> 1) & 3) {
+//     case 0: return gpu.isXblank();
+//     case 1: return false;
+//     case 2: return !gpu.isXblank();
+//     case 3: return gpu.gotXblankOnce();
+//   }
+// }
+
+// bool did_timer_reach_target(Timer timer) {
+//   if ((timer.mode & 8) == 1) return timer.value >= timer.target;
+//   return timer.value >= 0xffff;
+// }
+
+// bool should_I_reset_the_timer(Timer timer) {
+//   if (did_timer_reach_target(timer)) return true;
+//   if ((timer.mode & 1) == 0) return false;
+//   switch ((timer.mode >> 1) & 3) {
+//     case 1:
+//     case 2:
+//       return gpu.isXBlank();
+//   }
+//   return false;
+// }
+
 const char* g_psx_timer_reg_names[] = {
     "counter", 0, 0, 0,
     "mode", 0, 0, 0,
@@ -45,12 +71,16 @@ void psx_timer_init(psx_timer_t* timer, psx_ic_t* ic) {
     timer->ic = ic;
 }
 
+int t1_counter = 0;
+
 uint32_t psx_timer_read32(psx_timer_t* timer, uint32_t offset) {
     int index = offset >> 4;
     int reg = offset & 0xf;
 
     switch (reg) {
-        case 0: return timer->timer[index].counter;
+        case 0: {
+            return timer->timer[index].counter;
+        } break;
         case 4: {
             timer->timer[index].mode &= 0xffffe7ff;
 

@@ -58,7 +58,8 @@ enum {
 #define CDL_RESET       0x1c
 #define CDL_GETQ        0x1d
 #define CDL_READTOC     0x1e
-#define CDL_ERROR       0x1f
+#define CDL_VIDEOCD     0x1f
+#define CDL_ERROR       0x20
 
 #define STAT_INDEX_MASK   0x3
 #define STAT_ADPBUSY_MASK 0x4
@@ -178,7 +179,7 @@ typedef struct {
     int tray_open;
 
     // Setloc
-    uint8_t seek_ss, seek_mm, seek_ff;
+    msf_t seek_msf;
     uint32_t seek_offset;
     int seek_pending;
 
@@ -195,7 +196,7 @@ typedef struct {
     int spin_delay;
     uint8_t error;
     uint8_t error_flags;
-    int read_ongoing;
+    int ongoing_read_command;
     int gettd_track;
 
     // CDDA
@@ -318,5 +319,6 @@ void cdrom_cmd_test(psx_cdrom_t*);
 void cdrom_cmd_getid(psx_cdrom_t*);
 void cdrom_cmd_reads(psx_cdrom_t*);
 void cdrom_cmd_readtoc(psx_cdrom_t*);
+void cdrom_cmd_videocd(psx_cdrom_t*);
 
 #endif

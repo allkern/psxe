@@ -282,6 +282,13 @@ void psx_mdec_init(psx_mdec_t* mdec) {
 uint32_t psx_mdec_read32(psx_mdec_t* mdec, uint32_t offset) {
     switch (offset) {
         case 0: {
+            // printf("mdec data read\n");
+            // mdec->output_empty = 1;
+            // mdec->output_index = 0;
+            // mdec->output_request = 0;
+
+            // return 0xaaaaaaaa;
+
             if (mdec->output_words_remaining) {
                 --mdec->output_words_remaining;
 
@@ -291,6 +298,7 @@ uint32_t psx_mdec_read32(psx_mdec_t* mdec, uint32_t offset) {
 
                 return ((uint32_t*)mdec->output)[mdec->output_index++];
             } else {
+                // printf("no read words remaining\n");
                 mdec->output_empty = 0;
                 mdec->output_index = 0;
                 mdec->output_request = 0;
@@ -299,6 +307,7 @@ uint32_t psx_mdec_read32(psx_mdec_t* mdec, uint32_t offset) {
             }
         } break;
         case 4: {
+            //printf("mdec status read\n");
             uint32_t status = 0;
 
             status |= mdec->words_remaining;
@@ -334,12 +343,14 @@ uint8_t psx_mdec_read8(psx_mdec_t* mdec, uint32_t offset) {
 void psx_mdec_write32(psx_mdec_t* mdec, uint32_t offset, uint32_t value) {
     switch (offset) {
         case 0: {
+            //printf("mdec data write\n");
             if (mdec->words_remaining) {
                 mdec->input[mdec->input_index++] = value;
 
                 --mdec->words_remaining;
 
                 if (!mdec->words_remaining) {
+                    //printf("no words remaining\n");
                     mdec->output_empty = 0;
                     mdec->input_full = 1;
                     mdec->input_request = 0;
@@ -367,6 +378,7 @@ void psx_mdec_write32(psx_mdec_t* mdec, uint32_t offset, uint32_t value) {
             //log_set_quiet(0);
             switch (mdec->cmd >> 29) {
                 case MDEC_CMD_NOP: {
+                    //printf("mdec nop\n");
                     mdec->busy = 0;
                     mdec->words_remaining = 0;
 
@@ -374,15 +386,17 @@ void psx_mdec_write32(psx_mdec_t* mdec, uint32_t offset, uint32_t value) {
                 } break;
 
                 case MDEC_CMD_DECODE: {
+                    //printf("mdec decode\n");
                     mdec->words_remaining = mdec->cmd & 0xffff;
 
-                    printf("MDEC %08x: decode macroblock %04x\n",
-                        mdec->cmd,
-                        mdec->words_remaining
-                    );
+                    // printf("MDEC %08x: decode macroblock %04x\n",
+                    //     mdec->cmd,
+                    //     mdec->words_remaining
+                    // );
                 } break;
 
                 case MDEC_CMD_SET_QT: {
+                    //printf("mdec setqt\n");
                     mdec->recv_color = mdec->cmd & 1;
                     mdec->words_remaining = mdec->recv_color ? 32 : 16;
 
@@ -393,6 +407,7 @@ void psx_mdec_write32(psx_mdec_t* mdec, uint32_t offset, uint32_t value) {
                 } break;
 
                 case MDEC_CMD_SET_ST: {
+                    //printf("mdec setst\n");
                     mdec->words_remaining = 32;
 
                     log_fatal("MDEC %08x: set scale table %04x",
@@ -404,7 +419,7 @@ void psx_mdec_write32(psx_mdec_t* mdec, uint32_t offset, uint32_t value) {
             // log_set_quiet(1);
 
             if (mdec->words_remaining) {
-                mdec->input_request = mdec->enable_dma0;
+                mdec->input_request = 1;
                 mdec->input_size = mdec->words_remaining * sizeof(uint32_t);
                 mdec->input_full = 0;
                 mdec->input_index = 0;
@@ -413,6 +428,7 @@ void psx_mdec_write32(psx_mdec_t* mdec, uint32_t offset, uint32_t value) {
         } break;
 
         case 4: {
+            //printf("mdec status write\n");
             mdec->enable_dma0 = (value & 0x40000000) != 0;
             mdec->enable_dma1 = (value & 0x20000000) != 0;
 
