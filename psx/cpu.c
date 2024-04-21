@@ -636,38 +636,17 @@ void psx_cpu_i_lwl(psx_cpu_t* cpu) {
     DO_PENDING_LOAD;
 
     uint32_t addr = s + IMM16S;
-    uint32_t aligned_addr = addr & 0xFFFFFFFC;
-    uint32_t aligned_load = r3000_read32(cpu, aligned_addr);
+    uint32_t value = psx_bus_read32(cpu->bus, addr & 0xfffffffc);
 
     if (rt == cpu->load_d)
         t = cpu->load_v;
 
     int shift = (int)((addr & 0x3) << 3);
     uint32_t mask = (uint32_t)0x00FFFFFF >> shift;
-    uint32_t value = (t & mask) | (aligned_load << (24 - shift)); 
+    uint32_t value = (t & mask) | (value << (24 - shift)); 
 
     cpu->load_d = rt;
     cpu->load_v = value;
-
-    // uint32_t addr = cpu->r[S] + IMM16S;
-
-    // uint32_t aligned = psx_bus_read32(cpu->bus, addr & ~0x3);
-
-    // printf("aligned=%08x load_v=%08x addr=%08x prev=%08x\n",
-    //     aligned,
-    //     cpu->load_v,
-    //     addr,
-    //     psx_bus_read32(cpu->bus, addr + 1)
-    // );
-
-    // switch (addr & 0x3) {
-    //     case 3: cpu->load_v = (cpu->load_v & 0x00ffffff) | (aligned << 24); break;
-    //     case 2: cpu->load_v = (cpu->load_v & 0x0000ffff) | (aligned << 16); break;
-    //     case 1: cpu->load_v = (cpu->load_v & 0x000000ff) | (aligned << 8 ); break;
-    //     case 0: cpu->load_v =                               aligned       ; break;
-    // }
-
-    // cpu->load_d = T;
 }
 
 void psx_cpu_i_lw(psx_cpu_t* cpu) {
@@ -723,31 +702,17 @@ void psx_cpu_i_lwr(psx_cpu_t* cpu) {
     DO_PENDING_LOAD;
 
     uint32_t addr = s + IMM16S;
-    uint32_t aligned_addr = addr & 0xFFFFFFFC;
-    uint32_t aligned_load = r3000_read32(cpu, aligned_addr);
+    uint32_t value = psx_bus_read32(cpu->bus, addr & 0xfffffffc);
 
     if (rt == cpu->load_d)
         t = cpu->load_v;
 
     int shift = (int)((addr & 0x3) << 3);
     uint32_t mask = 0xFFFFFF00 << (24 - shift);
-    uint32_t value = (t & mask) | (aligned_load >> shift); 
+    uint32_t value = (t & mask) | (value >> shift); 
 
     cpu->load_d = rt;
     cpu->load_v = value;
-
-    // uint32_t addr = cpu->r[S] + IMM16S;
-
-    // uint32_t aligned = psx_bus_read32(cpu->bus, addr & ~0x3);
-
-    // switch (addr & 0x3) {
-    //     case 0: cpu->load_v =                               aligned       ; break;
-    //     case 1: cpu->load_v = (cpu->load_v & 0xff000000) | (aligned >> 8 ); break;
-    //     case 2: cpu->load_v = (cpu->load_v & 0xffff0000) | (aligned >> 16); break;
-    //     case 3: cpu->load_v = (cpu->load_v & 0xffffff00) | (aligned >> 24); break;
-    // }
-
-    // cpu->load_d = T;
 }
 
 void psx_cpu_i_sb(psx_cpu_t* cpu) {
@@ -799,7 +764,7 @@ void psx_cpu_i_swl(psx_cpu_t* cpu) {
     DO_PENDING_LOAD;
 
     uint32_t addr = s + IMM16S;
-    uint32_t aligned = addr & ~0x3;
+    uint32_t aligned = addr & 0xfffffffc;
     uint32_t v = psx_bus_read32(cpu->bus, aligned);
 
     switch (addr & 0x3) {
@@ -843,7 +808,7 @@ void psx_cpu_i_swr(psx_cpu_t* cpu) {
     DO_PENDING_LOAD;
 
     uint32_t addr = s + IMM16S;
-    uint32_t aligned = addr & ~0x3;
+    uint32_t aligned = addr & 0xfffffffc;
     uint32_t v = psx_bus_read32(cpu->bus, aligned);
 
     switch (addr & 0x3) {
