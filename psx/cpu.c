@@ -636,14 +636,14 @@ void psx_cpu_i_lwl(psx_cpu_t* cpu) {
     DO_PENDING_LOAD;
 
     uint32_t addr = s + IMM16S;
-    uint32_t value = psx_bus_read32(cpu->bus, addr & 0xfffffffc);
+    uint32_t load = psx_bus_read32(cpu->bus, addr & 0xfffffffc);
 
     if (rt == cpu->load_d)
         t = cpu->load_v;
 
     int shift = (int)((addr & 0x3) << 3);
     uint32_t mask = (uint32_t)0x00FFFFFF >> shift;
-    uint32_t value = (t & mask) | (value << (24 - shift)); 
+    uint32_t value = (t & mask) | (load << (24 - shift)); 
 
     cpu->load_d = rt;
     cpu->load_v = value;
@@ -702,14 +702,14 @@ void psx_cpu_i_lwr(psx_cpu_t* cpu) {
     DO_PENDING_LOAD;
 
     uint32_t addr = s + IMM16S;
-    uint32_t value = psx_bus_read32(cpu->bus, addr & 0xfffffffc);
+    uint32_t load = psx_bus_read32(cpu->bus, addr & 0xfffffffc);
 
     if (rt == cpu->load_d)
         t = cpu->load_v;
 
     int shift = (int)((addr & 0x3) << 3);
     uint32_t mask = 0xFFFFFF00 << (24 - shift);
-    uint32_t value = (t & mask) | (value >> shift); 
+    uint32_t value = (t & mask) | (load >> shift); 
 
     cpu->load_d = rt;
     cpu->load_v = value;
