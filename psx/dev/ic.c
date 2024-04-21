@@ -35,21 +35,26 @@ uint32_t psx_ic_read32(psx_ic_t* ic, uint32_t offset) {
 
 uint16_t psx_ic_read16(psx_ic_t* ic, uint32_t offset) {
     switch (offset) {
-        case 0x00: return ic->stat;
-        case 0x04: return ic->mask;
+        case 0x00: return (ic->stat >> 0 ) & 0xffff;
+        case 0x02: return (ic->stat >> 16) & 0xffff;
+        case 0x04: return (ic->mask >> 0 ) & 0xffff;
+        case 0x06: return (ic->mask >> 16) & 0xffff;
     }
-
-    log_fatal("Unhandled 16-bit IC read at offset %08x", offset);
-
-    exit(0);
 
     return 0x0;
 }
 
 uint8_t psx_ic_read8(psx_ic_t* ic, uint32_t offset) {
-    log_fatal("Unhandled 8-bit IC read at offset %08x", offset);
-
-    exit(0);
+    switch (offset) {
+        case 0x00: return (ic->stat >> 0 ) & 0xff;
+        case 0x01: return (ic->stat >> 8 ) & 0xff;
+        case 0x02: return (ic->stat >> 16) & 0xff;
+        case 0x03: return (ic->stat >> 24) & 0xff;
+        case 0x04: return (ic->mask >> 0 ) & 0xff;
+        case 0x05: return (ic->mask >> 8 ) & 0xff;
+        case 0x06: return (ic->mask >> 16) & 0xff;
+        case 0x07: return (ic->mask >> 24) & 0xff;
+    }
 
     return 0x0;
 }
@@ -72,12 +77,10 @@ void psx_ic_write32(psx_ic_t* ic, uint32_t offset, uint32_t value) {
 
 void psx_ic_write16(psx_ic_t* ic, uint32_t offset, uint16_t value) {
     switch (offset) {
-        case 0x00: ic->stat &= (uint32_t)value; break;
-        case 0x04: ic->mask &= 0xffff0000; ic->mask |= (uint32_t)value; break;
-
-        default: {
-            
-        } break;
+        case 0x00: ic->stat &= ((uint32_t)value) << 0 ; break;
+        case 0x02: ic->stat &= ((uint32_t)value) << 16; break;
+        case 0x04: ic->mask  = ((uint32_t)value) << 0 ; break;
+        case 0x06: ic->mask  = ((uint32_t)value) << 16; break;
     }
 
     // Emulate acknowledge
@@ -87,9 +90,21 @@ void psx_ic_write16(psx_ic_t* ic, uint32_t offset, uint16_t value) {
 }
 
 void psx_ic_write8(psx_ic_t* ic, uint32_t offset, uint8_t value) {
-    printf("Unhandled 8-bit IC write at offset %08x (%02x)\n", offset, value);
+    switch (offset) {
+        case 0x00: ic->stat &= ((uint32_t)value) << 0 ; break;
+        case 0x01: ic->stat &= ((uint32_t)value) << 8 ; break;
+        case 0x02: ic->stat &= ((uint32_t)value) << 16; break;
+        case 0x03: ic->stat &= ((uint32_t)value) << 24; break;
+        case 0x04: ic->mask  = ((uint32_t)value) << 0 ; break;
+        case 0x05: ic->mask  = ((uint32_t)value) << 8 ; break;
+        case 0x06: ic->mask  = ((uint32_t)value) << 16; break;
+        case 0x07: ic->mask  = ((uint32_t)value) << 24; break;
+    }
 
-    exit(1);
+    // Emulate acknowledge
+    if (!(ic->stat & ic->mask)) {
+        ic->cpu->cop0_r[COP0_CAUSE] &= ~SR_IM2;
+    }
 }
 
 void psx_ic_irq(psx_ic_t* ic, int id) {

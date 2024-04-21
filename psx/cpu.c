@@ -326,7 +326,7 @@ void psx_cpu_exception(psx_cpu_t* cpu, uint32_t cause) {
         cpu->cop0_r[COP0_CAUSE] |= 0x80000000;
     }
 
-    if ((cause == CAUSE_INT) && ((cpu->cop0_r[COP0_EPC] & 0xfe000000) == 0x4a000000))
+    if ((cause == CAUSE_INT) && ((cpu->opcode & 0xfe000000) == 0x4a000000))
         cpu->cop0_r[COP0_EPC] += 4;
 
     // Do exception stack push
@@ -629,18 +629,45 @@ void psx_cpu_i_lh(psx_cpu_t* cpu) {
 void psx_cpu_i_lwl(psx_cpu_t* cpu) {
     TRACE_M("lwl");
 
-    uint32_t addr = cpu->r[S] + IMM16S;
+    uint32_t rt = T;
+    uint32_t s = cpu->r[S];
+    uint32_t t = cpu->r[rt];
 
-    uint32_t aligned = psx_bus_read32(cpu->bus, addr & ~0x3);
+    DO_PENDING_LOAD;
 
-    switch (addr & 0x3) {
-        case 0: cpu->load_v = (cpu->load_v & 0x00ffffff) | (aligned << 24); break;
-        case 1: cpu->load_v = (cpu->load_v & 0x0000ffff) | (aligned << 16); break;
-        case 2: cpu->load_v = (cpu->load_v & 0x000000ff) | (aligned << 8 ); break;
-        case 3: cpu->load_v =                               aligned       ; break;
-    }
+    uint32_t addr = s + IMM16S;
+    uint32_t aligned_addr = addr & 0xFFFFFFFC;
+    uint32_t aligned_load = r3000_read32(cpu, aligned_addr);
 
-    cpu->load_d = T;
+    if (rt == cpu->load_d)
+        t = cpu->load_v;
+
+    int shift = (int)((addr & 0x3) << 3);
+    uint32_t mask = (uint32_t)0x00FFFFFF >> shift;
+    uint32_t value = (t & mask) | (aligned_load << (24 - shift)); 
+
+    cpu->load_d = rt;
+    cpu->load_v = value;
+
+    // uint32_t addr = cpu->r[S] + IMM16S;
+
+    // uint32_t aligned = psx_bus_read32(cpu->bus, addr & ~0x3);
+
+    // printf("aligned=%08x load_v=%08x addr=%08x prev=%08x\n",
+    //     aligned,
+    //     cpu->load_v,
+    //     addr,
+    //     psx_bus_read32(cpu->bus, addr + 1)
+    // );
+
+    // switch (addr & 0x3) {
+    //     case 3: cpu->load_v = (cpu->load_v & 0x00ffffff) | (aligned << 24); break;
+    //     case 2: cpu->load_v = (cpu->load_v & 0x0000ffff) | (aligned << 16); break;
+    //     case 1: cpu->load_v = (cpu->load_v & 0x000000ff) | (aligned << 8 ); break;
+    //     case 0: cpu->load_v =                               aligned       ; break;
+    // }
+
+    // cpu->load_d = T;
 }
 
 void psx_cpu_i_lw(psx_cpu_t* cpu) {
@@ -689,18 +716,38 @@ void psx_cpu_i_lhu(psx_cpu_t* cpu) {
 void psx_cpu_i_lwr(psx_cpu_t* cpu) {
     TRACE_M("lwr");
 
-    uint32_t addr = cpu->r[S] + IMM16S;
+    uint32_t rt = T;
+    uint32_t s = cpu->r[S];
+    uint32_t t = cpu->r[rt];
 
-    uint32_t aligned = psx_bus_read32(cpu->bus, addr & ~0x3);
+    DO_PENDING_LOAD;
 
-    switch (addr & 0x3) {
-        case 0: cpu->load_v =                               aligned       ; break;
-        case 1: cpu->load_v = (cpu->load_v & 0xff000000) | (aligned >> 8 ); break;
-        case 2: cpu->load_v = (cpu->load_v & 0xffff0000) | (aligned >> 16); break;
-        case 3: cpu->load_v = (cpu->load_v & 0xffffff00) | (aligned >> 24); break;
-    }
+    uint32_t addr = s + IMM16S;
+    uint32_t aligned_addr = addr & 0xFFFFFFFC;
+    uint32_t aligned_load = r3000_read32(cpu, aligned_addr);
 
-    cpu->load_d = T;
+    if (rt == cpu->load_d)
+        t = cpu->load_v;
+
+    int shift = (int)((addr & 0x3) << 3);
+    uint32_t mask = 0xFFFFFF00 << (24 - shift);
+    uint32_t value = (t & mask) | (aligned_load >> shift); 
+
+    cpu->load_d = rt;
+    cpu->load_v = value;
+
+    // uint32_t addr = cpu->r[S] + IMM16S;
+
+    // uint32_t aligned = psx_bus_read32(cpu->bus, addr & ~0x3);
+
+    // switch (addr & 0x3) {
+    //     case 0: cpu->load_v =                               aligned       ; break;
+    //     case 1: cpu->load_v = (cpu->load_v & 0xff000000) | (aligned >> 8 ); break;
+    //     case 2: cpu->load_v = (cpu->load_v & 0xffff0000) | (aligned >> 16); break;
+    //     case 3: cpu->load_v = (cpu->load_v & 0xffffff00) | (aligned >> 24); break;
+    // }
+
+    // cpu->load_d = T;
 }
 
 void psx_cpu_i_sb(psx_cpu_t* cpu) {
@@ -1729,6 +1776,60 @@ void psx_gte_i_invalid(psx_cpu_t* cpu) {
     R_SX2 = gte_clamp_sxy(cpu, 1, (gte_clamp_mac0(cpu, (int64_t)((int32_t)R_OFX) + ((int64_t)R_IR1 * div)) >> 16)); \
     R_SY2 = gte_clamp_sxy(cpu, 2, (gte_clamp_mac0(cpu, (int64_t)((int32_t)R_OFY) + ((int64_t)R_IR2 * div)) >> 16)); }
 
+#define DPCT1 { \
+    R_FLAG = 0; \
+    int64_t mac1 = gte_clamp_mac(cpu, 1, (((int64_t)R_RFC) << 12) - (((int64_t)cpu->cop2_dr.rgb[0].c[0]) << 16)); \
+    int64_t mac2 = gte_clamp_mac(cpu, 2, (((int64_t)R_GFC) << 12) - (((int64_t)cpu->cop2_dr.rgb[0].c[1]) << 16)); \
+    int64_t mac3 = gte_clamp_mac(cpu, 3, (((int64_t)R_BFC) << 12) - (((int64_t)cpu->cop2_dr.rgb[0].c[2]) << 16)); \
+    int64_t ir1 = gte_clamp_ir(cpu, 1, mac1, 0); \
+    int64_t ir2 = gte_clamp_ir(cpu, 2, mac2, 0); \
+    int64_t ir3 = gte_clamp_ir(cpu, 3, mac3, 0); \
+    R_MAC1 = gte_clamp_mac(cpu, 1, (((int64_t)cpu->cop2_dr.rgb[0].c[0]) << 16) + (R_IR0 * ir1)); \
+    R_MAC2 = gte_clamp_mac(cpu, 2, (((int64_t)cpu->cop2_dr.rgb[0].c[1]) << 16) + (R_IR0 * ir2)); \
+    R_MAC3 = gte_clamp_mac(cpu, 3, (((int64_t)cpu->cop2_dr.rgb[0].c[2]) << 16) + (R_IR0 * ir3)); \
+    R_IR1 = gte_clamp_ir(cpu, 1, R_MAC1, cpu->gte_lm); \
+    R_IR2 = gte_clamp_ir(cpu, 2, R_MAC2, cpu->gte_lm); \
+    R_IR3 = gte_clamp_ir(cpu, 3, R_MAC3, cpu->gte_lm); \
+    R_RGB0 = R_RGB1; \
+    R_RGB1 = R_RGB2; \
+    R_CD2 = R_CODE; \
+    R_RC2 = gte_clamp_rgb(cpu, 1, R_MAC1 >> 4); \
+    R_GC2 = gte_clamp_rgb(cpu, 2, R_MAC2 >> 4); \
+    R_BC2 = gte_clamp_rgb(cpu, 3, R_MAC3 >> 4); }
+
+#define NCCS(i) { \
+    R_FLAG = 0; \
+    int64_t vx = (int64_t)((int16_t)cpu->cop2_dr.v[i].p[0]); \
+    int64_t vy = (int64_t)((int16_t)cpu->cop2_dr.v[i].p[1]); \
+    int64_t vz = (int64_t)cpu->cop2_dr.v[i].z; \
+    R_MAC1 = (int)(gte_clamp_mac(cpu, 1, (int64_t)R_L11 * vx + R_L12 * vy + R_L13 * vz)); \
+    R_MAC2 = (int)(gte_clamp_mac(cpu, 2, (int64_t)R_L21 * vx + R_L22 * vy + R_L23 * vz)); \
+    R_MAC3 = (int)(gte_clamp_mac(cpu, 3, (int64_t)R_L31 * vx + R_L32 * vy + R_L33 * vz)); \
+    R_IR1 = gte_clamp_ir(cpu, 1, R_MAC1, cpu->gte_lm); \
+    R_IR2 = gte_clamp_ir(cpu, 2, R_MAC2, cpu->gte_lm); \
+    R_IR3 = gte_clamp_ir_z(cpu, cpu->s_mac3, cpu->gte_sf, cpu->gte_lm); \
+    R_MAC1 = (int)(gte_clamp_mac(cpu, 1, gte_clamp_mac(cpu, 1, gte_clamp_mac(cpu, 1, (long)R_RBK * 0x1000 + R_LR1 * R_IR1) + (long)R_LG1 * R_IR2) + (long)R_LB1 * R_IR3)); \
+    R_MAC2 = (int)(gte_clamp_mac(cpu, 2, gte_clamp_mac(cpu, 2, gte_clamp_mac(cpu, 2, (long)R_GBK * 0x1000 + R_LR2 * R_IR1) + (long)R_LG2 * R_IR2) + (long)R_LB2 * R_IR3)); \
+    R_MAC3 = (int)(gte_clamp_mac(cpu, 3, gte_clamp_mac(cpu, 3, gte_clamp_mac(cpu, 3, (long)R_BBK * 0x1000 + R_LR3 * R_IR1) + (long)R_LG3 * R_IR2) + (long)R_LB3 * R_IR3)); \
+    R_IR1 = gte_clamp_ir(cpu, 1, R_MAC1, cpu->gte_lm); \
+    R_IR2 = gte_clamp_ir(cpu, 2, R_MAC2, cpu->gte_lm); \
+    R_IR3 = gte_clamp_ir_z(cpu, cpu->s_mac3, cpu->gte_sf, cpu->gte_lm); \
+    R_MAC1 = (int)gte_clamp_mac(cpu, 1, (R_RGB0 * R_IR1) << 4); \
+    R_MAC2 = (int)gte_clamp_mac(cpu, 2, (R_RGB1 * R_IR2) << 4); \
+    R_MAC3 = (int)gte_clamp_mac(cpu, 3, (R_RGB2 * R_IR3) << 4); \
+    R_MAC1 = (int)gte_clamp_mac(cpu, 1, R_MAC1); \
+    R_MAC2 = (int)gte_clamp_mac(cpu, 2, R_MAC2); \
+    R_MAC3 = (int)gte_clamp_mac(cpu, 3, R_MAC3); \
+    R_RGB0 = R_RGB1; \
+    R_RGB1 = R_RGB2; \
+    R_CD2 = R_CODE; \
+    R_RC2 = gte_clamp_rgb(cpu, 1, R_MAC1 >> 4); \
+    R_GC2 = gte_clamp_rgb(cpu, 2, R_MAC2 >> 4); \
+    R_BC2 = gte_clamp_rgb(cpu, 3, R_MAC3 >> 4); \
+    R_IR1 = gte_clamp_ir(cpu, 1, R_MAC1, cpu->gte_lm); \
+    R_IR2 = gte_clamp_ir(cpu, 2, R_MAC2, cpu->gte_lm); \
+    R_IR3 = gte_clamp_ir_z(cpu, cpu->s_mac3, cpu->gte_sf, cpu->gte_lm); }
+
 void psx_gte_i_rtps(psx_cpu_t* cpu) {
     GTE_RTP_DQ(0);
 }
@@ -1962,27 +2063,27 @@ void psx_gte_i_ncds(psx_cpu_t* cpu) {
 }
 
 void psx_gte_i_cdp(psx_cpu_t* cpu) {
-    log_fatal("cdp: Unimplemented GTE instruction");
+    printf("cdp: Unimplemented GTE instruction\n");
 }
 
 void psx_gte_i_ncdt(psx_cpu_t* cpu) {
-    log_fatal("ncdt: Unimplemented GTE instruction");
+    printf("ncdt: Unimplemented GTE instruction\n");
 }
 
 void psx_gte_i_nccs(psx_cpu_t* cpu) {
-    log_fatal("nccs: Unimplemented GTE instruction");
+    NCCS(0);
 }
 
 void psx_gte_i_cc(psx_cpu_t* cpu) {
-    log_fatal("cc: Unimplemented GTE instruction");
+    printf("cc: Unimplemented GTE instruction\n");
 }
 
 void psx_gte_i_ncs(psx_cpu_t* cpu) {
-    log_fatal("ncs: Unimplemented GTE instruction");
+    printf("ncs: Unimplemented GTE instruction\n");
 }
 
 void psx_gte_i_nct(psx_cpu_t* cpu) {
-    log_fatal("nct: Unimplemented GTE instruction");
+    printf("nct: Unimplemented GTE instruction\n");
 }
 
 void psx_gte_i_sqr(psx_cpu_t* cpu) {
@@ -1998,11 +2099,13 @@ void psx_gte_i_sqr(psx_cpu_t* cpu) {
 }
 
 void psx_gte_i_dcpl(psx_cpu_t* cpu) {
-    log_fatal("dpcl: Unimplemented GTE instruction");
+    printf("dpcl: Unimplemented GTE instruction\n");
 }
 
 void psx_gte_i_dpct(psx_cpu_t* cpu) {
-    log_fatal("dpct: Unimplemented GTE instruction");
+    DPCT1;
+    DPCT1;
+    DPCT1;
 }
 
 void psx_gte_i_avsz3(psx_cpu_t* cpu) {
@@ -2064,7 +2167,9 @@ void psx_gte_i_gpl(psx_cpu_t* cpu) {
 }
 
 void psx_gte_i_ncct(psx_cpu_t* cpu) {
-    log_fatal("ncct: Unimplemented GTE instruction");
+    NCCS(0);
+    NCCS(1);
+    NCCS(2);
 }
 
 #undef R_R0

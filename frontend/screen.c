@@ -130,6 +130,8 @@ void psxe_screen_toggle_debug_mode(psxe_screen_t* screen) {
     psxe_gpu_dmode_event_cb(screen->psx->gpu);
 }
 
+// int frame = 0;
+
 void psxe_screen_update(psxe_screen_t* screen) {
     // void* vram = psx_get_vram(screen->psx);
 
@@ -148,6 +150,12 @@ void psxe_screen_update(psxe_screen_t* screen) {
 
     void* display_buf = screen->debug_mode ?
         psx_get_vram(screen->psx) : psx_get_display_buffer(screen->psx);
+
+    // if (screen->texture_height == 240) {
+    //     display_buf = screen->psx->gpu->vram + (screen->psx->gpu->disp_x + ((frame * 256) * 1024));
+
+    //     frame ^= 1;
+    // }
 
     SDL_UpdateTexture(screen->texture, NULL, display_buf, PSX_GPU_FB_STRIDE);
     SDL_RenderClear(screen->renderer);

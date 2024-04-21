@@ -78,10 +78,11 @@ uint32_t psx_dma_read32(psx_dma_t* dma, uint32_t offset) {
 uint16_t psx_dma_read16(psx_dma_t* dma, uint32_t offset) {
     switch (offset) {
         case 0x70: return dma->dpcr;
-        case 0x74: return dma->dicr;
+        case 0x74: return dma->dicr & 0xffff;
+        case 0x76: return dma->dicr >> 16;        
 
         default: {
-            log_error("Unhandled 16-bit DMA read at offset %08x", offset);
+            printf("Unhandled 16-bit DMA read at offset %08x\n", offset);
 
             return 0x0;
         }
@@ -91,14 +92,29 @@ uint16_t psx_dma_read16(psx_dma_t* dma, uint32_t offset) {
 uint8_t psx_dma_read8(psx_dma_t* dma, uint32_t offset) {
     switch (offset) {
         case 0x70: return dma->dpcr;
-        case 0x74: return dma->dicr;
+        case 0x74: return (dma->dicr >> 0) & 0xff;
+        case 0x75: return (dma->dicr >> 8) & 0xff;
+        case 0x76: return (dma->dicr >> 16) & 0xff;
+        case 0x77: return (dma->dicr >> 24) & 0xff;
 
         default: {
-            log_error("Unhandled 8-bit DMA read at offset %08x", offset);
+            printf("Unhandled 8-bit DMA read at offset %08x\n", offset);
 
             return 0x0;
         }
     }
+}
+
+void dma_write_dicr(psx_dma_t* dma, uint32_t value) {
+    uint32_t ack = value & DICR_FLAGS;
+    uint32_t flags = dma->dicr & DICR_FLAGS;
+
+    flags &= (~ack);
+    flags &= DICR_FLAGS;
+
+    dma->dicr &= 0x80000000;
+    dma->dicr |= flags;
+    dma->dicr |= value & 0xffffff;
 }
 
 void psx_dma_write32(psx_dma_t* dma, uint32_t offset, uint32_t value) {
@@ -116,15 +132,7 @@ void psx_dma_write32(psx_dma_t* dma, uint32_t offset, uint32_t value) {
         switch (offset) {
             case 0x70: log_error("DMA control write %08x", value); dma->dpcr = value; break;
             case 0x74: {
-                uint32_t ack = value & DICR_FLAGS;
-                uint32_t flags = dma->dicr & DICR_FLAGS;
-
-                flags &= (~ack);
-                flags &= DICR_FLAGS;
-
-                dma->dicr &= 0x80000000;
-                dma->dicr |= flags;
-                dma->dicr |= value & 0xffffff;
+                dma_write_dicr(dma, value);
             } break;
 
             default: {
@@ -136,6 +144,8 @@ void psx_dma_write32(psx_dma_t* dma, uint32_t offset, uint32_t value) {
 
 void psx_dma_write16(psx_dma_t* dma, uint32_t offset, uint16_t value) {
     switch (offset) {
+        case 0x74: dma_write_dicr(dma, ((uint32_t)value) << 0);
+        case 0x76: dma_write_dicr(dma, ((uint32_t)value) << 16);
         default: {
             log_fatal("Unhandled 16-bit DMA write at offset %08x (%04x)", offset, value);
 
@@ -146,6 +156,11 @@ void psx_dma_write16(psx_dma_t* dma, uint32_t offset, uint16_t value) {
 
 void psx_dma_write8(psx_dma_t* dma, uint32_t offset, uint8_t value) {
     switch (offset) {
+        // DICR 8-bit???
+        case 0x74: dma_write_dicr(dma, ((uint32_t)value) << 0); break;
+        case 0x75: dma_write_dicr(dma, ((uint32_t)value) << 8); break;
+        case 0x76: dma_write_dicr(dma, ((uint32_t)value) << 16); break;
+        case 0x77: dma_write_dicr(dma, ((uint32_t)value) << 24); break;
         default: {
             log_fatal("Unhandled 8-bit DMA write at offset %08x (%02x)", offset, value);
 

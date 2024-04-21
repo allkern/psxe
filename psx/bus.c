@@ -68,6 +68,8 @@ uint32_t psx_bus_read32(psx_bus_t* bus, uint32_t addr) {
     return 0x00000000;
 }
 
+static uint16_t sio_ctrl;
+
 uint16_t psx_bus_read16(psx_bus_t* bus, uint32_t addr) {
     bus->access_cycles = 2;
 
@@ -96,7 +98,13 @@ uint16_t psx_bus_read16(psx_bus_t* bus, uint32_t addr) {
     HANDLE_READ(pad, 16);
     HANDLE_READ(mdec, 16);
 
-    log_fatal("Unhandled 16-bit read from %08x:%08x", vaddr, addr);
+    if (addr == 0x1f80105a)
+        return sio_ctrl;
+
+    if (addr == 0x1f801054)
+        return 0x05;
+
+    printf("Unhandled 16-bit read from %08x:%08x\n", vaddr, addr);
 
     // exit(1);
 
@@ -127,7 +135,7 @@ uint8_t psx_bus_read8(psx_bus_t* bus, uint32_t addr) {
     HANDLE_READ(pad, 8);
     HANDLE_READ(mdec, 8);
 
-    log_fatal("Unhandled 8-bit read from %08x:%08x", vaddr, addr);
+    // printf("Unhandled 8-bit read from %08x:%08x\n", vaddr, addr);
 
     //exit(1);
 
@@ -162,10 +170,11 @@ void psx_bus_write32(psx_bus_t* bus, uint32_t addr, uint32_t value) {
     HANDLE_WRITE(pad, 32);
     HANDLE_WRITE(mdec, 32);
 
-    log_fatal("Unhandled 32-bit write to %08x:%08x (%08x)", vaddr, addr, value);
+    printf("Unhandled 32-bit write to %08x:%08x (%08x)\n", vaddr, addr, value);
 
     //exit(1);
 }
+
 
 void psx_bus_write16(psx_bus_t* bus, uint32_t addr, uint16_t value) {
     bus->access_cycles = 0;
@@ -195,7 +204,9 @@ void psx_bus_write16(psx_bus_t* bus, uint32_t addr, uint16_t value) {
     HANDLE_WRITE(pad, 16);
     HANDLE_WRITE(mdec, 16);
 
-    log_fatal("Unhandled 16-bit write to %08x:%08x (%04x)", vaddr, addr, value);
+    // if (addr == 0x1f80105a) { sio_ctrl = value; return; }
+
+    printf("Unhandled 16-bit write to %08x:%08x (%04x)\n", vaddr, addr, value);
 
     //exit(1);
 }
@@ -224,7 +235,7 @@ void psx_bus_write8(psx_bus_t* bus, uint32_t addr, uint8_t value) {
     HANDLE_WRITE(pad, 8);
     HANDLE_WRITE(mdec, 8);
 
-    log_fatal("Unhandled 8-bit write to %08x:%08x (%02x)", vaddr, addr, value);
+    printf("Unhandled 8-bit write to %08x:%08x (%02x)\n", vaddr, addr, value);
 
     //exit(1);
 }

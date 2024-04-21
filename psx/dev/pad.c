@@ -144,7 +144,7 @@ uint32_t psx_pad_read32(psx_pad_t* pad, uint32_t offset) {
         case 14: return pad->baud;
     }
 
-    log_fatal("Unhandled 32-bit PAD read at offset %08x", offset);
+    printf("Unhandled 32-bit PAD read at offset %08x", offset);
 
     return 0x0;
 }
@@ -158,7 +158,7 @@ uint16_t psx_pad_read16(psx_pad_t* pad, uint32_t offset) {
         case 14: return pad->baud;
     }
 
-    log_fatal("Unhandled 16-bit PAD read at offset %08x", offset);
+    printf("Unhandled 16-bit PAD read at offset %08x", offset);
 
     return 0x0;
 }
@@ -172,7 +172,7 @@ uint8_t psx_pad_read8(psx_pad_t* pad, uint32_t offset) {
         case 14: return pad->baud & 0xff;
     }
 
-    log_fatal("Unhandled 8-bit PAD read at offset %08x", offset);
+    printf("Unhandled 8-bit PAD read at offset %08x", offset);
 
     return 0x0;
 }
@@ -185,7 +185,7 @@ void psx_pad_write32(psx_pad_t* pad, uint32_t offset, uint32_t value) {
         case 14: pad->baud = value & 0xffff; return;
     }
 
-    log_fatal("Unhandled 32-bit PAD write at offset %08x (%08x)", offset, value);
+    printf("Unhandled 32-bit PAD write at offset %08x (%08x)", offset, value);
 }
 
 void psx_pad_write16(psx_pad_t* pad, uint32_t offset, uint16_t value) {
@@ -196,7 +196,7 @@ void psx_pad_write16(psx_pad_t* pad, uint32_t offset, uint16_t value) {
         case 14: pad->baud = value; return;
     }
 
-    log_fatal("Unhandled 16-bit PAD write at offset %08x (%04x)", offset, value);
+    printf("Unhandled 16-bit PAD write at offset %08x (%04x)", offset, value);
 }
 
 void psx_pad_write8(psx_pad_t* pad, uint32_t offset, uint8_t value) {
@@ -207,7 +207,7 @@ void psx_pad_write8(psx_pad_t* pad, uint32_t offset, uint8_t value) {
         case 14: pad->baud = value; return;
     }
 
-    log_fatal("Unhandled 8-bit PAD write at offset %08x (%02x)", offset, value);
+    printf("Unhandled 8-bit PAD write at offset %08x (%02x)", offset, value);
 }
 
 void psx_pad_button_press(psx_pad_t* pad, int slot, uint16_t data) {

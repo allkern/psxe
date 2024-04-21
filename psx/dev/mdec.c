@@ -104,6 +104,9 @@ uint16_t* rl_decode_block(int16_t* blk, uint16_t* src, uint8_t* quant, int16_t* 
 
         n = *src;
 
+        if (k == 63)
+            break;
+
         ++src;
 
         k += ((n >> 10) & 0x3f) + 1;
@@ -329,13 +332,13 @@ uint32_t psx_mdec_read32(psx_mdec_t* mdec, uint32_t offset) {
 }
 
 uint16_t psx_mdec_read16(psx_mdec_t* mdec, uint32_t offset) {
-    log_fatal("Unhandled 16-bit MDEC read offset=%u", offset);
+    printf("Unhandled 16-bit MDEC read offset=%u\n", offset);
 
     exit(1);
 }
 
 uint8_t psx_mdec_read8(psx_mdec_t* mdec, uint32_t offset) {
-    log_fatal("Unhandled 8-bit MDEC read offset=%u", offset);
+    printf("Unhandled 8-bit MDEC read offset=%u\n", offset);
 
     exit(1);
 }
@@ -450,15 +453,15 @@ void psx_mdec_write32(psx_mdec_t* mdec, uint32_t offset, uint32_t value) {
         } break;
     }
 
-    log_fatal("32-bit MDEC write offset=%u, value=%08x", offset, value);
+    // log_fatal("32-bit MDEC write offset=%u, value=%08x", offset, value);
 }
 
 void psx_mdec_write16(psx_mdec_t* mdec, uint32_t offset, uint16_t value) {
-    log_fatal("Unhandled 16-bit MDEC write offset=%u, value=%04x", offset, value);
+    printf("Unhandled 16-bit MDEC write offset=%u, value=%04x\n", offset, value);
 }
 
 void psx_mdec_write8(psx_mdec_t* mdec, uint32_t offset, uint8_t value) {
-    log_fatal("Unhandled 8-bit MDEC write offset=%u, value=%02x", offset, value);
+    printf("Unhandled 8-bit MDEC write offset=%u, value=%02x\n", offset, value);
 }
 
 void psx_mdec_destroy(psx_mdec_t* mdec) {

@@ -114,7 +114,7 @@ uint32_t psx_gpu_read32(psx_gpu_t* gpu, uint32_t offset) {
 }
 
 uint16_t psx_gpu_read16(psx_gpu_t* gpu, uint32_t offset) {
-    log_fatal("Unhandled 16-bit GPU read at offset %08x", offset);
+    printf("Unhandled 16-bit GPU read at offset %08x\n", offset);
 
     return 0;
 
@@ -122,7 +122,7 @@ uint16_t psx_gpu_read16(psx_gpu_t* gpu, uint32_t offset) {
 }
 
 uint8_t psx_gpu_read8(psx_gpu_t* gpu, uint32_t offset) {
-    log_fatal("Unhandled 8-bit GPU read at offset %08x", offset);
+    printf("Unhandled 8-bit GPU read at offset %08x\n", offset);
 
     return 0;
 
@@ -1658,11 +1658,11 @@ void psx_gpu_write32(psx_gpu_t* gpu, uint32_t offset, uint32_t value) {
 }
 
 void psx_gpu_write16(psx_gpu_t* gpu, uint32_t offset, uint16_t value) {
-    log_warn("Unhandled 16-bit GPU write at offset %08x (%04x)", offset, value);
+    printf("Unhandled 16-bit GPU write at offset %08x (%04x)\n", offset, value);
 }
 
 void psx_gpu_write8(psx_gpu_t* gpu, uint32_t offset, uint8_t value) {
-    log_warn("Unhandled 8-bit GPU write at offset %08x (%02x)", offset, value);
+    printf("Unhandled 8-bit GPU write at offset %08x (%02x)\n", offset, value);
 }
 
 void psx_gpu_set_event_callback(psx_gpu_t* gpu, int event, psx_gpu_event_callback_t cb) {
@@ -1729,9 +1729,6 @@ void psx_gpu_update(psx_gpu_t* gpu, int cyc) {
         if (gpu->event_cb_table[GPU_EVENT_HBLANK_END])
             gpu->event_cb_table[GPU_EVENT_HBLANK_END](gpu);
 
-        //psx_ic_irq(gpu->ic, IC_SPU);
-        // psx_ic_irq(gpu->ic, IC_SPU);
-        
         gpu->cycles -= (float)GPU_CYCLES_PER_SCANL_NTSC;
     }
 }
