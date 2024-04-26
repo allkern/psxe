@@ -231,15 +231,15 @@ void cdrom_cmd_unimplemented(psx_cdrom_t* cdrom) {
 void cdrom_cmd_getstat(psx_cdrom_t* cdrom) {
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
-            if (cdrom->ongoing_read_command) {
-                cdrom->status |= STAT_BUSYSTS_MASK;
-                // printf("command=%02x\n", cdrom->ongoing_read_command);
-                cdrom->state = CD_STATE_SEND_RESP2;
-                cdrom->delayed_command = cdrom->ongoing_read_command;
-                cdrom->irq_delay = DELAY_1MS;
+            // if (cdrom->ongoing_read_command) {
+            //     cdrom->status |= STAT_BUSYSTS_MASK;
+            //     // printf("command=%02x\n", cdrom->ongoing_read_command);
+            //     cdrom->state = CD_STATE_SEND_RESP2;
+            //     cdrom->delayed_command = cdrom->ongoing_read_command;
+            //     cdrom->irq_delay = DELAY_1MS;
 
-                return;
-            }
+            //     return;
+            // }
 
             if (cdrom->pfifo_index) {
                 log_fatal("CdlGetStat: Expected exactly 0 parameters");

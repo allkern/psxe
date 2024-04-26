@@ -349,8 +349,13 @@ void gpu_render_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, 
     }
 }
 
+#define CLAMP(v, d, u) ((v) < (d)) ? (d) : (((v) >= (u)) ? (u) : (v))
+
 void gpu_render_rect(psx_gpu_t* gpu, rect_data_t data) {
     if ((data.v0.x >= 1024) || (data.v0.y >= 512))
+        return;
+
+    if ((data.v0.x <= -1024) || (data.v0.y <= -512))
         return;
 
     uint16_t width, height;
@@ -376,6 +381,11 @@ void gpu_render_rect(psx_gpu_t* gpu, rect_data_t data) {
     /* Calculate bounding box */
     int xmax = data.v0.x + width;
     int ymax = data.v0.y + height;
+
+    xmax = CLAMP(xmax, -1024, 1024);
+    ymax = CLAMP(ymax, -1024, 1024);
+    data.v0.x = CLAMP(data.v0.x, -1024, 1024);
+    data.v0.y = CLAMP(data.v0.y, -1024, 1024);
 
     int32_t xc = 0, yc = 0;
 

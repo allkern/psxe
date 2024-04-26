@@ -83,6 +83,7 @@ void psxe_cfg_load_defaults(psxe_config_t* cfg) {
     cfg->help_model = 0;
     cfg->help_region = 0;
     cfg->model = "scph1001";
+    cfg->scale = 3;
     cfg->psxe_version = STR(REP_VERSION);
     cfg->region = "ntsc";
     cfg->settings_path = NULL;
@@ -104,6 +105,7 @@ void psxe_cfg_load(psxe_config_t* cfg, int argc, const char* argv[]) {
     int log_level = 0;
     int quiet = 0;
     int console_source = 0;
+    int scale = 0;
     const char* settings_path = NULL;
     const char* bios = NULL;
     const char* bios_search = NULL;
@@ -133,6 +135,7 @@ void psxe_cfg_load(psxe_config_t* cfg, int argc, const char* argv[]) {
         OPT_INTEGER ('L', "log-level"     , &log_level     , "Set log level"),
         OPT_STRING  ('M', "model"         , &model         , "Specify console model (SPCH-XXXX)", NULL, 0, 0),
         OPT_STRING  ('r', "region"        , &region        , "Specify console region"),
+        OPT_INTEGER ('s', "scale"         , &scale         , "Display scaling factor", NULL, 0, 0),
         OPT_STRING  ('S', "settings-file" , &settings_path , "Specify settings file path", NULL, 0, 0),
         OPT_BOOLEAN ('q', "quiet"         , &quiet         , "Silence all logs (ignores -L)"),
         OPT_STRING  ('x', "exe"           , &exe           , "Launch a PS-X EXE file"),
@@ -280,6 +283,9 @@ void psxe_cfg_load(psxe_config_t* cfg, int argc, const char* argv[]) {
 
     if (exp_path)
         cfg->exp_path = exp_path;
+
+    if (scale)
+        cfg->scale = scale;
 }
 
 // To-do: Implement BIOS searching
