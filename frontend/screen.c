@@ -133,29 +133,24 @@ void psxe_screen_toggle_debug_mode(psxe_screen_t* screen) {
 // int frame = 0;
 
 void psxe_screen_update(psxe_screen_t* screen) {
-    // void* vram = psx_get_vram(screen->psx);
-
-    // if (screen->field & 2) {
-    //     for (int y = screen->field & 1; y < 512; y += 2) {
-    //         memcpy(
-    //             ((uint8_t*)screen->buf) + (y * PSX_GPU_FB_STRIDE),
-    //             ((uint8_t*)vram) + (y * PSX_GPU_FB_STRIDE),
-    //             PSX_GPU_FB_STRIDE
-    //         );
-    //     }
-    // }
-
-    // screen->field += 1;
-    // screen->field &= 3;
-
     void* display_buf = screen->debug_mode ?
         psx_get_vram(screen->psx) : psx_get_display_buffer(screen->psx);
 
-    // if (screen->texture_height == 240) {
-    //     display_buf = screen->psx->gpu->vram + (screen->psx->gpu->disp_x + ((frame * 256) * 1024));
-
-    //     frame ^= 1;
-    // }
+    // printf("res=(%u,%u) off=(%u,%u) disp=(%u,%u-%u,%u) draw=(%u,%u-%u,%u) vres=%u\n",
+    //     screen->texture_width,
+    //     screen->texture_height,
+    //     screen->psx->gpu->disp_x,
+    //     screen->psx->gpu->disp_y,
+    //     screen->psx->gpu->disp_x1,
+    //     screen->psx->gpu->disp_y1,
+    //     screen->psx->gpu->disp_x2,
+    //     screen->psx->gpu->disp_y2,
+    //     screen->psx->gpu->draw_x1,
+    //     screen->psx->gpu->draw_y1,
+    //     screen->psx->gpu->draw_x2,
+    //     screen->psx->gpu->draw_y2,
+    //     screen->psx->gpu->disp_y2 - screen->psx->gpu->disp_y1
+    // );
 
     SDL_UpdateTexture(screen->texture, NULL, display_buf, PSX_GPU_FB_STRIDE);
     SDL_RenderClear(screen->renderer);

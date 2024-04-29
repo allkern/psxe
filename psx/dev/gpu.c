@@ -221,6 +221,12 @@ void gpu_render_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, 
 
     for (int y = ymin; y < ymax; y++) {
         for (int x = xmin; x < xmax; x++) {
+            int bc = (x >= gpu->draw_x1) && (x <= gpu->draw_x2) &&
+                     (y >= gpu->draw_y1) && (y <= gpu->draw_y2);
+
+            if (!bc)
+                continue;
+
             p.x = x;
             p.y = y;
 
@@ -501,7 +507,10 @@ void plotLineLow(psx_gpu_t* gpu, int x0, int y0, int x1, int y1, uint16_t color)
     int y = y0;
 
     for (int x = x0; x < x1; x++) {
-        if ((x < 1024) && (y < 512) && (x >= 0) && (y >= 0))
+        int bc = (x >= gpu->draw_x1) && (x <= gpu->draw_x2) &&
+                 (y >= gpu->draw_y1) && (y <= gpu->draw_y2);
+
+        if ((x < 1024) && (y < 512) && (x >= 0) && (y >= 0) && bc)
             gpu->vram[x + (y * 1024)] = color;
 
         if (d > 0) {
@@ -525,8 +534,12 @@ void plotLineHigh(psx_gpu_t* gpu, int x0, int y0, int x1, int y1, uint16_t color
     int x = x0;
 
     for (int y = y0; y < y1; y++) {
-        if ((x < 1024) && (y < 512) && (x >= 0) && (y >= 0))
+        int bc = (x >= gpu->draw_x1) && (x <= gpu->draw_x2) &&
+                 (y >= gpu->draw_y1) && (y <= gpu->draw_y2);
+
+        if ((x < 1024) && (y < 512) && (x >= 0) && (y >= 0) && bc)
             gpu->vram[x + (y * 1024)] = color;
+
         if (d > 0) {
             x = x + xi;
             d += (2 * (dx - dy));
@@ -574,6 +587,12 @@ void gpu_render_flat_rectangle(psx_gpu_t* gpu, vertex_t v, uint32_t w, uint32_t 
 
     for (uint32_t y = ymin; y < ymax; y++) {
         for (uint32_t x = xmin; x < xmax; x++) {
+            int bc = (x >= gpu->draw_x1) && (x <= gpu->draw_x2) &&
+                     (y >= gpu->draw_y1) && (y <= gpu->draw_y2);
+
+            if (!bc)
+                continue;
+
             gpu->vram[x + (y * 1024)] = color;
         }
     }
@@ -1466,6 +1485,12 @@ void gpu_cmd_02(psx_gpu_t* gpu) {
 
                 for (uint32_t y = gpu->v0.y; y < (gpu->v0.y + gpu->ysiz); y++) {
                     for (uint32_t x = gpu->v0.x; x < (gpu->v0.x + gpu->xsiz); x++) {
+                        int bc = (x >= gpu->draw_x1) && (x <= gpu->draw_x2) &&
+                                 (y >= gpu->draw_y1) && (y <= gpu->draw_y2);
+
+                        if (!bc)
+                            continue;
+
                         if ((x < 1024) && (y < 512) && (x >= 0) && (y >= 0))
                             gpu->vram[x + (y * 1024)] = color;
                     }
@@ -1645,6 +1670,10 @@ void psx_gpu_write32(psx_gpu_t* gpu, uint32_t offset, uint32_t value) {
                 case 0x06: {
                     gpu->disp_x1 = value & 0xfff;
                     gpu->disp_x2 = (value >> 12) & 0xfff;
+                } break;
+                case 0x07: {
+                    gpu->disp_y1 = value & 0x1ff;
+                    gpu->disp_y2 = (value >> 10) & 0x1ff;
                 } break;
                 case 0x08:
                     gpu->display_mode = value & 0xffffff;

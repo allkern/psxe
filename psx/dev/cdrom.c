@@ -263,7 +263,7 @@ void cdrom_cmd_getstat(psx_cdrom_t* cdrom) {
             RESP_PUSH(
                 GETSTAT_MOTOR |
                 (cdrom->cdda_playing ? GETSTAT_PLAY : 0) |
-                // (cdrom->ongoing_read_command ? GETSTAT_READ : 0) |
+                (cdrom->ongoing_read_command ? GETSTAT_READ : 0) |
                 (cdrom->disc ? 0 : GETSTAT_TRAYOPEN)
             );
 
@@ -684,6 +684,43 @@ void cdrom_cmd_init(psx_cdrom_t* cdrom) {
             cdrom->delayed_command = CDL_NONE;
         } break;
     }
+}
+void cdrom_cmd_mute(psx_cdrom_t* cdrom) {
+    cdrom->delayed_command = CDL_NONE;
+
+    switch (cdrom->state) {
+        case CD_STATE_RECV_CMD: {
+            if (cdrom->pfifo_index) {
+                log_fatal("CdlMute: Expected exactly 0 parameters");
+
+                cdrom->irq_delay = DELAY_1MS;
+                cdrom->delayed_command = CDL_ERROR;
+                cdrom->state = CD_STATE_ERROR;
+                cdrom->error = ERR_PCOUNT;
+                cdrom->error_flags = GETSTAT_ERROR;
+
+                return;
+            }
+
+            cdrom->irq_delay = DELAY_1MS;
+            cdrom->delayed_command = CDL_MUTE;
+            cdrom->state = CD_STATE_SEND_RESP1;
+        } break;
+
+        case CD_STATE_SEND_RESP1: {
+            SET_BITS(ifr, IFR_INT, IFR_INT3);
+            RESP_PUSH(cdrom->stat);
+
+            if (cdrom->ongoing_read_command) {
+                cdrom->state = CD_STATE_SEND_RESP2;
+                cdrom->delayed_command = cdrom->ongoing_read_command;
+                cdrom->irq_delay = DELAY_1MS;
+            } else {
+                cdrom->delayed_command = CDL_NONE;
+                cdrom->state = CD_STATE_RECV_CMD;
+            }
+        } break;
+    } 
 }
 void cdrom_cmd_unmute(psx_cdrom_t* cdrom) {
     cdrom->delayed_command = CDL_NONE;
@@ -1455,7 +1492,7 @@ const char* g_psx_cdrom_command_names[] = {
     "CdlStop",
     "CdlPause",
     "CdlInit",
-    "CdlUnimplemented",
+    "CdlMute",
     "CdlUnmute",
     "CdlSetfilter",
     "CdlSetmode",
@@ -1490,7 +1527,7 @@ cdrom_cmd_t g_psx_cdrom_command_table[] = {
     cdrom_cmd_stop,
     cdrom_cmd_pause,
     cdrom_cmd_init,
-    cdrom_cmd_unmute,
+    cdrom_cmd_mute,
     cdrom_cmd_unmute,
     cdrom_cmd_setfilter,
     cdrom_cmd_setmode,

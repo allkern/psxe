@@ -17,6 +17,7 @@
 // Use this when updating your texture
 #define PSX_GPU_FB_STRIDE 2048
 
+// 0x100000 * 2
 #define PSX_GPU_VRAM_SIZE (0x100000)
 
 #define PSX_GPU_CLOCK_NTSC 53693175 // 53.693175 MHz

@@ -633,7 +633,7 @@ void psx_cpu_i_lwl(psx_cpu_t* cpu) {
     uint32_t s = cpu->r[S];
     uint32_t t = cpu->r[rt];
 
-    DO_PENDING_LOAD;
+    uint32_t tp = t;
 
     uint32_t addr = s + IMM16S;
     uint32_t load = psx_bus_read32(cpu->bus, addr & 0xfffffffc);
@@ -641,12 +641,18 @@ void psx_cpu_i_lwl(psx_cpu_t* cpu) {
     if (rt == cpu->load_d)
         t = cpu->load_v;
 
+    DO_PENDING_LOAD;
+
     int shift = (int)((addr & 0x3) << 3);
     uint32_t mask = (uint32_t)0x00FFFFFF >> shift;
     uint32_t value = (t & mask) | (load << (24 - shift)); 
 
     cpu->load_d = rt;
     cpu->load_v = value;
+
+    // printf("lwl rt=%u s=%08x t=%08x addr=%08x load=%08x (%08x) tp=%08x shift=%u mask=%08x value=%08x\n",
+    //     rt, s, t, addr, load, addr & 0xfffffffc, tp, shift, mask, value
+    // );
 }
 
 void psx_cpu_i_lw(psx_cpu_t* cpu) {
@@ -699,13 +705,13 @@ void psx_cpu_i_lwr(psx_cpu_t* cpu) {
     uint32_t s = cpu->r[S];
     uint32_t t = cpu->r[rt];
 
-    DO_PENDING_LOAD;
-
     uint32_t addr = s + IMM16S;
     uint32_t load = psx_bus_read32(cpu->bus, addr & 0xfffffffc);
 
     if (rt == cpu->load_d)
         t = cpu->load_v;
+
+    DO_PENDING_LOAD;
 
     int shift = (int)((addr & 0x3) << 3);
     uint32_t mask = 0xFFFFFF00 << (24 - shift);
@@ -713,6 +719,10 @@ void psx_cpu_i_lwr(psx_cpu_t* cpu) {
 
     cpu->load_d = rt;
     cpu->load_v = value;
+
+    // printf("lwl rt=%u s=%08x t=%08x addr=%08x load=%08x (%08x) tp=%08x shift=%u mask=%08x value=%08x\n",
+    //     rt, s, t, addr, load, addr & 0xfffffffc, tp, shift, mask, value
+    // );
 }
 
 void psx_cpu_i_sb(psx_cpu_t* cpu) {
@@ -1855,6 +1865,24 @@ void psx_gte_i_invalid(psx_cpu_t* cpu) {
     R_GC2 = gte_clamp_rgb(cpu, 2, R_MAC2 >> 4); \
     R_BC2 = gte_clamp_rgb(cpu, 3, R_MAC3 >> 4); }
 
+void gte_interpolate_color(psx_cpu_t* cpu, uint64_t mac1, uint64_t mac2, uint64_t mac3) {
+    R_MAC1 = (int)(gte_clamp_mac(cpu, 1, ((long)R_RFC << 12) - mac1));
+    R_MAC2 = (int)(gte_clamp_mac(cpu, 2, ((long)R_GFC << 12) - mac2));
+    R_MAC3 = (int)(gte_clamp_mac(cpu, 3, ((long)R_BFC << 12) - mac3));
+
+    R_IR1 = gte_clamp_ir(cpu, 1, R_MAC1, cpu->gte_lm);
+    R_IR2 = gte_clamp_ir(cpu, 2, R_MAC2, cpu->gte_lm);
+    R_IR3 = gte_clamp_ir_z(cpu, cpu->s_mac3, cpu->gte_sf, cpu->gte_lm);
+
+    R_MAC1 = (int)(gte_clamp_mac(cpu, 1, ((long)R_IR1 * R_IR0) + mac1));
+    R_MAC2 = (int)(gte_clamp_mac(cpu, 2, ((long)R_IR2 * R_IR0) + mac2));
+    R_MAC3 = (int)(gte_clamp_mac(cpu, 3, ((long)R_IR3 * R_IR0) + mac3));
+
+    R_IR1 = gte_clamp_ir(cpu, 1, R_MAC1, cpu->gte_lm);
+    R_IR2 = gte_clamp_ir(cpu, 2, R_MAC2, cpu->gte_lm);
+    R_IR3 = gte_clamp_ir_z(cpu, cpu->s_mac3, cpu->gte_sf, cpu->gte_lm);
+}
+
 void psx_gte_i_rtps(psx_cpu_t* cpu) {
     GTE_RTP_DQ(0);
 }
@@ -2088,7 +2116,18 @@ void psx_gte_i_sqr(psx_cpu_t* cpu) {
 }
 
 void psx_gte_i_dcpl(psx_cpu_t* cpu) {
-    printf("dpcl: Unimplemented GTE instruction\n");
+    R_MAC1 = (int)(gte_clamp_mac(cpu, 1, R_RC * R_IR1) << 4);
+    R_MAC2 = (int)(gte_clamp_mac(cpu, 2, R_GC * R_IR2) << 4);
+    R_MAC3 = (int)(gte_clamp_mac(cpu, 3, R_BC * R_IR3) << 4);
+
+    gte_interpolate_color(cpu, R_MAC1, R_MAC2, R_MAC3);
+
+    R_RGB0 = R_RGB1;
+    R_RGB1 = R_RGB2;
+    R_CD2 = R_CODE;
+    R_RC2 = gte_clamp_rgb(cpu, 1, R_MAC1 >> 4);
+    R_GC2 = gte_clamp_rgb(cpu, 2, R_MAC2 >> 4);
+    R_BC2 = gte_clamp_rgb(cpu, 3, R_MAC3 >> 4);
 }
 
 void psx_gte_i_dpct(psx_cpu_t* cpu) {

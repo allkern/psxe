@@ -307,6 +307,7 @@ void cdrom_cmd_motoron(psx_cdrom_t*);
 void cdrom_cmd_stop(psx_cdrom_t*);
 void cdrom_cmd_pause(psx_cdrom_t*);
 void cdrom_cmd_init(psx_cdrom_t*);
+void cdrom_cmd_mute(psx_cdrom_t*);
 void cdrom_cmd_unmute(psx_cdrom_t*);
 void cdrom_cmd_setfilter(psx_cdrom_t*);
 void cdrom_cmd_setmode(psx_cdrom_t*);
