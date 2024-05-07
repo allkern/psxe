@@ -1,7 +1,7 @@
 #ifndef SCREEN_H
 #define SCREEN_H
 
-#include "psx.h"
+#include "psx/psx.h"
 #include "common.h"
 
 #include <string.h>
