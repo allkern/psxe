@@ -5,7 +5,6 @@
 
 #include "argparse.h"
 #include "toml.h"
-#include "psx/log.h"
 
 typedef struct {
     int use_args;

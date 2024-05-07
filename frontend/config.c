@@ -4,6 +4,8 @@
 #include "config.h"
 #include "common.h"
 
+#include "log.h"
+
 static const char* g_version_text =
 #ifdef _WIN32
     "psxe.exe (" STR(OS_INFO) ") " STR(REP_VERSION) "-" STR(REP_COMMIT_HASH) "\n"

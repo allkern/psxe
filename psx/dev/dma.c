@@ -346,6 +346,7 @@ void psx_dma_do_cdrom(psx_dma_t* dma) {
     if (!size) {
         printf("0 sized CDROM DMA\n");
 
+        return;
         exit(1);
     }
 

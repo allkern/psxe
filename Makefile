@@ -24,6 +24,7 @@ bin/psxe frontend/main.c:
 
 	gcc $(SOURCES) -o bin/psxe \
 		-I"." \
+		-I"psx" \
 		-DOS_INFO="$(OS_INFO)" \
 		-DREP_VERSION="$(VERSION_TAG)" \
 		-DREP_COMMIT_HASH="$(COMMIT_HASH)" \

@@ -19,9 +19,15 @@ void psxi_sda_init(psxi_sda_t* sda, uint16_t model) {
 
     sda->tx_data = 0xff;
     sda->tx_data_ready = 1;
+    sda->prev_model = model;
     sda->model = model;
     sda->state = SDA_STATE_TX_HIZ;
     sda->sw = 0xffff;
+    sda->sa_mode = 0;
+    sda->adc0 = 0x80;
+    sda->adc1 = 0x80;
+    sda->adc2 = 0x80;
+    sda->adc3 = 0x80;
 }
 
 uint32_t psxi_sda_read(void* udata) {
@@ -33,14 +39,37 @@ uint32_t psxi_sda_read(void* udata) {
         case SDA_STATE_TX_IDH: sda->tx_data = 0x5a; break;
         case SDA_STATE_TX_SWL: sda->tx_data = sda->sw & 0xff; break;
 
-        // Last state
+        // Digital pad stops sending data here
         case SDA_STATE_TX_SWH: {
-            sda->tx_data_ready = 0;
-            sda->state = 0;
+            if (sda->sa_mode == SA_MODE_ANALOG) {
+                sda->tx_data_ready = 1;
+                sda->state = SDA_STATE_TX_ADC0;
+            } else {
+                sda->tx_data_ready = 0;
+                sda->state = SDA_STATE_TX_HIZ;
+            }
 
             return sda->sw >> 8;
         } break;
+
+        case SDA_STATE_TX_ADC0: sda->tx_data = sda->adc0; break;
+        case SDA_STATE_TX_ADC1: sda->tx_data = sda->adc1; break;
+        case SDA_STATE_TX_ADC2: sda->tx_data = sda->adc2; break;
+
+        // Analog pad stops sending data here
+        case SDA_STATE_TX_ADC3: {
+            sda->tx_data_ready = 0;
+            sda->state = SDA_STATE_TX_HIZ;
+
+            if (sda->model == 0xf3)
+                sda->model = sda->prev_model;
+
+            return sda->adc3;
+        } break;
+        
     }
+
+    // printf("  sda read %u -> %02x\n", sda->state, sda->tx_data);
 
     sda->tx_data_ready = 1;
     sda->state++;
@@ -49,27 +78,63 @@ uint32_t psxi_sda_read(void* udata) {
 }
 
 void psxi_sda_write(void* udata, uint16_t data) {
+    psxi_sda_t* sda = (psxi_sda_t*)udata;
+
     // To-do: Handle TAP and MOT bytes here
+    if (data == 0x01) {
+        sda->tx_data = 0xff;
+        sda->tx_data_ready = 1;
+        sda->state = SDA_STATE_TX_HIZ;
+    }
+
+    if (data == 0x43) {
+        if (sda->sa_mode == SA_MODE_ANALOG) {
+            sda->prev_model = sda->model;
+            sda->model = 0xf3;
+        } else {
+            sda->tx_data = 0xff;
+            sda->tx_data_ready = 0;
+            sda->state = SDA_STATE_TX_HIZ;
+        }
+    }
 
     return;
 }
 
-void psxi_sda_on_button_press(void* udata, uint16_t data) {
+void psxi_sda_on_button_press(void* udata, uint32_t data) {
     psxi_sda_t* sda = (psxi_sda_t*)udata;
+
+    if (data == PSXI_SW_SDA_ANALOG) {
+        sda->sa_mode ^= 1;
+
+        sda->prev_model = sda->model;
+        sda->model = sda->sa_mode ? SDA_MODEL_ANALOG_STICK : sda->prev_model;
+
+        printf("sda: Switched to %s mode\n", sda->sa_mode ? "analog" : "digital");
+
+        return;
+    }
 
     sda->sw &= ~data;
 }
 
-void psxi_sda_on_button_release(void* udata, uint16_t data) {
+void psxi_sda_on_button_release(void* udata, uint32_t data) {
     psxi_sda_t* sda = (psxi_sda_t*)udata;
 
     sda->sw |= data;
 }
 
 // To-do: Implement analog mode
-void psxi_sda_on_analog_change(void* udata, uint16_t data) {
+void psxi_sda_on_analog_change(void* udata, uint32_t axis, uint8_t data) {
     // Suppress warning until we implement analog mode
-    // psxi_sda_t* sda = (psxi_sda_t*)udata;
+    psxi_sda_t* sda = (psxi_sda_t*)udata;
+
+    switch (axis) {
+        case PSXI_AX_SDA_RIGHT_HORZ: sda->adc0 = data; break;
+        case PSXI_AX_SDA_RIGHT_VERT: sda->adc1 = data; break;
+        case PSXI_AX_SDA_LEFT_HORZ: sda->adc2 = data; break;
+        case PSXI_AX_SDA_LEFT_VERT: sda->adc3 = data; break;
+    }
 }
 
 int psxi_sda_query_fifo(void* udata) {

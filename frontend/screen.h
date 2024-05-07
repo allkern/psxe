@@ -1,12 +1,13 @@
 #ifndef SCREEN_H
 #define SCREEN_H
 
-#include "psx/psx.h"
+#include "psx.h"
 #include "common.h"
 
 #include <string.h>
 
 #include "SDL2/SDL.h"
+#include "SDL2/SDL_gamecontroller.h"
 
 typedef struct {
     SDL_Window* window;
@@ -28,6 +29,8 @@ typedef struct {
     int vertical_mode;
     int debug_mode;
     int open;
+
+    SDL_GameController* controller;
 } psxe_screen_t;
 
 psxe_screen_t* psxe_screen_create();

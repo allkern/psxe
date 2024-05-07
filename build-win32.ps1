@@ -10,6 +10,7 @@ $PSX_DIR = "."
 mkdir -Force -Path bin > $null
 
 gcc -I"`"$($PSX_DIR)`"" `
+    -I"`"$($PSX_DIR)\psx`"" `
     -I"`"$($SDL2_DIR)\include`"" `
     -I"`"$($SDL2_DIR)\include\SDL2`"" `
     "psx\*.c" `

@@ -260,6 +260,8 @@ void spu_handle_adsr(psx_spu_t* spu, int v) {
         return;
     }
 
+    adsr_calculate_values(spu, v);
+
     LEVEL += LEVEL_STEP;
 
     switch (spu->data[v].adsr_phase) {
@@ -319,8 +321,8 @@ void spu_kon(psx_spu_t* spu, uint32_t value) {
             spu->data[i].playing = 1;
             spu->data[i].current_addr = spu->voice[i].adsaddr << 3;
             spu->data[i].repeat_addr = spu->data[i].current_addr;
-            spu->data[i].lvol = (float)(spu->voice[i].volumel << 1) / (float)0x7fff;
-            spu->data[i].rvol = (float)(spu->voice[i].volumer << 1) / (float)0x7fff;
+            spu->data[i].lvol = ((float)(spu->voice[i].volumel) / 32767.0f) * 2.0f;
+            spu->data[i].rvol = ((float)(spu->voice[i].volumer) / 32767.0f) * 2.0f;
             spu->data[i].adsr_sustain_level = ((spu->voice[i].envctl1 & 0xf) + 1) * 0x800;
             spu->data[i].envctl = (((uint32_t)spu->voice[i].envctl2) << 16) |
                                     (uint32_t)spu->voice[i].envctl1;
@@ -335,7 +337,7 @@ void spu_kon(psx_spu_t* spu, uint32_t value) {
 
 void spu_koff(psx_spu_t* spu, uint32_t value) {
     for (int i = 0; i < VOICE_COUNT; i++)
-        if ((value & (1 << i)))
+        if (value & (1 << i))
             adsr_load_release(spu, i);
 }
 
@@ -352,6 +354,9 @@ int spu_handle_write(psx_spu_t* spu, uint32_t offset, uint32_t value) {
 
         case SPUR_KOFFL: case SPUR_KOFFH: {
             int high = (offset & 2) != 0;
+
+            if (!value)
+                return 1;
 
             spu_koff(spu, value << (16 * high));
         } return 1;
@@ -423,7 +428,7 @@ void psx_spu_write16(psx_spu_t* spu, uint32_t offset, uint16_t value) {
 }
 
 void psx_spu_write8(psx_spu_t* spu, uint32_t offset, uint8_t value) {
-    log_fatal("Unhandled 8-bit SPU write at offset %08x (%02x)", offset, value);
+    printf("Unhandled 8-bit SPU write at offset %08x (%02x)\n", offset, value);
 }
 
 void psx_spu_destroy(psx_spu_t* spu) {
@@ -572,14 +577,11 @@ uint32_t psx_spu_get_sample(psx_spu_t* spu) {
                 case 3: {
                     spu->endx |= (1 << v);
                     spu->data[v].current_addr = spu->data[v].repeat_addr;
-
-                    adsr_load_release(spu, v);
                 } break;
             }
 
-            if (spu->data[v].block_flags & 4) {
+            if (spu->data[v].block_flags & 4)
                 spu->data[v].repeat_addr = spu->data[v].current_addr;
-            }
 
             spu_read_block(spu, v);
         }

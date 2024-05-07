@@ -1,6 +1,6 @@
-#include "psx/psx.h"
-#include "psx/input/sda.h"
-#include "psx/disc/cue.h"
+#include "psx.h"
+#include "input/sda.h"
+#include "disc/cue.h"
 
 #include "screen.h"
 #include "config.h"

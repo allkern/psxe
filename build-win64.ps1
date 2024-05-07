@@ -10,6 +10,7 @@ $PSX_DIR = "."
 mkdir -Force -Path bin > $null
 
 gcc -I"`"$($PSX_DIR)`"" `
+    -I"`"$($PSX_DIR)\psx`"" `
     -I"`"$($SDL2_DIR)\include`"" `
     -I"`"$($SDL2_DIR)\include\SDL2`"" `
     "psx\*.c" `
@@ -25,6 +26,6 @@ gcc -I"`"$($PSX_DIR)`"" `
     -m64 -lSDL2main -lSDL2 -Wno-overflow `
     -Wall -pedantic -DLOG_USE_COLOR `
     -Wno-address-of-packed-member `
-    -ffast-math -Ofast -g
+    -ffast-math -Ofast -g -flto
 
 Copy-Item -Path "sdl2-win64/SDL2.dll" -Destination "bin"

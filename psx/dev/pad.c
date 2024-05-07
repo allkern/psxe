@@ -6,19 +6,21 @@
 #include "../log.h"
 
 uint32_t pad_read_rx(psx_pad_t* pad) {
-    psx_input_t* joy = pad->joy_slot[(pad->ctrl >> 13) & 1];
-    psx_mcd_t* mcd = pad->mcd_slot[(pad->ctrl >> 13) & 1];
+    int slot = (pad->ctrl >> 13) & 1;
 
-    if (!pad->dest)
+    psx_input_t* joy = pad->joy_slot[slot];
+    psx_mcd_t* mcd = pad->mcd_slot[slot];
+
+    if (!pad->dest[slot])
         return 0xffffffff;
 
     if (!(pad->ctrl & CTRL_JOUT) && !(pad->ctrl & CTRL_RXEN))
         return 0xffffffff;
 
-    switch (pad->dest) {
+    switch (pad->dest[slot]) {
         case DEST_JOY: {
             if (!joy) {
-                pad->dest = 0;
+                pad->dest[slot] = 0;
 
                 return 0xffffffff;
             }
@@ -26,14 +28,18 @@ uint32_t pad_read_rx(psx_pad_t* pad) {
             uint8_t data = joy->read_func(joy->udata);
 
             if (!joy->query_fifo_func(joy->udata))
-                pad->dest = 0;
+                pad->dest[slot] = 0;
 
             return data;
         } break;
 
         case DEST_MCD: {
+            pad->dest[slot] = 0;
+
+            return 0xff;
+
             if (!mcd) {
-                pad->dest = 0;
+                pad->dest[slot] = 0;
 
                 return 0xffffffff;
             }
@@ -41,7 +47,7 @@ uint32_t pad_read_rx(psx_pad_t* pad) {
             uint8_t data = psx_mcd_read(mcd);
 
             if (!psx_mcd_query(mcd))
-                pad->dest = 0;
+                pad->dest[slot] = 0;
 
             return data;
         } break;
@@ -51,24 +57,35 @@ uint32_t pad_read_rx(psx_pad_t* pad) {
 }
 
 void pad_write_tx(psx_pad_t* pad, uint16_t data) {
-    psx_input_t* joy = pad->joy_slot[(pad->ctrl >> 13) & 1];
-    psx_mcd_t* mcd = pad->mcd_slot[(pad->ctrl >> 13) & 1];
+    int slot = (pad->ctrl >> 13) & 1;
+    // printf("slot=%u dest=%02x write tx data=%02x ", slot, pad->dest[slot], data);
+
+    psx_input_t* joy = pad->joy_slot[slot];
+    psx_mcd_t* mcd = pad->mcd_slot[slot];
 
     if (!(pad->ctrl & CTRL_TXEN))
         return;
 
-    if (!pad->dest) {
+    // if (slot == 0)
+    //     printf("slot %u (%02x) write %08x\n", slot, pad->dest[slot], data);
+
+    if (!pad->dest[slot]) {
         if ((data == DEST_JOY) || (data == DEST_MCD)) {
-            pad->dest = data;
-        
+            pad->dest[slot] = data;
+
+            // printf("  slot=%u dest=%02x\n", slot, data);
+
+            // if (slot == 0)
+            //     printf("dest=%02x\n", data);
+
             if (pad->ctrl & CTRL_ACIE)
                 pad->cycles_until_irq = 1500;
         }
     } else {
-        switch (pad->dest) {
+        switch (pad->dest[slot]) {
             case DEST_JOY: {
                 if (!joy) {
-                    pad->dest = 0;
+                    pad->dest[slot] = 0;
 
                     return;
                 }
@@ -76,12 +93,16 @@ void pad_write_tx(psx_pad_t* pad, uint16_t data) {
                 joy->write_func(joy->udata, data);
 
                 if (!joy->query_fifo_func(joy->udata))
-                    pad->dest = 0;
+                    pad->dest[slot] = 0;
             } break;
 
             case DEST_MCD: {
+                pad->dest[slot] = 0;
+
+                return;
+
                 if (!mcd) {
-                    pad->dest = 0;
+                    pad->dest[slot] = 0;
 
                     return;
                 }
@@ -89,7 +110,7 @@ void pad_write_tx(psx_pad_t* pad, uint16_t data) {
                 psx_mcd_write(mcd, data);
 
                 if (!psx_mcd_query(mcd))
-                    pad->dest = 0;
+                    pad->dest[slot] = 0;
             } break;
         }
 
@@ -99,23 +120,24 @@ void pad_write_tx(psx_pad_t* pad, uint16_t data) {
 }
 
 uint32_t pad_handle_stat_read(psx_pad_t* pad) {
-    // log_set_quiet(0);
-    // log_fatal("pad stat read");
-    // log_set_quiet(1);
-    return 0x07;
+    // // log_set_quiet(0);
+    // printf("pad stat read\n");
+    // // log_set_quiet(1);
+    // return 0x07;
     psx_input_t* joy = pad->joy_slot[(pad->ctrl >> 13) & 1];
 
     if (!joy)
-        return 0x5 | pad->stat;
+        return 0xff;
 
-    return 0x5 | (joy->query_fifo_func(joy->udata) << 1);
+    return 0x7;
 }
 
 void pad_handle_ctrl_write(psx_pad_t* pad, uint32_t value) {
     pad->ctrl = value;
 
     if (!(pad->ctrl & CTRL_JOUT)) {
-        pad->dest = 0;
+        // pad->dest[0] = 0;
+        // pad->dest[1] = 0;
         pad->ctrl &= ~CTRL_SLOT;
 
         psx_mcd_reset(pad->mcd_slot[(pad->ctrl >> 13) & 1]);
@@ -210,18 +232,25 @@ void psx_pad_write8(psx_pad_t* pad, uint32_t offset, uint8_t value) {
     printf("Unhandled 8-bit PAD write at offset %08x (%02x)", offset, value);
 }
 
-void psx_pad_button_press(psx_pad_t* pad, int slot, uint16_t data) {
+void psx_pad_button_press(psx_pad_t* pad, int slot, uint32_t data) {
     psx_input_t* selected_slot = pad->joy_slot[slot];
 
     if (selected_slot)
         selected_slot->on_button_press_func(selected_slot->udata, data);
 }
 
-void psx_pad_button_release(psx_pad_t* pad, int slot, uint16_t data) {
+void psx_pad_button_release(psx_pad_t* pad, int slot, uint32_t data) {
     psx_input_t* selected_slot = pad->joy_slot[slot];
 
     if (selected_slot)
         selected_slot->on_button_release_func(selected_slot->udata, data);
+}
+
+void psx_pad_analog_change(psx_pad_t* pad, int slot, uint32_t stick, uint8_t data) {
+    psx_input_t* selected_slot = pad->joy_slot[slot];
+
+    if (selected_slot)
+        selected_slot->on_analog_change_func(selected_slot->udata, stick, data);
 }
 
 void psx_pad_attach_joy(psx_pad_t* pad, int slot, psx_input_t* input) {

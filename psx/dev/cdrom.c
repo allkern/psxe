@@ -460,6 +460,7 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
             if (cdrom->mode & MODE_XA_ADPCM) {
                 cdrom->xa_msf = cdrom->seek_msf;
                 cdrom->xa_playing = 1;
+                cdrom->xa_remaining_samples = 0;
 
                 SET_BITS(status, STAT_ADPBUSY_MASK, STAT_ADPBUSY_MASK);
 
@@ -1311,6 +1312,7 @@ void cdrom_cmd_reads(psx_cdrom_t* cdrom) {
             if (cdrom->mode & MODE_XA_ADPCM) {
                 cdrom->xa_msf = cdrom->seek_msf;
                 cdrom->xa_playing = 1;
+                cdrom->xa_remaining_samples = 0;
 
                 SET_BITS(status, STAT_ADPBUSY_MASK, STAT_ADPBUSY_MASK);
 
@@ -1606,17 +1608,17 @@ void cdrom_write_status(psx_cdrom_t* cdrom, uint8_t value) {
 }
 
 void cdrom_write_cmd(psx_cdrom_t* cdrom, uint8_t value) {
-    printf("%s(%02x) %u params=[%02x, %02x, %02x, %02x, %02x, %02x]\n",
-        g_psx_cdrom_command_names[value],
-        value,
-        cdrom->pfifo_index,
-        cdrom->pfifo[0],
-        cdrom->pfifo[1],
-        cdrom->pfifo[2],
-        cdrom->pfifo[3],
-        cdrom->pfifo[4],
-        cdrom->pfifo[5]
-    );
+    // printf("%s(%02x) %u params=[%02x, %02x, %02x, %02x, %02x, %02x]\n",
+    //     g_psx_cdrom_command_names[value],
+    //     value,
+    //     cdrom->pfifo_index,
+    //     cdrom->pfifo[0],
+    //     cdrom->pfifo[1],
+    //     cdrom->pfifo[2],
+    //     cdrom->pfifo[3],
+    //     cdrom->pfifo[4],
+    //     cdrom->pfifo[5]
+    // );
 
     cdrom->command = value;
     cdrom->state = CD_STATE_RECV_CMD;

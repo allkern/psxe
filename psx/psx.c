@@ -1,4 +1,4 @@
-#include "psx/psx.h"
+#include "psx.h"
 
 psx_t* psx_create() {
     return (psx_t*)malloc(sizeof(psx_t));

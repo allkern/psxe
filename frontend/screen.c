@@ -1,6 +1,8 @@
 #include "screen.h"
 
-uint16_t screen_get_button(SDL_Keycode k) {
+#include "input/sda.h"
+
+uint32_t screen_get_button(SDL_Keycode k) {
     if (k == SDLK_x     ) return PSXI_SW_SDA_CROSS;
     if (k == SDLK_a     ) return PSXI_SW_SDA_SQUARE;
     if (k == SDLK_w     ) return PSXI_SW_SDA_TRIANGLE;
@@ -17,8 +19,38 @@ uint16_t screen_get_button(SDL_Keycode k) {
     if (k == SDLK_3     ) return PSXI_SW_SDA_R2;
     if (k == SDLK_z     ) return PSXI_SW_SDA_L3;
     if (k == SDLK_c     ) return PSXI_SW_SDA_R3;
+    if (k == SDLK_2     ) return PSXI_SW_SDA_ANALOG;
 
     return 0;
+}
+
+uint32_t screen_get_button_joystick(uint8_t b) {
+    if (b == SDL_CONTROLLER_BUTTON_A            ) return PSXI_SW_SDA_CROSS;
+    if (b == SDL_CONTROLLER_BUTTON_X            ) return PSXI_SW_SDA_SQUARE;
+    if (b == SDL_CONTROLLER_BUTTON_Y            ) return PSXI_SW_SDA_TRIANGLE;
+    if (b == SDL_CONTROLLER_BUTTON_B            ) return PSXI_SW_SDA_CIRCLE;
+    if (b == SDL_CONTROLLER_BUTTON_START        ) return PSXI_SW_SDA_START;
+    if (b == SDL_CONTROLLER_BUTTON_GUIDE        ) return PSXI_SW_SDA_SELECT;
+    if (b == SDL_CONTROLLER_BUTTON_DPAD_UP      ) return PSXI_SW_SDA_PAD_UP;
+    if (b == SDL_CONTROLLER_BUTTON_DPAD_DOWN    ) return PSXI_SW_SDA_PAD_DOWN;
+    if (b == SDL_CONTROLLER_BUTTON_DPAD_LEFT    ) return PSXI_SW_SDA_PAD_LEFT;
+    if (b == SDL_CONTROLLER_BUTTON_DPAD_RIGHT   ) return PSXI_SW_SDA_PAD_RIGHT;
+    if (b == SDL_CONTROLLER_BUTTON_LEFTSHOULDER ) return PSXI_SW_SDA_L1;
+    if (b == SDL_CONTROLLER_BUTTON_RIGHTSHOULDER) return PSXI_SW_SDA_R1;
+    if (b == SDL_CONTROLLER_AXIS_TRIGGERLEFT    ) return PSXI_SW_SDA_L2; // Can't map these yet
+    if (b == SDL_CONTROLLER_AXIS_TRIGGERRIGHT   ) return PSXI_SW_SDA_R2; // Can't map these yet
+    if (b == SDL_CONTROLLER_BUTTON_LEFTSTICK    ) return PSXI_SW_SDA_L3;
+    if (b == SDL_CONTROLLER_BUTTON_RIGHTSTICK   ) return PSXI_SW_SDA_R3;
+
+    return 0;
+} 
+
+SDL_GameController* screen_find_controller() {
+    for (int i = 0; i < SDL_NumJoysticks(); i++)
+        if (SDL_IsGameController(i))
+            return SDL_GameControllerOpen(i);
+
+    return NULL;
 }
 
 int screen_get_base_width(psxe_screen_t* screen) {
@@ -51,8 +83,10 @@ void psxe_screen_init(psxe_screen_t* screen, psx_t* psx) {
     screen->texture_width = PSX_GPU_FB_WIDTH;
     screen->texture_height = PSX_GPU_FB_HEIGHT;
 
-    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_GAMECONTROLLER);
     SDL_SetRenderDrawColor(screen->renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
+
+    screen->controller = screen_find_controller();
 }
 
 void psxe_screen_reload(psxe_screen_t* screen) {
@@ -152,6 +186,9 @@ void psxe_screen_update(psxe_screen_t* screen) {
     //     screen->psx->gpu->disp_y2 - screen->psx->gpu->disp_y1
     // );
 
+    if ((screen->psx->gpu->disp_y + screen->texture_height) > 512)
+        display_buf = psx_get_vram(screen->psx);
+
     SDL_UpdateTexture(screen->texture, NULL, display_buf, PSX_GPU_FB_STRIDE);
     SDL_RenderClear(screen->renderer);
 
@@ -248,12 +285,76 @@ void psxe_screen_update(psxe_screen_t* screen) {
                     } break;
                 }
 
-                uint16_t mask = screen_get_button(event.key.keysym.sym);
+                uint32_t mask = screen_get_button(event.key.keysym.sym);
 
                 psx_pad_button_press(screen->pad, 0, mask);
 
-                if (event.key.keysym.sym == SDLK_RETURN) {
+                if (event.key.keysym.sym == SDLK_RETURN)
                     psx_exp2_atcons_put(screen->psx->exp2, 13);
+            } break;
+
+            case SDL_CONTROLLERDEVICEADDED: {
+                if (!screen->controller)
+                    screen->controller = SDL_GameControllerOpen(event.cdevice.which);
+            } break;
+
+            case SDL_CONTROLLERDEVICEREMOVED: {
+                SDL_Joystick* joy = SDL_GameControllerGetJoystick(screen->controller);
+                SDL_JoystickID id = SDL_JoystickInstanceID(joy);
+
+                if (screen->controller && (event.cdevice.which == id)) {
+                    SDL_GameControllerClose(screen->controller);
+
+                    screen->controller = screen_find_controller();
+                }
+            } break;
+
+            case SDL_CONTROLLERBUTTONDOWN: {
+                SDL_Joystick* joy = SDL_GameControllerGetJoystick(screen->controller);
+                SDL_JoystickID id = SDL_JoystickInstanceID(joy);
+
+                if (screen->controller && (event.cdevice.which == id)) {
+                    uint32_t mask = screen_get_button_joystick(event.cbutton.button);
+
+                    psx_pad_button_press(screen->pad, 0, mask);
+                }
+            } break;
+
+            case SDL_CONTROLLERBUTTONUP: {
+                SDL_Joystick* joy = SDL_GameControllerGetJoystick(screen->controller);
+                SDL_JoystickID id = SDL_JoystickInstanceID(joy);
+
+                if (screen->controller && (event.cdevice.which == id)) {
+                    uint32_t mask = screen_get_button_joystick(event.cbutton.button);
+
+                    psx_pad_button_release(screen->pad, 0, mask);
+                }
+            } break;
+
+            case SDL_CONTROLLERAXISMOTION: {
+                SDL_Joystick* joy = SDL_GameControllerGetJoystick(screen->controller);
+                SDL_JoystickID id = SDL_JoystickInstanceID(joy);
+
+                if (screen->controller && (event.cdevice.which == id)) {
+                    int mapped_axis = ((int)event.caxis.value + INT16_MAX + 1) / 0x100;
+
+                    switch (event.caxis.axis) {
+                        case SDL_CONTROLLER_AXIS_RIGHTX:
+                            psx_pad_analog_change(screen->pad, 0, PSXI_AX_SDA_RIGHT_HORZ, mapped_axis);
+                        break;
+
+                        case SDL_CONTROLLER_AXIS_RIGHTY:
+                            psx_pad_analog_change(screen->pad, 0, PSXI_AX_SDA_RIGHT_VERT, mapped_axis);
+                        break;
+
+                        case SDL_CONTROLLER_AXIS_LEFTX:
+                            psx_pad_analog_change(screen->pad, 0, PSXI_AX_SDA_LEFT_HORZ, mapped_axis);
+                        break;
+
+                        case SDL_CONTROLLER_AXIS_LEFTY:
+                            psx_pad_analog_change(screen->pad, 0, PSXI_AX_SDA_LEFT_VERT, mapped_axis);
+                        break;
+                    }
                 }
             } break;
 
@@ -262,7 +363,7 @@ void psxe_screen_update(psxe_screen_t* screen) {
             } break;
 
             case SDL_KEYUP: {
-                uint16_t mask = screen_get_button(event.key.keysym.sym);
+                uint32_t mask = screen_get_button(event.key.keysym.sym);
 
                 psx_pad_button_release(screen->pad, 0, mask);
             } break;
@@ -291,6 +392,22 @@ void psxe_screen_destroy(psxe_screen_t* screen) {
 
 void psxe_gpu_dmode_event_cb(psx_gpu_t* gpu) {
     psxe_screen_t* screen = gpu->udata[0];
+
+    // printf("res=(%u,%u) off=(%u,%u) disp=(%u,%u-%u,%u) draw=(%u,%u-%u,%u) vres=%u\n",
+    //     screen->texture_width,
+    //     screen->texture_height,
+    //     screen->psx->gpu->disp_x,
+    //     screen->psx->gpu->disp_y,
+    //     screen->psx->gpu->disp_x1,
+    //     screen->psx->gpu->disp_y1,
+    //     screen->psx->gpu->disp_x2,
+    //     screen->psx->gpu->disp_y2,
+    //     screen->psx->gpu->draw_x1,
+    //     screen->psx->gpu->draw_y1,
+    //     screen->psx->gpu->draw_x2,
+    //     screen->psx->gpu->draw_y2,
+    //     screen->psx->gpu->disp_y2 - screen->psx->gpu->disp_y1
+    // );
 
     screen->format = psx_get_display_format(screen->psx) ?
         SDL_PIXELFORMAT_RGB24 : SDL_PIXELFORMAT_BGR555;
