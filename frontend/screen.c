@@ -144,7 +144,7 @@ void psxe_screen_reload(psxe_screen_t* screen) {
         SDL_RenderSetScale(screen->renderer, width_scale, height_scale);
     }
 
-    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, 0);
+    SDL_SetHint("SDL_HINT_RENDER_SCALE_QUALITY", "linear"),
 
     screen->open = 1;
 }
@@ -189,27 +189,51 @@ void psxe_screen_update(psxe_screen_t* screen) {
     if ((screen->psx->gpu->disp_y + screen->texture_height) > 512)
         display_buf = psx_get_vram(screen->psx);
 
-    SDL_UpdateTexture(screen->texture, NULL, display_buf, PSX_GPU_FB_STRIDE);
-    SDL_RenderClear(screen->renderer);
+    // SDL_UpdateTexture(screen->texture, NULL, display_buf, PSX_GPU_FB_STRIDE);
+    // SDL_RenderClear(screen->renderer);
 
-    if (!screen->debug_mode) {
-        SDL_Rect dstrect;
+    // if (!screen->debug_mode) {
+    //     SDL_Rect dstrect;
 
-        dstrect.x = screen->image_xoff;
-        dstrect.y = screen->image_yoff;
-        dstrect.w = screen->image_width;
-        dstrect.h = screen->image_height;
+    //     dstrect.x = screen->image_xoff;
+    //     dstrect.y = screen->image_yoff;
+    //     dstrect.w = screen->image_width;
+    //     dstrect.h = screen->image_height;
 
-        SDL_RenderCopyEx(
-            screen->renderer,
-            screen->texture,
-            NULL, &dstrect,
-            screen->vertical_mode ? 270 : 0,
-            NULL, SDL_FLIP_NONE
-        );
-    } else {
-        SDL_RenderCopy(screen->renderer, screen->texture, NULL, NULL);
-    }
+    //     SDL_RenderCopyEx(
+    //         screen->renderer,
+    //         screen->texture,
+    //         NULL, &dstrect,
+    //         screen->vertical_mode ? 270 : 0,
+    //         NULL, SDL_FLIP_NONE
+    //     );
+    // } else {
+    //     SDL_RenderCopy(screen->renderer, screen->texture, NULL, NULL);
+    // }
+
+    // SDL_Vertex v[3];
+
+    // v[0].position.x = 200.0;
+    // v[0].position.y = 200.0;
+    // v[1].position.x = 400.0;
+    // v[1].position.y = 200.0;
+    // v[2].position.x = 200.0;
+    // v[2].position.y = 400.0;
+    // v[0].color.r = 0xff;
+    // v[0].color.g = 0x00;
+    // v[0].color.b = 0x00;
+    // v[1].color.r = 0x00;
+    // v[1].color.g = 0xff;
+    // v[1].color.b = 0x00;
+    // v[2].color.r = 0x00;
+    // v[2].color.g = 0x00;
+    // v[2].color.b = 0xff;
+
+    // SDL_RenderGeometry(screen->renderer,
+    //     NULL,
+    //     v, 3,
+    //     NULL, 0
+    // );
 
     SDL_RenderPresent(screen->renderer);
 

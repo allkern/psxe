@@ -86,6 +86,12 @@ typedef struct {
     uint16_t width, height;
 } rect_data_t;
 
+typedef void (*render_triangle_t)(psx_gpu_t*, vertex_t, vertex_t, vertex_t, poly_data_t, int);
+
+typedef struct {
+    render_triangle_t render_triangle;
+} psx_gpu_renderer_t;
+
 struct psx_gpu_t {
     uint32_t bus_delay;
     uint32_t io_base, io_size;
@@ -153,6 +159,8 @@ struct psx_gpu_t {
     psx_ic_t* ic;
 
     psx_gpu_event_callback_t event_cb_table[8];
+
+    psx_gpu_renderer_t renderer;
 };
 
 psx_gpu_t* psx_gpu_create();
@@ -168,5 +176,8 @@ void psx_gpu_set_udata(psx_gpu_t*, int, void*);
 void psx_gpu_set_event_callback(psx_gpu_t*, int, psx_gpu_event_callback_t);
 void* psx_gpu_get_display_buffer(psx_gpu_t*);
 void psx_gpu_update(psx_gpu_t*, int);
+
+void gpu_render_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, poly_data_t data, int edge);
+uint16_t gpu_fetch_texel(psx_gpu_t* gpu, uint16_t tx, uint16_t ty, uint32_t tpx, uint32_t tpy, uint16_t clutx, uint16_t cluty, int depth);
 
 #endif

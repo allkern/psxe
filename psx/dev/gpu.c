@@ -6,6 +6,8 @@
 #include "gpu.h"
 #include "../log.h"
 
+#include "SDL2/SDL.h"
+
 int g_psx_gpu_dither_kernel[] = {
     -4, +0, -3, +1,
     +2, -2, +3, -1,
@@ -915,10 +917,13 @@ void gpu_poly(psx_gpu_t* gpu) {
                 poly.v[3].ty = (gpu->buf[2+3*texc_offset] >> 8) & 0xff;
 
                 if (poly.attrib & PA_QUAD) {
-                    gpu_render_triangle(gpu, poly.v[0], poly.v[1], poly.v[2], poly, 0);
-                    gpu_render_triangle(gpu, poly.v[1], poly.v[2], poly.v[3], poly, 1);
+                    gpu->renderer.render_triangle(gpu, poly.v[0], poly.v[1], poly.v[2], poly, 0);
+                    gpu->renderer.render_triangle(gpu, poly.v[1], poly.v[2], poly.v[3], poly, 1);
+                    // gpu_render_triangle(gpu, poly.v[0], poly.v[1], poly.v[2], poly, 0);
+                    // gpu_render_triangle(gpu, poly.v[1], poly.v[2], poly.v[3], poly, 1);
                 } else {
-                    gpu_render_triangle(gpu, poly.v[0], poly.v[1], poly.v[2], poly, 0);
+                    gpu->renderer.render_triangle(gpu, poly.v[0], poly.v[1], poly.v[2], poly, 0);
+                    // gpu_render_triangle(gpu, poly.v[0], poly.v[1], poly.v[2], poly, 0);
                 }
 
                 gpu->state = GPU_STATE_RECV_CMD;

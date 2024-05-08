@@ -5,6 +5,8 @@
 #include "screen.h"
 #include "config.h"
 
+#include "gpu_hw.h"
+
 #undef main
 
 void audio_update(void* ud, uint8_t* buf, int size) {
@@ -46,6 +48,8 @@ int main(int argc, const char* argv[]) {
     psxe_screen_set_scale(screen, cfg->scale);
     psxe_screen_reload(screen);
 
+    hw_gpu_init(screen);
+
     SDL_Init(SDL_INIT_AUDIO);
 
     SDL_AudioDeviceID dev;
@@ -71,6 +75,7 @@ int main(int argc, const char* argv[]) {
     psx_gpu_set_event_callback(gpu, GPU_EVENT_HBLANK_END, psxe_gpu_hblank_end_event_cb);
     psx_gpu_set_udata(gpu, 0, screen);
     psx_gpu_set_udata(gpu, 1, psx->timer);
+    gpu->renderer.render_triangle = gpu_hw_render_triangle;
 
     psx_input_t* input = psx_input_create();
     psx_input_init(input);
