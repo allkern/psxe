@@ -304,6 +304,7 @@ void cdrom_cmd_setloc(psx_cdrom_t* cdrom) {
             int m = PFIFO_POP;
 
             if (!(VALID_BCD(m) && VALID_BCD(s) && VALID_BCD(f) && (f < 0x75))) {
+                printf("setloc: invalid msf\n");
                 cdrom->irq_delay = DELAY_1MS;
                 cdrom->delayed_command = CDL_ERROR;
                 cdrom->state = CD_STATE_ERROR;
@@ -323,11 +324,11 @@ void cdrom_cmd_setloc(psx_cdrom_t* cdrom) {
 
             cdrom->seek_pending = 1;
 
-            log_fatal("setloc: %02x:%02x:%02x",
-                cdrom->seek_msf.m,
-                cdrom->seek_msf.s,
-                cdrom->seek_msf.f
-            );
+            // printf("setloc: %02x:%02x:%02x\n",
+            //     cdrom->seek_msf.m,
+            //     cdrom->seek_msf.s,
+            //     cdrom->seek_msf.f
+            // );
 
             cdrom->irq_delay = DELAY_1MS;
             cdrom->delayed_command = CDL_SETLOC;
@@ -336,7 +337,7 @@ void cdrom_cmd_setloc(psx_cdrom_t* cdrom) {
 
         case CD_STATE_SEND_RESP1: {
             SET_BITS(ifr, IFR_INT, IFR_INT3);
-            RESP_PUSH(GETSTAT_MOTOR);
+            RESP_PUSH(GETSTAT_MOTOR | GETSTAT_SEEK);
 
             if (cdrom->ongoing_read_command) {
                 // printf("command=%02x\n", cdrom->ongoing_read_command);
@@ -881,24 +882,24 @@ void cdrom_cmd_getlocl(psx_cdrom_t* cdrom) {
 
         case CD_STATE_SEND_RESP1: {
             SET_BITS(ifr, IFR_INT, IFR_INT3);
-            RESP_PUSH(cdrom->dfifo[0x13]);
-            RESP_PUSH(cdrom->dfifo[0x12]);
-            RESP_PUSH(cdrom->dfifo[0x11]);
-            RESP_PUSH(cdrom->dfifo[0x10]);
-            RESP_PUSH(cdrom->dfifo[0x0f]);
-            RESP_PUSH(cdrom->dfifo[0x0e]);
-            RESP_PUSH(cdrom->dfifo[0x0d]);
-            RESP_PUSH(cdrom->dfifo[0x0c]);
+            RESP_PUSH(cdrom->xa_sector_buf[0x13]);
+            RESP_PUSH(cdrom->xa_sector_buf[0x12]);
+            RESP_PUSH(cdrom->xa_sector_buf[0x11]);
+            RESP_PUSH(cdrom->xa_sector_buf[0x10]);
+            RESP_PUSH(cdrom->xa_sector_buf[0x0f]);
+            RESP_PUSH(cdrom->xa_sector_buf[0x0e]);
+            RESP_PUSH(cdrom->xa_sector_buf[0x0d]);
+            RESP_PUSH(cdrom->xa_sector_buf[0x0c]);
 
-            // if (cdrom->ongoing_read_command) {
-            //     // printf("command=%02x\n", cdrom->ongoing_read_command);
-            //     cdrom->state = CD_STATE_SEND_RESP2;
-            //     cdrom->delayed_command = cdrom->ongoing_read_command;
-            //     cdrom->irq_delay = DELAY_1MS;
-            // } else {
+            if (cdrom->ongoing_read_command) {
+                // printf("command=%02x\n", cdrom->ongoing_read_command);
+                cdrom->state = CD_STATE_SEND_RESP2;
+                cdrom->delayed_command = cdrom->ongoing_read_command;
+                cdrom->irq_delay = DELAY_1MS;
+            } else {
                 cdrom->delayed_command = CDL_NONE;
                 cdrom->state = CD_STATE_RECV_CMD;
-            // }
+            }
         } break;
     }
 }
@@ -1564,6 +1565,9 @@ uint8_t cdrom_read_status(psx_cdrom_t* cdrom) {
 }
 
 uint8_t cdrom_read_rfifo(psx_cdrom_t* cdrom) {
+    if (cdrom->rfifo_index < 0)
+        return 0;
+
     uint8_t data = cdrom->rfifo[--cdrom->rfifo_index];
 
     if (cdrom->rfifo_index == 0)
@@ -1608,17 +1612,17 @@ void cdrom_write_status(psx_cdrom_t* cdrom, uint8_t value) {
 }
 
 void cdrom_write_cmd(psx_cdrom_t* cdrom, uint8_t value) {
-    // printf("%s(%02x) %u params=[%02x, %02x, %02x, %02x, %02x, %02x]\n",
-    //     g_psx_cdrom_command_names[value],
-    //     value,
-    //     cdrom->pfifo_index,
-    //     cdrom->pfifo[0],
-    //     cdrom->pfifo[1],
-    //     cdrom->pfifo[2],
-    //     cdrom->pfifo[3],
-    //     cdrom->pfifo[4],
-    //     cdrom->pfifo[5]
-    // );
+    printf("%s(%02x) %u params=[%02x, %02x, %02x, %02x, %02x, %02x]\n",
+        g_psx_cdrom_command_names[value],
+        value,
+        cdrom->pfifo_index,
+        cdrom->pfifo[0],
+        cdrom->pfifo[1],
+        cdrom->pfifo[2],
+        cdrom->pfifo[3],
+        cdrom->pfifo[4],
+        cdrom->pfifo[5]
+    );
 
     cdrom->command = value;
     cdrom->state = CD_STATE_RECV_CMD;

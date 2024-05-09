@@ -12,6 +12,7 @@ void psx_mcd_init(psx_mcd_t* mcd, const char* path) {
     mcd->flag = 0x08;
     mcd->path = path;
     mcd->buf = malloc(MCD_MEMORY_SIZE);
+    mcd->tx_data_ready = 0;
 
     memset(mcd->buf, 0, MCD_MEMORY_SIZE);
 
@@ -33,8 +34,6 @@ void psx_mcd_init(psx_mcd_t* mcd, const char* path) {
 }
 
 uint8_t psx_mcd_read(psx_mcd_t* mcd) {
-    return 0xff;
-
     switch (mcd->state) {
         case MCD_STATE_TX_HIZ: mcd->tx_data = 0xff; break;
         case MCD_STATE_TX_FLG: mcd->tx_data = mcd->flag; mcd->flag = 0x00; break;
@@ -48,6 +47,8 @@ uint8_t psx_mcd_read(psx_mcd_t* mcd) {
                 case 'W': mcd->state = MCD_W_STATE_RX_MSB; break;
                 case 'S': mcd->state = MCD_S_STATE_TX_ACK1; break;
             }
+
+            // printf("mcd read %02x\n", mcd->tx_data);
 
             // log_set_quiet(0);
             // log_fatal("mcd read %02x", mcd->tx_data);
@@ -77,6 +78,8 @@ uint8_t psx_mcd_read(psx_mcd_t* mcd) {
                 break;
             }
 
+            // printf("mcd read %02x\n", data);
+
             // log_set_quiet(0);
             // log_fatal("mcd read %02x", data);
             // log_set_quiet(1);
@@ -91,6 +94,8 @@ uint8_t psx_mcd_read(psx_mcd_t* mcd) {
             // log_set_quiet(0);
             // log_fatal("mcd read %02x", 'G');
             // log_set_quiet(1);
+
+            // printf("mcd read %02x\n", 'G');
 
             return 'G';
         } break;
@@ -110,6 +115,8 @@ uint8_t psx_mcd_read(psx_mcd_t* mcd) {
                 break;
             }
 
+            // printf("mcd read %02x\n", mcd->rx_data);
+
             // log_set_quiet(0);
             // log_fatal("mcd read %02x", mcd->rx_data);
             // log_set_quiet(1);
@@ -127,6 +134,8 @@ uint8_t psx_mcd_read(psx_mcd_t* mcd) {
             // log_fatal("mcd read %02x", 'G');
             // log_set_quiet(1);
 
+            // printf("mcd read %02x\n", 'G');
+
             return 'G';
         } break;
     }
@@ -138,15 +147,17 @@ uint8_t psx_mcd_read(psx_mcd_t* mcd) {
     // log_fatal("mcd read %02x", mcd->tx_data);
     // log_set_quiet(1);
 
+    // printf("mcd read %02x\n", mcd->tx_data);
+
     return mcd->tx_data;
 }
 
 void psx_mcd_write(psx_mcd_t* mcd, uint8_t data) {
-    return;
-
     // log_set_quiet(0);
     // log_fatal("mcd write %02x", data);
     // log_set_quiet(1);
+
+    // printf("mcd write %02x\n", data);
 
     switch (mcd->state) {
         case MCD_STATE_TX_FLG: mcd->mode = data; break;

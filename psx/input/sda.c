@@ -23,7 +23,7 @@ void psxi_sda_init(psxi_sda_t* sda, uint16_t model) {
     sda->model = model;
     sda->state = SDA_STATE_TX_HIZ;
     sda->sw = 0xffff;
-    sda->sa_mode = 0;
+    sda->sa_mode = SA_MODE_DIGITAL;
     sda->adc0 = 0x80;
     sda->adc1 = 0x80;
     sda->adc2 = 0x80;
@@ -81,11 +81,6 @@ void psxi_sda_write(void* udata, uint16_t data) {
     psxi_sda_t* sda = (psxi_sda_t*)udata;
 
     // To-do: Handle TAP and MOT bytes here
-    if (data == 0x01) {
-        sda->tx_data = 0xff;
-        sda->tx_data_ready = 1;
-        sda->state = SDA_STATE_TX_HIZ;
-    }
 
     if (data == 0x43) {
         if (sda->sa_mode == SA_MODE_ANALOG) {
@@ -97,8 +92,6 @@ void psxi_sda_write(void* udata, uint16_t data) {
             sda->state = SDA_STATE_TX_HIZ;
         }
     }
-
-    return;
 }
 
 void psxi_sda_on_button_press(void* udata, uint32_t data) {

@@ -115,6 +115,7 @@ typedef struct {
     int cycles_until_irq;
     int cycle_counter;
     int dest[2];
+    int irq_bit;
 
     uint16_t mode, ctrl, baud, stat;
 } psx_pad_t;

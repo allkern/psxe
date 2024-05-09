@@ -239,7 +239,9 @@ void psx_dma_do_gpu_linked(psx_dma_t* dma) {
     uint32_t size = hdr >> 24;
     uint32_t addr = dma->gpu.madr;
 
-    while (true) {
+    int timeout = 16384;
+
+    while (timeout--) {
         while (size--) {
             addr = (addr + (CHCR_STEP(gpu) ? -4 : 4)) & 0x1ffffc;
 
