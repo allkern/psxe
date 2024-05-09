@@ -1745,19 +1745,20 @@ void psx_gpu_set_udata(psx_gpu_t* gpu, int index, void* udata) {
 #define GPU_SCANS_PER_FRAME_PAL  314
 
 void gpu_hblank_event(psx_gpu_t* gpu) {
-    gpu->line++;
-
-    psx_ic_irq(gpu->ic, IC_TIMER2);
-
     if (gpu->line < GPU_SCANS_PER_VDRAW_NTSC) {
         if (gpu->line & 1) {
             gpu->gpustat |= 1 << 31;
         } else {
             gpu->gpustat &= ~(1 << 31);
         }
+
+        if (!(gpu->line & 7))
+            psx_ic_irq(gpu->ic, IC_TIMER2);
     } else {
         gpu->gpustat &= ~(1 << 31);
     }
+
+    gpu->line++;
 
     if (gpu->line == GPU_SCANS_PER_VDRAW_NTSC) {
         if (gpu->event_cb_table[GPU_EVENT_VBLANK])

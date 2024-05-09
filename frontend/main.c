@@ -93,9 +93,8 @@ int main(int argc, const char* argv[]) {
 
     psxe_cfg_destroy(cfg);
 
-    while (psxe_screen_is_open(screen)) {
+    while (psxe_screen_is_open(screen))
         psx_update(psx);
-    }
 
     SDL_PauseAudioDevice(dev, 1);
 

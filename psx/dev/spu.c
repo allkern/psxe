@@ -250,6 +250,8 @@ void adsr_load_release(psx_spu_t* spu, int v) {
     STEP        = -8;
     PHASE       = ADSR_RELEASE;
 
+    spu->endx |= 1 << v;
+
     adsr_calculate_values(spu, v);
 }
 
@@ -320,7 +322,7 @@ void spu_kon(psx_spu_t* spu, uint32_t value) {
         if ((value & (1 << i))) {
             spu->data[i].playing = 1;
             spu->data[i].current_addr = spu->voice[i].adsaddr << 3;
-            spu->data[i].repeat_addr = spu->data[i].current_addr;
+            spu->data[i].repeat_addr = spu->voice[i].adraddr << 3;
             spu->data[i].lvol = ((float)(spu->voice[i].volumel) / 32767.0f) * 2.0f;
             spu->data[i].rvol = ((float)(spu->voice[i].volumer) / 32767.0f) * 2.0f;
             spu->data[i].adsr_sustain_level = ((spu->voice[i].envctl1 & 0xf) + 1) * 0x800;
@@ -332,6 +334,7 @@ void spu_kon(psx_spu_t* spu, uint32_t value) {
         }
     }
 
+    spu->kon |= value & 0x00ffffff;
     spu->endx &= ~(value & 0x00ffffff);
 }
 
@@ -339,6 +342,8 @@ void spu_koff(psx_spu_t* spu, uint32_t value) {
     for (int i = 0; i < VOICE_COUNT; i++)
         if (value & (1 << i))
             adsr_load_release(spu, i);
+
+    spu->koff |= value & 0x00ffffff;
 }
 
 int spu_handle_write(psx_spu_t* spu, uint32_t offset, uint32_t value) {
@@ -497,8 +502,8 @@ void spu_get_reverb_sample(psx_spu_t* spu, int inl, int inr, int* outl, int* out
     float vlout = (float)spu->vlout / 32767.0f;
     float vrout = (float)spu->vrout / 32767.0f;
 
-    int lin = ((float)inl * 0.65f) * vlin;
-    int rin = ((float)inr * 0.65f) * vrin;
+    int lin = ((float)inl * 0.5f) * vlin;
+    int rin = ((float)inr * 0.5f) * vrin;
 
     int mlsamev = (lin + R16(dlsame)*vwall - R16(mlsame-2))*viir + R16(mlsame-2);
     int mrsamev = (rin + R16(drsame)*vwall - R16(mrsame-2))*viir + R16(mrsame-2);
@@ -539,6 +544,9 @@ uint32_t psx_spu_get_sample(psx_spu_t* spu) {
     int revl = 0;
     int revr = 0;
 
+    spu->koff = 0;
+    spu->kon = 0;
+
     for (int v = 0; v < VOICE_COUNT; v++) {
         if (!spu->data[v].playing)
             continue;
@@ -554,7 +562,7 @@ uint32_t psx_spu_get_sample(psx_spu_t* spu) {
 
         uint32_t sample_index = spu->data[v].counter >> 12;
 
-        if (sample_index >= 28) {
+        if (sample_index > 27) {
             sample_index -= 28;
 
             spu->data[v].counter &= 0xfff;
@@ -566,7 +574,6 @@ uint32_t psx_spu_get_sample(psx_spu_t* spu) {
                 } break;
 
                 case 1: {
-                    spu->endx |= (1 << v);
                     spu->data[v].current_addr = spu->data[v].repeat_addr;
                     spu->data[v].playing = 0;
                     spu->voice[v].envcvol = 0;
@@ -575,7 +582,7 @@ uint32_t psx_spu_get_sample(psx_spu_t* spu) {
                 } break;
 
                 case 3: {
-                    spu->endx |= (1 << v);
+                    spu->endx |= 1 << v;
                     spu->data[v].current_addr = spu->data[v].repeat_addr;
                 } break;
             }
