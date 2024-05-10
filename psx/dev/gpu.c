@@ -49,7 +49,12 @@ void psx_gpu_init(psx_gpu_t* gpu, psx_ic_t* ic) {
     gpu->io_size = PSX_GPU_SIZE;
 
     gpu->vram = (uint16_t*)malloc(PSX_GPU_VRAM_SIZE);
+    gpu->empty = malloc(PSX_GPU_VRAM_SIZE);
+
+    memset(gpu->empty, 0, PSX_GPU_VRAM_SIZE);
+
     gpu->state = GPU_STATE_RECV_CMD;
+    gpu->gpustat |= 0x800000;
 
     // Default window size, this is not normally needed
     gpu->display_mode = 1;
@@ -210,6 +215,9 @@ void gpu_render_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, 
     int ymin = min3(a.y, b.y, c.y);
     int xmax = max3(a.x, b.x, c.x);
     int ymax = max3(a.y, b.y, c.y);
+
+    if (((xmax - xmin) > 2048) || ((ymax - ymin) > 1024)) 
+        return;
 
     float area = EDGE(a, b, c);
 
@@ -1510,6 +1518,7 @@ void gpu_cmd_02(psx_gpu_t* gpu) {
 
                 for (uint32_t y = gpu->v0.y; y < (gpu->v0.y + gpu->ysiz); y++) {
                     for (uint32_t x = gpu->v0.x; x < (gpu->v0.x + gpu->xsiz); x++) {
+                        // This shouldn't be needed
                         int bc = (x >= gpu->draw_x1) && (x <= gpu->draw_x2) &&
                                  (y >= gpu->draw_y1) && (y <= gpu->draw_y2);
 
@@ -1686,6 +1695,11 @@ void psx_gpu_write32(psx_gpu_t* gpu, uint32_t offset, uint32_t value) {
             uint8_t cmd = value >> 24;
 
             switch (cmd) {
+                // Display enable
+                case 0x03: {
+                    gpu->gpustat &= ~0x00800000;
+                    gpu->gpustat |= (value << 23) & 0x00800000;
+                } break;
                 case 0x04: {
                 } break;
                 case 0x05: {
@@ -1816,6 +1830,9 @@ void psx_gpu_update(psx_gpu_t* gpu, int cyc) {
 }
 
 void* psx_gpu_get_display_buffer(psx_gpu_t* gpu) {
+    if (gpu->gpustat & 0x800000)
+        return gpu->empty;
+
     return gpu->vram + (gpu->disp_x + (gpu->disp_y * 1024));
 }
 

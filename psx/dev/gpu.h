@@ -93,6 +93,8 @@ struct psx_gpu_t {
     void* udata[4];
 
     uint16_t* vram;
+    uint16_t* empty;
+    int display_enable;
 
     // State data
     uint32_t buf[16];

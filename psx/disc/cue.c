@@ -305,7 +305,7 @@ char* cue_get_directory(const char* path) {
     if (ptr == path) {
         dir = malloc(3);
 
-        strcpy(dir, ".\\");
+        strcpy(dir, "./");
 
         return dir;
     }

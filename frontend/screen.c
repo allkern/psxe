@@ -2,6 +2,8 @@
 
 #include "input/sda.h"
 
+#include "SDL2/SDL_version.h"
+
 uint32_t screen_get_button(SDL_Keycode k) {
     if (k == SDLK_x     ) return PSXI_SW_SDA_CROSS;
     if (k == SDLK_a     ) return PSXI_SW_SDA_SQUARE;
@@ -130,7 +132,9 @@ void psxe_screen_reload(psxe_screen_t* screen) {
         screen->texture_width, screen->texture_height
     );
 
+#if SDL_VERSION_ATLEAST(2, 0, 12)
     SDL_SetTextureScaleMode(screen->texture, screen->bilinear);
+#endif
 
     // Check for retina displays
     int width = 0, height = 0;
@@ -473,7 +477,9 @@ void psxe_gpu_dmode_event_cb(psx_gpu_t* gpu) {
         screen->texture_width, screen->texture_height
     );
 
+#if SDL_VERSION_ATLEAST(2, 0, 12)
     SDL_SetTextureScaleMode(screen->texture, screen->bilinear);
+#endif
 
     SDL_SetWindowSize(screen->window, screen->width, screen->height);
 }
