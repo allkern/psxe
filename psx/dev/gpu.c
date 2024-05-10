@@ -1752,6 +1752,23 @@ void gpu_hblank_event(psx_gpu_t* gpu) {
             gpu->gpustat &= ~(1 << 31);
         }
 
+        // HACK!! More games are fine with this
+        // but others, like Dead or Alive, will refuse
+        // to boot because this frequency is not fast
+        // enough. Sending T2 IRQs every line fixes DoA
+        // but breaks a bunch of games, so I'll keep this
+        // like this until I actually fix the timers
+        // Games that cared about T2:
+        // - Dead or Alive
+        // - NBA Jam
+        // - Doom
+        // - Devil Dice
+        // - Zanac x Zanac
+        // - Soukyugurentai
+        // - Mortal Kombat
+        // - PaRappa the Rapper
+        // - In The Hunt
+        // - etc.
         if (!(gpu->line & 7))
             psx_ic_irq(gpu->ic, IC_TIMER2);
     } else {

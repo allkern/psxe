@@ -1678,23 +1678,30 @@ void cdrom_write_sminfo(psx_cdrom_t* cdrom, uint8_t value) {
 }
 
 void cdrom_write_lcdlspuv(psx_cdrom_t* cdrom, uint8_t value) {
-    log_fatal("Volume registers unimplemented");
+    cdrom->vapp[0] = value;
 }
 
 void cdrom_write_rcdrspuv(psx_cdrom_t* cdrom, uint8_t value) {
-    log_fatal("Volume registers unimplemented");
+    cdrom->vapp[3] = value;
 }
 
 void cdrom_write_rcdlspuv(psx_cdrom_t* cdrom, uint8_t value) {
-    log_fatal("Volume registers unimplemented");
+    cdrom->vapp[2] = value;
 }
 
 void cdrom_write_lcdrspuv(psx_cdrom_t* cdrom, uint8_t value) {
-    log_fatal("Volume registers unimplemented");
+    cdrom->vapp[1] = value;
 }
 
 void cdrom_write_volume(psx_cdrom_t* cdrom, uint8_t value) {
-    log_fatal("Volume registers unimplemented");
+    cdrom->xa_mute = value & 1;
+
+    if (value & 0x20) {
+        cdrom->vol[0] = cdrom->vapp[0];
+        cdrom->vol[1] = cdrom->vapp[1];
+        cdrom->vol[2] = cdrom->vapp[2];
+        cdrom->vol[3] = cdrom->vapp[3];
+    }
 }
 
 psx_cdrom_read_function_t g_psx_cdrom_read_table[] = {
@@ -2120,6 +2127,20 @@ void cdrom_fetch_xa_sector(psx_cdrom_t* cdrom) {
     }
 }
 
+void cdrom_apply_volume_settings(psx_cdrom_t* cdrom) {
+    int16_t* ptr = cdrom->cdda_buf;
+
+    float ll_vol = (((float)cdrom->vol[0]) / 255.0f);
+    float lr_vol = (((float)cdrom->vol[1]) / 255.0f);
+    float rl_vol = (((float)cdrom->vol[2]) / 255.0f);
+    float rr_vol = (((float)cdrom->vol[3]) / 255.0f);
+
+    for (int i = 0; i < CD_SECTOR_SIZE >> 1; i += 2) {
+        ptr[i  ] = ptr[i  ] * ll_vol + ptr[i+1] * rl_vol;
+        ptr[i+1] = ptr[i+1] * rr_vol + ptr[i  ] * lr_vol;
+    }
+}
+
 void psx_cdrom_get_cdda_samples(psx_cdrom_t* cdrom, void* buf, int size, psx_spu_t* spu) {
     memset(buf, 0, size);
 
@@ -2162,18 +2183,31 @@ void psx_cdrom_get_cdda_samples(psx_cdrom_t* cdrom, void* buf, int size, psx_spu
                 cdrom->xa_sample_idx = 0;
             }
 
+            if (cdrom->xa_mute) {
+                *ptr++ = 0;
+                *ptr++ = 0;
+
+                return;
+            }
+
+            float ll_vol = (((float)cdrom->vol[0]) / 255.0f);
+            float rr_vol = (((float)cdrom->vol[3]) / 255.0f);
+
             if (stereo) {
                 cdrom->xa_last_left_sample = cdrom->xa_left_resample_buf[cdrom->xa_sample_idx];
                 cdrom->xa_last_right_sample = cdrom->xa_right_resample_buf[cdrom->xa_sample_idx++];
 
-                *ptr++ = cdrom->xa_last_left_sample;
-                *ptr++ = cdrom->xa_last_right_sample;
+                float lr_vol = (((float)cdrom->vol[1]) / 255.0f);
+                float rl_vol = (((float)cdrom->vol[2]) / 255.0f);
+
+                *ptr++ = (cdrom->xa_last_left_sample * ll_vol) + (cdrom->xa_last_right_sample * rl_vol);
+                *ptr++ = (cdrom->xa_last_left_sample * lr_vol) + (cdrom->xa_last_right_sample * rr_vol);
 
             } else {
                 cdrom->xa_last_mono_sample = cdrom->xa_mono_resample_buf[cdrom->xa_sample_idx++];
 
-                *ptr++ = cdrom->xa_last_mono_sample;
-                *ptr++ = cdrom->xa_last_mono_sample;
+                *ptr++ = cdrom->xa_last_mono_sample * ll_vol;
+                *ptr++ = cdrom->xa_last_mono_sample * rr_vol;
             }
 
             --cdrom->xa_remaining_samples;
@@ -2198,6 +2232,8 @@ void psx_cdrom_get_cdda_samples(psx_cdrom_t* cdrom, void* buf, int size, psx_spu
 
     // Increment sector
     msf_add_f(&cdrom->cdda_msf, 1);
+
+    cdrom_apply_volume_settings(cdrom);
 
     memcpy(buf, cdrom->cdda_buf, size);
 

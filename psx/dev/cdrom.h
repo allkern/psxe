@@ -211,6 +211,7 @@ typedef struct {
     uint8_t* xa_sector_buf;
     msf_t xa_msf;
     int xa_playing;
+    int xa_mute;
     uint8_t xa_file;
     uint8_t xa_channel;
     uint8_t xa_coding;
@@ -231,6 +232,8 @@ typedef struct {
     int16_t xa_last_left_sample;
     int16_t xa_last_right_sample;
     int16_t xa_last_mono_sample;
+    uint8_t vol[4];
+    uint8_t vapp[4];
 
     const char* path;
     psx_disc_t* disc;
