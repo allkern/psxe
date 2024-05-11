@@ -24,7 +24,7 @@ gcc -I"$($PSX_DIR)" `
     -DREP_COMMIT_HASH="`"$($COMMIT_HASH)`"" `
     -DOS_INFO="`"$($OS_INFO)`"" `
     -L"$($SDL2_DIR)\lib" `
-    -m32 -lSDL2main -lSDL2 -Wno-overflow `
+    -lSDL2main -lSDL2 -Wno-overflow `
     -Wall -pedantic -DLOG_USE_COLOR `
     -Wno-address-of-packed-member `
     -ffast-math -Ofast -g -flto
