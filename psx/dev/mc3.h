@@ -14,7 +14,7 @@ typedef struct {
     uint32_t cache_control;
 } psx_mc3_t;
 
-psx_mc3_t* psx_mc3_create();
+psx_mc3_t* psx_mc3_create(void);
 void psx_mc3_init(psx_mc3_t*);
 uint32_t psx_mc3_read32(psx_mc3_t*, uint32_t);
 uint16_t psx_mc3_read16(psx_mc3_t*, uint32_t);

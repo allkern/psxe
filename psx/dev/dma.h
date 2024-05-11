@@ -42,7 +42,7 @@ typedef struct {
     uint32_t dicr;
 } psx_dma_t;
 
-psx_dma_t* psx_dma_create();
+psx_dma_t* psx_dma_create(void);
 void psx_dma_init(psx_dma_t*, psx_bus_t*, psx_ic_t*);
 void psx_dma_do_mdec_in(psx_dma_t*);
 void psx_dma_do_mdec_out(psx_dma_t*);

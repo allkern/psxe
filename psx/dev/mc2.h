@@ -14,7 +14,7 @@ typedef struct {
     uint32_t ram_size;
 } psx_mc2_t;
 
-psx_mc2_t* psx_mc2_create();
+psx_mc2_t* psx_mc2_create(void);
 void psx_mc2_init(psx_mc2_t*);
 uint32_t psx_mc2_read32(psx_mc2_t*, uint32_t);
 uint16_t psx_mc2_read16(psx_mc2_t*, uint32_t);

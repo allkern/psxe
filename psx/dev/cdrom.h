@@ -241,7 +241,7 @@ typedef struct {
     int cd_type;
 } psx_cdrom_t;
 
-psx_cdrom_t* psx_cdrom_create();
+psx_cdrom_t* psx_cdrom_create(void);
 void psx_cdrom_init(psx_cdrom_t*, psx_ic_t*);
 uint32_t psx_cdrom_read32(psx_cdrom_t*, uint32_t);
 uint16_t psx_cdrom_read16(psx_cdrom_t*, uint32_t);

@@ -73,7 +73,7 @@ typedef struct {
     } timer[3];
 } psx_timer_t;
 
-psx_timer_t* psx_timer_create();
+psx_timer_t* psx_timer_create(void);
 void psx_timer_init(psx_timer_t*, psx_ic_t*);
 uint32_t psx_timer_read32(psx_timer_t*, uint32_t);
 uint16_t psx_timer_read16(psx_timer_t*, uint32_t);

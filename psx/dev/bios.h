@@ -16,7 +16,7 @@ typedef struct {
     uint8_t* buf;
 } psx_bios_t;
 
-psx_bios_t* psx_bios_create();
+psx_bios_t* psx_bios_create(void);
 void psx_bios_init(psx_bios_t*);
 void psx_bios_load(psx_bios_t*, const char*);
 uint32_t psx_bios_read32(psx_bios_t*, uint32_t);

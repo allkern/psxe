@@ -25,7 +25,7 @@ struct psx_input_t {
     psx_input_query_fifo_t query_fifo_func;
 };
 
-psx_input_t* psx_input_create();
+psx_input_t* psx_input_create(void);
 void psx_input_init(psx_input_t*);
 void psx_input_set_write_func(psx_input_t*, psx_input_write_t);
 void psx_input_set_read_func(psx_input_t*, psx_input_read_t);

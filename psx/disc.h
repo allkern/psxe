@@ -35,7 +35,7 @@ typedef struct {
     disc_destroy_t destroy_func;
 } psx_disc_t;
 
-psx_disc_t* psx_disc_create();
+psx_disc_t* psx_disc_create(void);
 int psx_disc_seek(psx_disc_t*, msf_t);
 int psx_disc_read_sector(psx_disc_t*, void*);
 int psx_disc_get_track_addr(psx_disc_t*, msf_t*, int);

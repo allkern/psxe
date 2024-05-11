@@ -1,6 +1,9 @@
-#include "psx/psx.h"
-#include "psx/input/sda.h"
-#include "psx/disc/cue.h"
+#include "psx.h"
+#include "input/sda.h"
+#include "disc/cue.h"
+// #include "psx/psx.h"
+// #include "psx/input/sda.h"
+// #include "psx/disc/cue.h"
 
 #include "screen.h"
 #include "config.h"
@@ -16,8 +19,8 @@ void audio_update(void* ud, uint8_t* buf, int size) {
     for (int i = 0; i < (size >> 2); i++) {
         uint32_t sample = psx_spu_get_sample(spu);
 
-        int16_t left = (int16_t)(sample & 0xffff) * 1.5f;
-        int16_t right = (int16_t)(sample >> 16) * 1.5f;
+        int16_t left = (int16_t)(sample & 0xffff);
+        int16_t right = (int16_t)(sample >> 16);
 
         *(int16_t*)(&buf[(i << 2) + 0]) += left;
         *(int16_t*)(&buf[(i << 2) + 2]) += right;
@@ -84,9 +87,8 @@ int main(int argc, const char* argv[]) {
     psx_pad_attach_mcd(psx->pad, 1, "slot2.mcd");
 
     if (cfg->exe) {
-        while (psx->cpu->pc != 0x80030000) {
+        while (psx->cpu->pc != 0x80030000)
             psx_update(psx);
-        }
 
         psx_load_exe(psx, cfg->exe);
     }

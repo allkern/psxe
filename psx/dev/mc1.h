@@ -27,7 +27,7 @@ typedef struct {
     int seq;
 } psx_access_delay_t;
 
-psx_mc1_t* psx_mc1_create();
+psx_mc1_t* psx_mc1_create(void);
 void psx_mc1_init(psx_mc1_t*);
 uint32_t psx_mc1_read32(psx_mc1_t*, uint32_t);
 uint16_t psx_mc1_read16(psx_mc1_t*, uint32_t);

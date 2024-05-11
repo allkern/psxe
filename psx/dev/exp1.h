@@ -17,7 +17,7 @@ typedef struct {
     uint8_t* rom;
 } psx_exp1_t;
 
-psx_exp1_t* psx_exp1_create();
+psx_exp1_t* psx_exp1_create(void);
 void psx_exp1_init(psx_exp1_t*, psx_mc1_t*, const char*);
 void psx_exp1_load(psx_exp1_t*, const char*);
 uint32_t psx_exp1_read32(psx_exp1_t*, uint32_t);

@@ -53,7 +53,7 @@ typedef struct {
     psx_cpu_t* cpu;
 } psx_ic_t;
 
-psx_ic_t* psx_ic_create();
+psx_ic_t* psx_ic_create(void);
 void psx_ic_init(psx_ic_t*, psx_cpu_t*);
 uint32_t psx_ic_read32(psx_ic_t*, uint32_t);
 uint16_t psx_ic_read16(psx_ic_t*, uint32_t);

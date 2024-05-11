@@ -33,7 +33,7 @@ typedef struct {
     uint8_t atc_rx;
 } psx_exp2_t;
 
-psx_exp2_t* psx_exp2_create();
+psx_exp2_t* psx_exp2_create(void);
 void psx_exp2_init(psx_exp2_t*, exp2_tty_tx atcons_tx, exp2_tty_tx duart_tx);
 void psx_exp2_atcons_put(psx_exp2_t*, char);
 void psx_exp2_duart_put(psx_exp2_t*, char);

@@ -157,7 +157,7 @@ struct psx_gpu_t {
     psx_gpu_event_callback_t event_cb_table[8];
 };
 
-psx_gpu_t* psx_gpu_create();
+psx_gpu_t* psx_gpu_create(void);
 void psx_gpu_init(psx_gpu_t*, psx_ic_t*);
 uint32_t psx_gpu_read32(psx_gpu_t*, uint32_t);
 uint16_t psx_gpu_read16(psx_gpu_t*, uint32_t);

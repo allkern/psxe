@@ -7,7 +7,7 @@ struct psx_bus_t;
 
 typedef struct psx_bus_t psx_bus_t;
 
-psx_bus_t* psx_bus_create();
+psx_bus_t* psx_bus_create(void);
 void psx_bus_init(psx_bus_t*);
 uint32_t psx_bus_read32(psx_bus_t*, uint32_t);
 uint16_t psx_bus_read16(psx_bus_t*, uint32_t);

@@ -223,7 +223,7 @@ struct __attribute__((__packed__)) psx_cpu_t {
 #define SR_CU2 0x40000000
 #define SR_CU3 0x80000000
 
-psx_cpu_t* psx_cpu_create();
+psx_cpu_t* psx_cpu_create(void);
 void psx_cpu_init(psx_cpu_t*, psx_bus_t*);
 void psx_cpu_destroy(psx_cpu_t*);
 void psx_cpu_cycle(psx_cpu_t*);

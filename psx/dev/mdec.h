@@ -85,7 +85,7 @@ typedef struct {
     uint32_t status;
 } psx_mdec_t;
 
-psx_mdec_t* psx_mdec_create();
+psx_mdec_t* psx_mdec_create(void);
 void psx_mdec_init(psx_mdec_t*);
 uint32_t psx_mdec_read32(psx_mdec_t*, uint32_t);
 uint16_t psx_mdec_read16(psx_mdec_t*, uint32_t);

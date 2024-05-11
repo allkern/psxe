@@ -4,7 +4,8 @@
 #include "config.h"
 #include "common.h"
 
-#include "psx/log.h"
+#include "log.h"
+// #include "psx/log.h"
 
 static const char* g_version_text =
 #ifdef _WIN32

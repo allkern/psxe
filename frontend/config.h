@@ -27,7 +27,7 @@ typedef struct {
     const char* exp_path;
 } psxe_config_t;
 
-psxe_config_t* psxe_cfg_create();
+psxe_config_t* psxe_cfg_create(void);
 void psxe_cfg_init(psxe_config_t*);
 void psxe_cfg_load_defaults(psxe_config_t*);
 void psxe_cfg_load(psxe_config_t*, int, const char**);

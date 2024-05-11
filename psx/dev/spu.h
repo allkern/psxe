@@ -165,7 +165,7 @@ typedef struct __attribute__((__packed__)) {
     } data[24];
 } psx_spu_t;
 
-psx_spu_t* psx_spu_create();
+psx_spu_t* psx_spu_create(void);
 void psx_spu_init(psx_spu_t*);
 uint32_t psx_spu_read32(psx_spu_t*, uint32_t);
 uint16_t psx_spu_read16(psx_spu_t*, uint32_t);

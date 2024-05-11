@@ -1,7 +1,8 @@
 #ifndef SCREEN_H
 #define SCREEN_H
 
-#include "psx/psx.h"
+#include "psx.h"
+// #include "psx/psx.h"
 #include "common.h"
 
 #include <string.h>
@@ -33,7 +34,7 @@ typedef struct {
     SDL_GameController* controller;
 } psxe_screen_t;
 
-psxe_screen_t* psxe_screen_create();
+psxe_screen_t* psxe_screen_create(void);
 void psxe_screen_init(psxe_screen_t*, psx_t*);
 void psxe_screen_reload(psxe_screen_t*);
 int psxe_screen_is_open(psxe_screen_t*);

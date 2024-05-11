@@ -16,7 +16,7 @@ typedef struct {
     uint8_t* buf;
 } psx_scratchpad_t;
 
-psx_scratchpad_t* psx_scratchpad_create();
+psx_scratchpad_t* psx_scratchpad_create(void);
 void psx_scratchpad_init(psx_scratchpad_t*);
 uint32_t psx_scratchpad_read32(psx_scratchpad_t*, uint32_t);
 uint16_t psx_scratchpad_read16(psx_scratchpad_t*, uint32_t);

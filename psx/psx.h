@@ -28,7 +28,7 @@ typedef struct {
     psx_mdec_t* mdec;
 } psx_t;
 
-psx_t* psx_create();
+psx_t* psx_create(void);
 void psx_init(psx_t*, const char*, const char*);
 void psx_load_expansion(psx_t*, const char*);
 void psx_load_bios(psx_t*, const char*);

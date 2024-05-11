@@ -67,7 +67,7 @@ typedef struct {
     uint8_t adc3;
 } psxi_sda_t;
 
-psxi_sda_t* psxi_sda_create();
+psxi_sda_t* psxi_sda_create(void);
 void psxi_sda_init(psxi_sda_t*, uint16_t);
 void psxi_sda_init_input(psxi_sda_t*, psx_input_t*);
 void psxi_sda_destroy(psxi_sda_t*);

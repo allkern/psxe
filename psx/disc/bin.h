@@ -21,7 +21,7 @@ typedef struct {
     msf_t end;
 } psxd_bin_t;
 
-psxd_bin_t* psxd_bin_create();
+psxd_bin_t* psxd_bin_create(void);
 void psxd_bin_init(psxd_bin_t*);
 int psxd_bin_load(psxd_bin_t*, const char*);
 void psxd_bin_init_disc(psxd_bin_t*, psx_disc_t*);

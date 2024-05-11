@@ -82,7 +82,7 @@ typedef struct {
     msf_t end;
 } psxd_cue_t;
 
-psxd_cue_t* psxd_cue_create();
+psxd_cue_t* psxd_cue_create(void);
 void psxd_cue_init(psxd_cue_t*);
 int psxd_cue_load(psxd_cue_t*, const char*);
 void psxd_cue_init_disc(psxd_cue_t*, psx_disc_t*);

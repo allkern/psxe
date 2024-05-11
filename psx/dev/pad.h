@@ -120,7 +120,7 @@ typedef struct {
     uint16_t mode, ctrl, baud, stat;
 } psx_pad_t;
 
-psx_pad_t* psx_pad_create();
+psx_pad_t* psx_pad_create(void);
 void psx_pad_init(psx_pad_t*, psx_ic_t*);
 uint32_t psx_pad_read32(psx_pad_t*, uint32_t);
 uint16_t psx_pad_read16(psx_pad_t*, uint32_t);
