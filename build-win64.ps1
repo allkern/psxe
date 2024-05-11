@@ -1,20 +1,20 @@
+Set-PSDebug -Trace 1
+
 git fetch --all --tags
 
 $VERSION_TAG = git describe --always --tags --abbrev=0
 $COMMIT_HASH = git rev-parse --short HEAD
-$OS_INFO = (Get-WMIObject win32_operatingsystem).caption + " " + (Get-WMIObject win32_operatingsystem).version + " " + (Get-WMIObject win32_operatingsystem).OSArchitecture
+$OS_INFO = (Get-WMIObject win32_operatingsystem).caption + " " + `
+           (Get-WMIObject win32_operatingsystem).version + " " + `
+           (Get-WMIObject win32_operatingsystem).OSArchitecture
 
 $SDL2_DIR = "SDL2-2.26.5\x86_64-w64-mingw32"
 $PSX_DIR = "."
 
 mkdir -Force -Path bin > $null
 
-Get-ChildItem
-Get-ChildItem psx
-
 gcc -I"`"$($PSX_DIR)`"" `
     -I"`"$($PSX_DIR)\psx`"" `
-    -I"`"$($SDL2_DIR)\include`"" `
     -I"`"$($SDL2_DIR)\include\SDL2`"" `
     "psx\*.c" `
     "psx\dev\*.c" `
