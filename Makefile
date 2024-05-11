@@ -1,7 +1,7 @@
 .ONESHELL:
 
 CFLAGS := -g -DLOG_USE_COLOR `sdl2-config --cflags --libs`
-CFLAGS += -Ofast -Wno-overflow -Wall -pedantic -Wno-address-of-packed-member
+CFLAGS += -Ofast -Wno-overflow -Wall -pedantic -Wno-address-of-packed-member -flto
 
 PLATFORM := $(shell uname -s)
 

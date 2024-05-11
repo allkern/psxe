@@ -633,8 +633,6 @@ void psx_cpu_i_lwl(psx_cpu_t* cpu) {
     uint32_t s = cpu->r[S];
     uint32_t t = cpu->r[rt];
 
-    uint32_t tp = t;
-
     uint32_t addr = s + IMM16S;
     uint32_t load = psx_bus_read32(cpu->bus, addr & 0xfffffffc);
 

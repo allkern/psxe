@@ -12,7 +12,7 @@ const uint32_t g_psx_bus_region_mask_table[] = {
     0x7fffffff, 0x1fffffff, 0xffffffff, 0xffffffff
 };
 
-psx_bus_t* psx_bus_create(void) {
+psx_bus_t* psx_bus_create() {
     return (psx_bus_t*)malloc(sizeof(psx_bus_t));
 }
 
@@ -114,7 +114,7 @@ uint16_t psx_bus_read16(psx_bus_t* bus, uint32_t addr) {
 uint8_t psx_bus_read8(psx_bus_t* bus, uint32_t addr) {
     bus->access_cycles = 2;
 
-    uint32_t vaddr = addr;
+    // uint32_t vaddr = addr;
 
     addr &= g_psx_bus_region_mask_table[addr >> 29];
 
