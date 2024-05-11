@@ -11,9 +11,9 @@ $PSX_DIR = "."
 
 mkdir -Force -Path bin > $null
 
-gcc -I"`"$($PSX_DIR)`"" `
-    -I"`"$($PSX_DIR)\psx`"" `
-    -I"`"$($SDL2_DIR)\include\SDL2`"" `
+gcc -I"$($PSX_DIR)" `
+    -I"$($PSX_DIR)\psx" `
+    -I"$($SDL2_DIR)\include\SDL2" `
     "psx\*.c" `
     "psx\dev\*.c" `
     "psx\input\*.c" `
