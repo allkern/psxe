@@ -6,7 +6,7 @@ $OS_INFO = (Get-WMIObject win32_operatingsystem).caption + " " + `
            (Get-WMIObject win32_operatingsystem).version + " " + `
            (Get-WMIObject win32_operatingsystem).OSArchitecture
 
-$SDL2_DIR = "SDL2-2.26.5\i686-w64-mingw32"
+$SDL2_DIR = "SDL2-2.30.3\i686-w64-mingw32"
 $PSX_DIR = "."
 
 mkdir -Force -Path bin > $null
