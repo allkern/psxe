@@ -100,8 +100,12 @@ void psxi_sda_on_button_press(void* udata, uint32_t data) {
     if (data == PSXI_SW_SDA_ANALOG) {
         sda->sa_mode ^= 1;
 
-        sda->prev_model = sda->model;
-        sda->model = sda->sa_mode ? SDA_MODEL_ANALOG_STICK : sda->prev_model;
+        if (sda->sa_mode) {
+            sda->prev_model = sda->model;
+            sda->model = SDA_MODEL_ANALOG_STICK;
+        } else {
+            sda->model = sda->prev_model;
+        }
 
         printf("sda: Switched to %s mode\n", sda->sa_mode ? "analog" : "digital");
 

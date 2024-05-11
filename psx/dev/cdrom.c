@@ -806,6 +806,11 @@ void cdrom_cmd_setfilter(psx_cdrom_t* cdrom) {
 void cdrom_cmd_setmode(psx_cdrom_t* cdrom) {
     cdrom->delayed_command = CDL_NONE;
 
+    // Not doing this fixes a graphical issue in
+    // Castlevania - Symphony of the Night, but breaks
+    // Road Rash.
+    // cdrom->ongoing_read_command = CDL_NONE;
+
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
             if (cdrom->pfifo_index != 1) {
@@ -825,7 +830,7 @@ void cdrom_cmd_setmode(psx_cdrom_t* cdrom) {
             cdrom->mode = PFIFO_POP;
 
             if ((cdrom->mode & MODE_SPEED) != prev_speed)
-                cdrom->spin_delay = DELAY_1MS * 650;
+                cdrom->spin_delay = 0; // DELAY_1MS * 650;
 
             cdrom->irq_delay = DELAY_1MS;
             cdrom->delayed_command = CDL_SETMODE;
@@ -842,6 +847,8 @@ void cdrom_cmd_setmode(psx_cdrom_t* cdrom) {
                 cdrom->irq_delay = DELAY_1MS;
                 cdrom->delayed_command = cdrom->ongoing_read_command;
                 cdrom->state = CD_STATE_SEND_RESP2;
+
+                return;
             }
 
             cdrom->state = CD_STATE_RECV_CMD;
