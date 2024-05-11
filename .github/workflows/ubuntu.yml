@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
     - name: Install SDL2
@@ -25,7 +25,7 @@ jobs:
            chmod +x ./bin/psxe
            mv ./bin/psxe ./
            tar -czf psxe-ubuntu-latest.tar.gz ./psxe
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: psxe-ubuntu-latest
         path: ./psxe-ubuntu-latest.tar.gz

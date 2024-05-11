@@ -9,7 +9,7 @@ jobs:
     runs-on: macos-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0
     - name: Install SDL2 and dylibbundler
@@ -21,7 +21,7 @@ jobs:
            git fetch --all --tags
            ./build.sh
            tar -czf psxe-macos-latest.tar.gz psxe.app
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: psxe-macos-latest
         path: ./psxe-macos-latest.tar.gz
