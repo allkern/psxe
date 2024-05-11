@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-psxi_sda_t* psxi_sda_create() {
+psxi_sda_t* psxi_sda_create(void) {
     return (psxi_sda_t*)malloc(sizeof(psxi_sda_t));
 }
 

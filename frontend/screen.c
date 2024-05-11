@@ -47,7 +47,7 @@ uint32_t screen_get_button_joystick(uint8_t b) {
     return 0;
 } 
 
-SDL_GameController* screen_find_controller() {
+SDL_GameController* screen_find_controller(void) {
     for (int i = 0; i < SDL_NumJoysticks(); i++)
         if (SDL_IsGameController(i))
             return SDL_GameControllerOpen(i);
@@ -61,7 +61,7 @@ int screen_get_base_width(psxe_screen_t* screen) {
     return (width == 256) ? 256 : 320;
 }
 
-psxe_screen_t* psxe_screen_create() {
+psxe_screen_t* psxe_screen_create(void) {
     return (psxe_screen_t*)malloc(sizeof(psxe_screen_t));
 }
 

@@ -12,7 +12,7 @@ const uint32_t g_psx_bus_region_mask_table[] = {
     0x7fffffff, 0x1fffffff, 0xffffffff, 0xffffffff
 };
 
-psx_bus_t* psx_bus_create() {
+psx_bus_t* psx_bus_create(void) {
     return (psx_bus_t*)malloc(sizeof(psx_bus_t));
 }
 

@@ -85,7 +85,7 @@ static const int16_t g_spu_gauss_table[] = {
     0x5997, 0x599E, 0x59A4, 0x59A9, 0x59AD, 0x59B0, 0x59B2, 0x59B3
 };
 
-psx_spu_t* psx_spu_create() {
+psx_spu_t* psx_spu_create(void) {
     return (psx_spu_t*)malloc(sizeof(psx_spu_t));
 }
 

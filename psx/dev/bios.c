@@ -5,7 +5,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-psx_bios_t* psx_bios_create() {
+psx_bios_t* psx_bios_create(void) {
     return (psx_bios_t*)malloc(sizeof(psx_bios_t));
 }
 

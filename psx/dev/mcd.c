@@ -1,7 +1,7 @@
 #include "mcd.h"
 #include "../log.h"
 
-psx_mcd_t* psx_mcd_create() {
+psx_mcd_t* psx_mcd_create(void) {
     return (psx_mcd_t*)malloc(sizeof(psx_mcd_t));
 }
 

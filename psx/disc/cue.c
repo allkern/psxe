@@ -282,7 +282,7 @@ int cue_parse(psxd_cue_t* cue, FILE* file) {
     }
 }
 
-psxd_cue_t* psxd_cue_create() {
+psxd_cue_t* psxd_cue_create(void) {
     return (psxd_cue_t*)malloc(sizeof(psxd_cue_t));
 }
 

@@ -5,7 +5,7 @@
 #include "../log.h"
 #include "scratchpad.h"
 
-psx_scratchpad_t* psx_scratchpad_create() {
+psx_scratchpad_t* psx_scratchpad_create(void) {
     return (psx_scratchpad_t*)malloc(sizeof(psx_scratchpad_t));
 }
 

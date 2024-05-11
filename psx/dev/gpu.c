@@ -38,7 +38,7 @@ int max3(int a, int b, int c) {
     return (m > c) ? m : c;
 }
 
-psx_gpu_t* psx_gpu_create() {
+psx_gpu_t* psx_gpu_create(void) {
     return (psx_gpu_t*)malloc(sizeof(psx_gpu_t));
 }
 

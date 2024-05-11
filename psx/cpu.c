@@ -221,7 +221,7 @@ void cpu_b_kcall_hook(psx_cpu_t* cpu) {
     }
 }
 
-psx_cpu_t* psx_cpu_create() {
+psx_cpu_t* psx_cpu_create(void) {
     return (psx_cpu_t*)malloc(sizeof(psx_cpu_t));
 }
 

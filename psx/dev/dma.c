@@ -7,7 +7,7 @@
 #include <string.h>
 #include <ctype.h>
 
-psx_dma_t* psx_dma_create() {
+psx_dma_t* psx_dma_create(void) {
     return (psx_dma_t*)malloc(sizeof(psx_dma_t));
 }
 

@@ -19,7 +19,7 @@ uint32_t disc_get_addr(msf_t msf) {
     return sectors * CD_SECTOR_SIZE;
 }
 
-psx_disc_t* psx_disc_create() {
+psx_disc_t* psx_disc_create(void) {
     return (psx_disc_t*)malloc(sizeof(psx_disc_t));
 }
 

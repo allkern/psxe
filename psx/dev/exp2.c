@@ -5,7 +5,7 @@
 #include "../log.h"
 #include "exp2.h"
 
-psx_exp2_t* psx_exp2_create() {
+psx_exp2_t* psx_exp2_create(void) {
     return (psx_exp2_t*)malloc(sizeof(psx_exp2_t));
 }
 

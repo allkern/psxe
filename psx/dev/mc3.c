@@ -5,7 +5,7 @@
 #include "mc3.h"
 #include "../log.h"
 
-psx_mc3_t* psx_mc3_create() {
+psx_mc3_t* psx_mc3_create(void) {
     return (psx_mc3_t*)malloc(sizeof(psx_mc3_t));
 }
 

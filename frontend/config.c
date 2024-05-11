@@ -67,7 +67,7 @@ static const char* g_regions_text =
 static const char* g_desc_text =
     "\nPlease report any bugs to <https://github.com/allkern/psxe/issues>\n";
 
-psxe_config_t* psxe_cfg_create() {
+psxe_config_t* psxe_cfg_create(void) {
     return (psxe_config_t*)malloc(sizeof(psxe_config_t));
 }
 

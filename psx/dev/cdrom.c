@@ -1739,7 +1739,7 @@ const char* g_psx_cdrom_write_names_table[] = {
     "cdrom_write_status", "cdrom_write_rcdrspuv", "cdrom_write_rcdlspuv", "cdrom_write_volume"
 };
 
-psx_cdrom_t* psx_cdrom_create() {
+psx_cdrom_t* psx_cdrom_create(void) {
     return (psx_cdrom_t*)malloc(sizeof(psx_cdrom_t));
 }
 

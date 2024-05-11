@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <string.h>
 
-psxd_bin_t* psxd_bin_create() {
+psxd_bin_t* psxd_bin_create(void) {
     return (psxd_bin_t*)malloc(sizeof(psxd_bin_t));
 }
 

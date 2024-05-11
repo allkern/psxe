@@ -6,7 +6,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-psx_input_t* psx_input_create() {
+psx_input_t* psx_input_create(void) {
     return (psx_input_t*)malloc(sizeof(psx_input_t));
 }
 

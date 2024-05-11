@@ -58,7 +58,7 @@ const char* g_psx_timer_reg_names[] = {
     "target", 0, 0, 0
 };
 
-psx_timer_t* psx_timer_create() {
+psx_timer_t* psx_timer_create(void) {
     return (psx_timer_t*)malloc(sizeof(psx_timer_t));
 }
 

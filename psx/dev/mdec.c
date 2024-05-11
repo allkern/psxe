@@ -269,7 +269,7 @@ mdec_fn_t g_mdec_cmd_table[] = {
     mdec_nop
 };
 
-psx_mdec_t* psx_mdec_create() {
+psx_mdec_t* psx_mdec_create(void) {
     return (psx_mdec_t*)malloc(sizeof(psx_mdec_t));
 }
 
