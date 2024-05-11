@@ -20,7 +20,7 @@ SOURCES += $(wildcard psx/disc/*.c)
 SOURCES += $(wildcard frontend/*.c)
 
 bin/psxe frontend/main.c:
-	ls \
+	ls
 	mkdir -p bin
 
 	gcc $(SOURCES) -o bin/psxe \
