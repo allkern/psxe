@@ -1,6 +1,6 @@
 .ONESHELL:
 
-CFLAGS += -g -DLOG_USE_COLOR -lSDL2 -lSDL2main
+CFLAGS := -g -DLOG_USE_COLOR `sdl2-config --cflags --libs`
 CFLAGS += -Ofast -Wno-overflow -Wall -pedantic -Wno-address-of-packed-member
 
 PLATFORM := $(shell uname -s)
@@ -20,6 +20,7 @@ SOURCES += $(wildcard psx/disc/*.c)
 SOURCES += $(wildcard frontend/*.c)
 
 bin/psxe frontend/main.c:
+	ls \
 	mkdir -p bin
 
 	gcc $(SOURCES) -o bin/psxe \
