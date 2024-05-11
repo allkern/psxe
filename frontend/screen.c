@@ -2,8 +2,6 @@
 
 #include "input/sda.h"
 
-#include "SDL2/SDL_version.h"
-
 uint32_t screen_get_button(SDL_Keycode k) {
     if (k == SDLK_x     ) return PSXI_SW_SDA_CROSS;
     if (k == SDLK_a     ) return PSXI_SW_SDA_SQUARE;

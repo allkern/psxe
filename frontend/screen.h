@@ -8,6 +8,7 @@
 #include <string.h>
 
 #include "SDL.h"
+#include "SDL_version.h"
 #include "SDL_gamecontroller.h"
 
 typedef struct {

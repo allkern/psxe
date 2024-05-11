@@ -9,6 +9,9 @@ $PSX_DIR = "."
 
 mkdir -Force -Path bin > $null
 
+Get-ChildItem
+Get-ChildItem psx
+
 gcc -I"`"$($PSX_DIR)`"" `
     -I"`"$($PSX_DIR)\psx`"" `
     -I"`"$($SDL2_DIR)\include`"" `
