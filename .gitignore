@@ -4,7 +4,7 @@ build-win32/
 imgui/
 res/
 sdl2/
-SDL2-2.26.5/
+SDL2-2.30.3/
 sdl2-win32/
 sdl2-win64/
 test/

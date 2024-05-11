@@ -1,10 +1,10 @@
-if (Test-Path "SDL2-2.26.5") {
-    Remove-Item -Recurse "SDL2-2.26.5"
+if (Test-Path "SDL2-2.30.3") {
+    Remove-Item -Recurse "SDL2-2.30.3"
 }
 
-$SDL2_URL = "https://github.com/libsdl-org/SDL/releases/download/release-2.26.5/SDL2-devel-2.26.5-mingw.zip"
-$WIN32_URL = "https://github.com/libsdl-org/SDL/releases/download/release-2.26.5/SDL2-2.26.5-win32-x86.zip"
-$WIN64_URL = "https://github.com/libsdl-org/SDL/releases/download/release-2.26.5/SDL2-2.26.5-win32-x64.zip"
+$SDL2_URL = "https://github.com/libsdl-org/SDL/releases/download/release-2.30.3/SDL2-devel-2.30.3-mingw.zip"
+$WIN32_URL = "https://github.com/libsdl-org/SDL/releases/download/release-2.30.3/SDL2-2.30.3-win32-x86.zip"
+$WIN64_URL = "https://github.com/libsdl-org/SDL/releases/download/release-2.30.3/SDL2-2.30.3-win32-x64.zip"
 
 Invoke-WebRequest -URI $SDL2_URL -OutFile "sdl2.zip"
 Expand-Archive "sdl2.zip" -DestinationPath "." -Force
