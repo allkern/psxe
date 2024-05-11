@@ -23,7 +23,7 @@ gcc -I"$($PSX_DIR)" `
     -DREP_VERSION="`"$($VERSION_TAG)`"" `
     -DREP_COMMIT_HASH="`"$($COMMIT_HASH)`"" `
     -DOS_INFO="`"$($OS_INFO)`"" `
-    -L"`"$($SDL2_DIR)\lib`"" `
+    -L"$($SDL2_DIR)\lib" `
     -m64 -lSDL2main -lSDL2 -Wno-overflow `
     -Wall -pedantic -DLOG_USE_COLOR `
     -Wno-address-of-packed-member `
