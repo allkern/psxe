@@ -57,24 +57,69 @@
 #define MODE_IRQPMD 0x0080
 #define MODE_CLK 0x0080
 
+/*
+  0     Synchronization Enable (0=Free Run, 1=Synchronize via Bit1-2)
+  1-2   Synchronization Mode   (0-3, see lists below)
+         Synchronization Modes for Counter 0:
+           0 = Pause counter during Hblank(s)
+           1 = Reset counter to 0000h at Hblank(s)
+           2 = Reset counter to 0000h at Hblank(s) and pause outside of Hblank
+           3 = Pause until Hblank occurs once, then switch to Free Run
+         Synchronization Modes for Counter 1:
+           Same as above, but using Vblank instead of Hblank
+         Synchronization Modes for Counter 2:
+           0 or 3 = Stop counter at current value (forever, no h/v-blank start)
+           1 or 2 = Free Run (same as when Synchronization Disabled)
+  3     Reset counter to 0000h  (0=After Counter=FFFFh, 1=After Counter=Target)
+  4     IRQ when Counter=Target (0=Disable, 1=Enable)
+  5     IRQ when Counter=FFFFh  (0=Disable, 1=Enable)
+  6     IRQ Once/Repeat Mode    (0=One-shot, 1=Repeatedly)
+  7     IRQ Pulse/Toggle Mode   (0=Short Bit10=0 Pulse, 1=Toggle Bit10 on/off)
+  8-9   Clock Source (0-3, see list below)
+         Counter 0:  0 or 2 = System Clock,  1 or 3 = Dotclock
+         Counter 1:  0 or 2 = System Clock,  1 or 3 = Hblank
+         Counter 2:  0 or 1 = System Clock,  2 or 3 = System Clock/8
+  10    Interrupt Request       (0=Yes, 1=No) (Set after Writing)    (W=1) (R)
+  11    Reached Target Value    (0=No, 1=Yes) (Reset after Reading)        (R)
+  12    Reached FFFFh Value     (0=No, 1=Yes) (Reset after Reading)        (R)
+  13-15 Unknown (seems to be always zero)
+  16-31 Garbage (next opcode)
+*/
+
 typedef struct {
     uint32_t bus_delay;
     uint32_t io_base, io_size;
 
     psx_ic_t* ic;
+    psx_gpu_t* gpu;
+
+    int hblank, prev_hblank;
+    int vblank, prev_vblank;
 
     struct {
-        uint16_t prev_counter;
-        uint16_t counter;
-        uint32_t mode;
+        float counter;
         uint32_t target;
-        int paused;
+        int sync_enable;
+        int sync_mode;
+        int reset_target;
+        int irq_target;
+        int irq_max;
+        int irq_repeat;
+        int irq_toggle;
+        int clk_source;
+        int irq;
+        int target_reached;
+        int max_reached;
         int irq_fired;
+        uint32_t div_counter;
+
+        int paused;
+        int blank_once;
     } timer[3];
 } psx_timer_t;
 
 psx_timer_t* psx_timer_create(void);
-void psx_timer_init(psx_timer_t*, psx_ic_t*);
+void psx_timer_init(psx_timer_t*, psx_ic_t*, psx_gpu_t*);
 uint32_t psx_timer_read32(psx_timer_t*, uint32_t);
 uint16_t psx_timer_read16(psx_timer_t*, uint32_t);
 uint8_t psx_timer_read8(psx_timer_t*, uint32_t);

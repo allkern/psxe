@@ -70,9 +70,8 @@ void psx_ic_write32(psx_ic_t* ic, uint32_t offset, uint32_t value) {
     }
 
     // Emulate acknowledge
-    if (!(ic->stat & ic->mask)) {
+    if (!(ic->stat & ic->mask))
         ic->cpu->cop0_r[COP0_CAUSE] &= ~SR_IM2;
-    }
 }
 
 void psx_ic_write16(psx_ic_t* ic, uint32_t offset, uint16_t value) {
@@ -84,9 +83,8 @@ void psx_ic_write16(psx_ic_t* ic, uint32_t offset, uint16_t value) {
     }
 
     // Emulate acknowledge
-    if (!(ic->stat & ic->mask)) {
+    if (!(ic->stat & ic->mask))
         ic->cpu->cop0_r[COP0_CAUSE] &= ~SR_IM2;
-    }
 }
 
 void psx_ic_write8(psx_ic_t* ic, uint32_t offset, uint8_t value) {
@@ -102,13 +100,15 @@ void psx_ic_write8(psx_ic_t* ic, uint32_t offset, uint8_t value) {
     }
 
     // Emulate acknowledge
-    if (!(ic->stat & ic->mask)) {
+    if (!(ic->stat & ic->mask))
         ic->cpu->cop0_r[COP0_CAUSE] &= ~SR_IM2;
-    }
 }
 
 void psx_ic_irq(psx_ic_t* ic, int id) {
     ic->stat |= id;
+
+    // if (ic->mask & (1 << id))
+    //     printf("%u IRQ gone through\n");
 
     if (ic->mask & ic->stat)
         psx_cpu_set_irq_pending(ic->cpu);

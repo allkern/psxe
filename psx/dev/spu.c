@@ -568,6 +568,9 @@ uint32_t psx_spu_get_sample(psx_spu_t* spu) {
             spu->data[v].counter &= 0xfff;
             spu->data[v].counter |= sample_index << 12;
 
+            if (spu->data[v].block_flags & 4)
+                spu->data[v].repeat_addr = spu->data[v].current_addr;
+
             switch (spu->data[v].block_flags & 3) {
                 case 0: case 2: {
                     spu->data[v].current_addr += 0x10;
@@ -586,9 +589,6 @@ uint32_t psx_spu_get_sample(psx_spu_t* spu) {
                     spu->data[v].current_addr = spu->data[v].repeat_addr;
                 } break;
             }
-
-            if (spu->data[v].block_flags & 4)
-                spu->data[v].repeat_addr = spu->data[v].current_addr;
 
             spu_read_block(spu, v);
         }

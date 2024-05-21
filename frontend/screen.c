@@ -121,8 +121,6 @@ void psxe_screen_reload(psxe_screen_t* screen) {
         SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC
     );
 
-    SDL_SetHint("SDL_HINT_RENDER_SCALE_QUALITY", "linear"),
-
     screen->texture = SDL_CreateTexture(
         screen->renderer,
         screen->format,
@@ -145,8 +143,6 @@ void psxe_screen_reload(psxe_screen_t* screen) {
 
         SDL_RenderSetScale(screen->renderer, width_scale, height_scale);
     }
-
-    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, 0);
 
     screen->open = 1;
 }
@@ -486,4 +482,6 @@ void psxe_gpu_vblank_event_cb(psx_gpu_t* gpu) {
     psxe_screen_t* screen = gpu->udata[0];
 
     psxe_screen_update(screen);
+
+    psxe_gpu_vblank_timer_event_cb(gpu);
 }

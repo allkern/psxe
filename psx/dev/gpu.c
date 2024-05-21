@@ -1772,7 +1772,8 @@ void gpu_hblank_event(psx_gpu_t* gpu) {
         // enough. Sending T2 IRQs every line fixes DoA
         // but breaks a bunch of games, so I'll keep this
         // like this until I actually fix the timers
-        // Games that cared about T2:
+        // Games that seem to care about T2 timing:
+        // - Street Fighter Alpha 2
         // - Dead or Alive
         // - NBA Jam
         // - Doom
@@ -1782,7 +1783,14 @@ void gpu_hblank_event(psx_gpu_t* gpu) {
         // - Mortal Kombat
         // - PaRappa the Rapper
         // - In The Hunt
+        // - Crash Bandicoot
+        // - Jackie Chan Stuntmaster
         // - etc.
+        // Masking with 7 breaks Street Fighter Alpha 2. The game 
+        // just stops sending commands to the CDROM while on
+        // Player Select. It probably uses T2 IRQs to time
+        // GetlocP commands, if the timer is too slow it will
+        // break.
         if (!(gpu->line & 7))
             psx_ic_irq(gpu->ic, IC_TIMER2);
     } else {
@@ -1815,7 +1823,7 @@ void psx_gpu_update(psx_gpu_t* gpu, int cyc) {
 
     int curr_hblank = (gpu->cycles >= GPU_CYCLES_PER_HDRAW_NTSC) &&
                       (gpu->cycles <= GPU_CYCLES_PER_SCANL_NTSC);
-    
+
     if (curr_hblank && !prev_hblank) {
         if (gpu->event_cb_table[GPU_EVENT_HBLANK])
             gpu->event_cb_table[GPU_EVENT_HBLANK](gpu);

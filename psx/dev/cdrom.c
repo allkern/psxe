@@ -262,14 +262,13 @@ void cdrom_cmd_getstat(psx_cdrom_t* cdrom) {
             SET_BITS(ifr, IFR_INT, IFR_INT3);
             RESP_PUSH(
                 GETSTAT_MOTOR |
-                (cdrom->cdda_playing ? GETSTAT_PLAY : 0) |
+                ((cdrom->cdda_playing || cdrom->xa_playing) ? GETSTAT_PLAY : 0) |
                 (cdrom->ongoing_read_command ? GETSTAT_READ : 0) |
                 (cdrom->disc ? 0 : GETSTAT_TRAYOPEN)
             );
 
             if (cdrom->ongoing_read_command) {
-                cdrom->status |= STAT_BUSYSTS_MASK;
-                // printf("command=%02x\n", cdrom->ongoing_read_command);
+                // printf("getstat command=%02x\n", cdrom->ongoing_read_command);
                 cdrom->state = CD_STATE_SEND_RESP2;
                 cdrom->delayed_command = cdrom->ongoing_read_command;
                 cdrom->irq_delay = DELAY_1MS;
@@ -397,6 +396,8 @@ void cdrom_cmd_play(psx_cdrom_t* cdrom) {
             cdrom->irq_delay = DELAY_1MS;
             cdrom->state = CD_STATE_SEND_RESP1;
             cdrom->delayed_command = CDL_PLAY;
+
+            printf("play track %u\n", track);
 
             if (track) {
                 psx_disc_get_track_addr(cdrom->disc, &cdrom->cdda_msf, track);
@@ -964,7 +965,7 @@ void cdrom_cmd_getlocp(psx_cdrom_t* cdrom) {
             RESP_PUSH(0x01);
 
             if (cdrom->ongoing_read_command) {
-                //// printf("command=%02x\n", cdrom->ongoing_read_command);
+                printf("getlocp command=%02x\n", cdrom->ongoing_read_command);
                 cdrom->state = CD_STATE_SEND_RESP2;
                 cdrom->delayed_command = cdrom->ongoing_read_command;
                 cdrom->irq_delay = DELAY_1MS;
@@ -1034,8 +1035,15 @@ void cdrom_cmd_gettn(psx_cdrom_t* cdrom) {
             RESP_PUSH(0x01);
             RESP_PUSH(GETSTAT_MOTOR);
 
-            cdrom->delayed_command = CDL_NONE;
-            cdrom->state = CD_STATE_RECV_CMD;
+            if (cdrom->ongoing_read_command) {
+                //// printf("command=%02x\n", cdrom->ongoing_read_command);
+                cdrom->state = CD_STATE_SEND_RESP2;
+                cdrom->delayed_command = cdrom->ongoing_read_command;
+                cdrom->irq_delay = DELAY_1MS;
+            } else {
+                cdrom->delayed_command = CDL_NONE;
+                cdrom->state = CD_STATE_RECV_CMD;
+            }
         } break;
     }
 }
@@ -1415,17 +1423,16 @@ void cdrom_cmd_readtoc(psx_cdrom_t* cdrom) {
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
             cdrom->status |= STAT_BUSYSTS_MASK;
-            cdrom->irq_delay = DELAY_1MS * 1000;
+            cdrom->irq_delay = DELAY_1MS;
             cdrom->state = CD_STATE_SEND_RESP1;
             cdrom->delayed_command = CDL_READTOC;
         } break;
 
         case CD_STATE_SEND_RESP1: {
-            cdrom->status &= ~STAT_BUSYSTS_MASK;
             SET_BITS(ifr, IFR_INT, 3);
             RESP_PUSH(GETSTAT_MOTOR | GETSTAT_READ);
 
-            cdrom->irq_delay = DELAY_1MS * 1000;
+            cdrom->irq_delay = DELAY_1MS;
             cdrom->state = CD_STATE_SEND_RESP2;
             cdrom->delayed_command = CDL_READTOC;
         } break;
@@ -1633,6 +1640,17 @@ void cdrom_write_cmd(psx_cdrom_t* cdrom, uint8_t value) {
 
     cdrom->command = value;
     cdrom->state = CD_STATE_RECV_CMD;
+
+    // Required for Spyro - The Year of the Dragon
+    if (!cdrom->command) {
+        cdrom->irq_delay = DELAY_1MS * 600;
+        cdrom->delayed_command = CDL_ERROR;
+        cdrom->state = CD_STATE_ERROR;
+        cdrom->error = ERR_INVSUBF;
+        cdrom->error_flags = GETSTAT_SEEKERROR;
+
+        return;
+    }
 
     g_psx_cdrom_command_table[value](cdrom);
 }
@@ -2113,6 +2131,10 @@ void cdrom_fetch_xa_sector(psx_cdrom_t* cdrom) {
         psx_disc_read_sector(cdrom->disc, cdrom->xa_sector_buf);
 
         msf_add_f(&cdrom->xa_msf, 1);
+
+        // Check for EOR, EOF bits
+        if (cdrom->xa_sector_buf[0x12] & 0x80)
+            return;
 
         // Check RT and Audio bit
         if ((cdrom->xa_sector_buf[0x12] & 4) != 4)

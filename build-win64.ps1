@@ -29,4 +29,4 @@ gcc -I"$($PSX_DIR)" `
     -Wno-address-of-packed-member `
     -ffast-math -Ofast -g -flto
 
-    Copy-Item -Path "$($SDL2_DIR)\bin\SDL2.dll" -Destination "bin"
+Copy-Item -Path "$($SDL2_DIR)\bin\SDL2.dll" -Destination "bin"
