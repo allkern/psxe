@@ -825,6 +825,8 @@ void gpu_render_textured_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vert
     }
 }
 
+#define I32(v, b) (((int32_t)((v) << (31-b))) >> (31-b))
+
 void gpu_rect(psx_gpu_t* gpu) {
     switch (gpu->state) {
         case GPU_STATE_RECV_CMD: {
@@ -1516,8 +1518,8 @@ void gpu_cmd_02(psx_gpu_t* gpu) {
                 //     gpu->ysiz
                 // );
 
-                for (uint32_t y = gpu->v0.y; y < (gpu->v0.y + gpu->ysiz); y++) {
-                    for (uint32_t x = gpu->v0.x; x < (gpu->v0.x + gpu->xsiz); x++) {
+                for (int y = gpu->v0.y; y < (gpu->v0.y + gpu->ysiz); y++) {
+                    for (int x = gpu->v0.x; x < (gpu->v0.x + gpu->xsiz); x++) {
                         // This shouldn't be needed
                         int bc = (x >= gpu->draw_x1) && (x <= gpu->draw_x2) &&
                                  (y >= gpu->draw_y1) && (y <= gpu->draw_y2);
@@ -1645,8 +1647,8 @@ void psx_gpu_update_cmd(psx_gpu_t* gpu) {
             gpu->draw_y2 = (gpu->buf[0] >> 10) & 0x1ff;
         } break;
         case 0xe5: {
-            gpu->off_x = (gpu->buf[0] >> 0 ) & 0x7ff;
-            gpu->off_y = (gpu->buf[0] >> 11) & 0x7ff;
+            gpu->off_x = ((int32_t)((gpu->buf[0] >> 0 ) & 0x7ff) << 21) >> 21;
+            gpu->off_y = ((int32_t)((gpu->buf[0] >> 11) & 0x7ff) << 21) >> 21;
         } break;
         case 0xe6: {
             /* To-do: Implement mask bit thing */
@@ -1791,8 +1793,9 @@ void gpu_hblank_event(psx_gpu_t* gpu) {
         // Player Select. It probably uses T2 IRQs to time
         // GetlocP commands, if the timer is too slow it will
         // break.
-        if (!(gpu->line & 7))
-            psx_ic_irq(gpu->ic, IC_TIMER2);
+        // if (!(gpu->line & 7))
+            // psx_ic_irq(gpu->ic, IC_TIMER2);
+            // psx_ic_irq(gpu->ic, IC_SPU);
     } else {
         gpu->gpustat &= ~(1 << 31);
     }
@@ -1807,8 +1810,6 @@ void gpu_hblank_event(psx_gpu_t* gpu) {
     } else if (gpu->line == GPU_SCANS_PER_FRAME_NTSC) {
         if (gpu->event_cb_table[GPU_EVENT_VBLANK_END])
             gpu->event_cb_table[GPU_EVENT_VBLANK_END](gpu);
-
-        psx_ic_irq(gpu->ic, IC_SPU);
 
         gpu->line = 0;
     }

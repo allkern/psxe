@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#include "ic.h"
+
 #define PSX_SPU_BEGIN 0x1f801c00
 #define PSX_SPU_SIZE  0x400
 #define PSX_SPU_END   0x1f801fff
@@ -32,11 +34,13 @@
 #define SPUR_TCTRL   0x1ac
 #define SPUR_SPUSTAT 0x1ae
 #define SPUR_MBASE   0x1a2
+#define SPUR_SPUIRQA 0x1a4
 
 typedef struct __attribute__((__packed__)) {
     uint32_t bus_delay;
     uint32_t io_base, io_size;
 
+    psx_ic_t* ic;
     uint8_t* ram;
 
     struct __attribute__((__packed__)) {
@@ -166,7 +170,7 @@ typedef struct __attribute__((__packed__)) {
 } psx_spu_t;
 
 psx_spu_t* psx_spu_create(void);
-void psx_spu_init(psx_spu_t*);
+void psx_spu_init(psx_spu_t*, psx_ic_t*);
 uint32_t psx_spu_read32(psx_spu_t*, uint32_t);
 uint16_t psx_spu_read16(psx_spu_t*, uint32_t);
 uint8_t psx_spu_read8(psx_spu_t*, uint32_t);

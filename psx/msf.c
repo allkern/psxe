@@ -23,7 +23,7 @@ void msf_adjust(msf_t* msf) {
         msf->f -= CD_SECTORS_PS * s;
     }
 
-    if (msf->s > 60) {
+    if (msf->s >= 60) {
         int m = msf->s / 60;
 
         msf->m += m;

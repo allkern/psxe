@@ -253,7 +253,7 @@ void cdrom_cmd_getstat(psx_cdrom_t* cdrom) {
                 return;
             }
 
-            cdrom->irq_delay = DELAY_1MS;
+            cdrom->irq_delay = DELAY_1MS * 2;
             cdrom->state = CD_STATE_SEND_RESP1;
             cdrom->delayed_command = CDL_GETSTAT;
         } break;
@@ -262,7 +262,7 @@ void cdrom_cmd_getstat(psx_cdrom_t* cdrom) {
             SET_BITS(ifr, IFR_INT, IFR_INT3);
             RESP_PUSH(
                 GETSTAT_MOTOR |
-                ((cdrom->cdda_playing || cdrom->xa_playing) ? GETSTAT_PLAY : 0) |
+                (cdrom->cdda_playing ? GETSTAT_PLAY : 0) |
                 (cdrom->ongoing_read_command ? GETSTAT_READ : 0) |
                 (cdrom->disc ? 0 : GETSTAT_TRAYOPEN)
             );
@@ -271,7 +271,7 @@ void cdrom_cmd_getstat(psx_cdrom_t* cdrom) {
                 // printf("getstat command=%02x\n", cdrom->ongoing_read_command);
                 cdrom->state = CD_STATE_SEND_RESP2;
                 cdrom->delayed_command = cdrom->ongoing_read_command;
-                cdrom->irq_delay = DELAY_1MS;
+                cdrom->irq_delay = DELAY_1MS * 2;
             } else {
                 cdrom->delayed_command = CDL_NONE;
                 cdrom->state = CD_STATE_RECV_CMD;
@@ -379,15 +379,15 @@ void cdrom_cmd_play(psx_cdrom_t* cdrom) {
         case CD_STATE_RECV_CMD: {
             int track = 0;
 
-            if (cdrom->cdda_playing) {
-                cdrom->pfifo_index = 0;
+            // if (cdrom->cdda_playing) {
+            //     cdrom->pfifo_index = 0;
 
-                cdrom->irq_delay = DELAY_1MS;
-                cdrom->state = CD_STATE_SEND_RESP1;
-                cdrom->delayed_command = CDL_PLAY;
+            //     cdrom->irq_delay = DELAY_1MS;
+            //     cdrom->state = CD_STATE_SEND_RESP1;
+            //     cdrom->delayed_command = CDL_PLAY;
 
-                return;
-            }
+            //     return;
+            // }
 
             // Optional track number parameter
             if (cdrom->pfifo_index)
@@ -461,6 +461,7 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
 
             if (cdrom->mode & MODE_XA_ADPCM) {
                 cdrom->xa_msf = cdrom->seek_msf;
+                cdrom->xa_current_msf = cdrom->xa_msf;
                 cdrom->xa_playing = 1;
                 cdrom->xa_remaining_samples = 0;
 
@@ -883,7 +884,7 @@ void cdrom_cmd_getparam(psx_cdrom_t* cdrom) {
 void cdrom_cmd_getlocl(psx_cdrom_t* cdrom) {
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
-            cdrom->irq_delay = DELAY_1MS;
+            cdrom->irq_delay = DELAY_1MS * 4;
             cdrom->delayed_command = CDL_GETLOCL;
             cdrom->state = CD_STATE_SEND_RESP1;
         } break;
@@ -903,7 +904,7 @@ void cdrom_cmd_getlocl(psx_cdrom_t* cdrom) {
                 // printf("command=%02x\n", cdrom->ongoing_read_command);
                 cdrom->state = CD_STATE_SEND_RESP2;
                 cdrom->delayed_command = cdrom->ongoing_read_command;
-                cdrom->irq_delay = DELAY_1MS;
+                cdrom->irq_delay = DELAY_1MS * 4;
             } else {
                 cdrom->delayed_command = CDL_NONE;
                 cdrom->state = CD_STATE_RECV_CMD;
@@ -914,7 +915,7 @@ void cdrom_cmd_getlocl(psx_cdrom_t* cdrom) {
 void cdrom_cmd_getlocp(psx_cdrom_t* cdrom) {
     switch (cdrom->state) {
         case CD_STATE_RECV_CMD: {
-            cdrom->irq_delay = DELAY_1MS;
+            cdrom->irq_delay = DELAY_1MS * 8;
             cdrom->delayed_command = CDL_GETLOCP;
             cdrom->state = CD_STATE_SEND_RESP1;
         } break;
@@ -968,7 +969,7 @@ void cdrom_cmd_getlocp(psx_cdrom_t* cdrom) {
                 printf("getlocp command=%02x\n", cdrom->ongoing_read_command);
                 cdrom->state = CD_STATE_SEND_RESP2;
                 cdrom->delayed_command = cdrom->ongoing_read_command;
-                cdrom->irq_delay = DELAY_1MS;
+                cdrom->irq_delay = DELAY_1MS * 8;
             } else {
                 cdrom->delayed_command = CDL_NONE;
                 cdrom->state = CD_STATE_RECV_CMD;
@@ -1234,10 +1235,10 @@ void cdrom_cmd_test(psx_cdrom_t* cdrom) {
 
             // 95h,05h,16h,C1h
             SET_BITS(ifr, IFR_INT, IFR_INT3);
-            RESP_PUSH(0xc1);
-            RESP_PUSH(0x16);
-            RESP_PUSH(0x05);
-            RESP_PUSH(0x95);
+            RESP_PUSH(0xc0);
+            RESP_PUSH(0x19);
+            RESP_PUSH(0x09);
+            RESP_PUSH(0x94);
 
             cdrom->state = CD_STATE_RECV_CMD;
         } break;
@@ -1327,6 +1328,7 @@ void cdrom_cmd_reads(psx_cdrom_t* cdrom) {
 
             if (cdrom->mode & MODE_XA_ADPCM) {
                 cdrom->xa_msf = cdrom->seek_msf;
+                cdrom->xa_current_msf = cdrom->xa_msf;
                 cdrom->xa_playing = 1;
                 cdrom->xa_remaining_samples = 0;
 
@@ -2086,8 +2088,6 @@ void cdrom_decode_xa_sector(psx_cdrom_t* cdrom, void* buf) {
 
     int16_t left[28];
     int16_t right[28];
-    int16_t left_h[2] = { 0, 0 };
-    int16_t right_h[2] = { 0, 0 };
 
     int16_t* left_ptr = cdrom->xa_left_buf;
     int16_t* right_ptr = cdrom->xa_right_buf;
@@ -2096,20 +2096,20 @@ void cdrom_decode_xa_sector(psx_cdrom_t* cdrom, void* buf) {
     for (int i = 0; i < 18; i++) {
         for (int blk = 0; blk < 4; blk++) {
             if (cdrom->xa_sector_buf[0x13] & 1) {
-                cdrom_decode_xa_block(cdrom, src, blk, 0, left, left_h);
-                cdrom_decode_xa_block(cdrom, src, blk, 1, right, right_h);
+                cdrom_decode_xa_block(cdrom, src, blk, 0, left, cdrom->xa_left_h);
+                cdrom_decode_xa_block(cdrom, src, blk, 1, right, cdrom->xa_right_h);
 
                 for (int i = 0; i < 28; i++) {
                     *left_ptr++ = left[i];
                     *right_ptr++ = right[i];
                 }
             } else {
-                cdrom_decode_xa_block(cdrom, src, blk, 0, left, left_h);
+                cdrom_decode_xa_block(cdrom, src, blk, 0, left, cdrom->xa_left_h);
 
                 for (int i = 0; i < 28; i++)
                     *mono_ptr++ = left[i];
 
-                cdrom_decode_xa_block(cdrom, src, blk, 1, left, left_h);
+                cdrom_decode_xa_block(cdrom, src, blk, 1, left, cdrom->xa_left_h);
 
                 for (int i = 0; i < 28; i++)
                     *mono_ptr++ = left[i];
@@ -2124,6 +2124,7 @@ void cdrom_fetch_xa_sector(psx_cdrom_t* cdrom) {
     while (true) {
         if (psx_disc_seek(cdrom->disc, cdrom->xa_msf)) {
             cdrom->xa_playing = 0;
+            cdrom->xa_remaining_samples = 0;
 
             return;
         }
@@ -2132,12 +2133,12 @@ void cdrom_fetch_xa_sector(psx_cdrom_t* cdrom) {
 
         msf_add_f(&cdrom->xa_msf, 1);
 
-        // Check for EOR, EOF bits
-        if (cdrom->xa_sector_buf[0x12] & 0x80)
+        // Check for EOR bit
+        if (cdrom->xa_sector_buf[0x12] & 1)
             return;
 
-        // Check RT and Audio bit
-        if ((cdrom->xa_sector_buf[0x12] & 4) != 4)
+        // Check Audio bit
+        if (!(cdrom->xa_sector_buf[0x12] & 4))
             continue;
 
         // If we get here it means this is a real-time audio sector.
@@ -2185,14 +2186,18 @@ void psx_cdrom_get_cdda_samples(psx_cdrom_t* cdrom, void* buf, int size, psx_spu
             if (!cdrom->xa_remaining_samples) {
                 cdrom_fetch_xa_sector(cdrom);
 
-                if (cdrom->xa_sector_buf[0x12] & 0x80) {
+                if (cdrom->xa_sector_buf[0x12] & 0x01) {
                     SET_BITS(status, STAT_ADPBUSY_MASK, 0);
+
+                    printf("Pausing XA-ADPCM playback\n");
 
                     cdrom->xa_playing = 0;
                     cdrom->xa_remaining_samples = 0;
 
                     return;
                 }
+
+                msf_add_f(&cdrom->xa_current_msf, 1);
 
                 stereo = (cdrom->xa_sector_buf[0x13] & 1) == 1;
 

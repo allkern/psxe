@@ -89,12 +89,13 @@ psx_spu_t* psx_spu_create(void) {
     return (psx_spu_t*)malloc(sizeof(psx_spu_t));
 }
 
-void psx_spu_init(psx_spu_t* spu) {
+void psx_spu_init(psx_spu_t* spu, psx_ic_t* ic) {
     memset(spu, 0, sizeof(psx_spu_t));
 
     spu->io_base = PSX_SPU_BEGIN;
     spu->io_size = PSX_SPU_SIZE;
 
+    spu->ic = ic;
     spu->ram = (uint8_t*)malloc(SPU_RAM_SIZE);
 
     memset(spu->ram, 0, SPU_RAM_SIZE);
@@ -140,6 +141,9 @@ void spu_read_block(psx_spu_t* spu, int v) {
 
     int32_t f0 = g_spu_pos_adpcm_table[filter];
     int32_t f1 = g_spu_neg_adpcm_table[filter];
+
+    if ((spu->irq9addr << 3) == addr)
+        psx_ic_irq(spu->ic, IC_SPU);
 
     for (int j = 0; j < 28; j++) {
         uint16_t n = (spu->ram[addr + 2 + (j >> 1)] >> ((j & 1) * 4)) & 0xf;
@@ -356,6 +360,10 @@ int spu_handle_write(psx_spu_t* spu, uint32_t offset, uint32_t value) {
 
             spu_kon(spu, value << (16 * high));
         } return 1;
+
+        // case SPUR_SPUIRQA: {
+        //     spu->irq9addr = value << 3;
+        // } return 1;
 
         case SPUR_KOFFL: case SPUR_KOFFH: {
             int high = (offset & 2) != 0;

@@ -130,7 +130,7 @@ struct psx_gpu_t {
     uint32_t draw_x2, draw_y2;
 
     // Drawing offset
-    uint32_t off_x, off_y;
+    int32_t off_x, off_y;
 
     // Texture Window
     uint32_t texw_mx, texw_my;

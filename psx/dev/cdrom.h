@@ -11,10 +11,10 @@
 #include "../msf.h"
 #include "spu.h"
 
-// #define DELAY_1MS (0xc4e1)
+#define DELAY_1MS (0xc4e1)
 // #define READ_SINGLE_DELAY (0x6e1cd)
 // #define READ_DOUBLE_DELAY (0x36cd2)
-#define DELAY_1MS (PSX_CPU_CPS / 1000)
+// #define DELAY_1MS (PSX_CPU_CPS / 1000)
 #define READ_SINGLE_DELAY (PSX_CPU_CPS / 75)
 #define READ_DOUBLE_DELAY (PSX_CPU_CPS / (2 * 75))
 
@@ -210,11 +210,14 @@ typedef struct {
     // XA-ADPCM
     uint8_t* xa_sector_buf;
     msf_t xa_msf;
+    msf_t xa_current_msf;
     int xa_playing;
     int xa_mute;
     uint8_t xa_file;
     uint8_t xa_channel;
     uint8_t xa_coding;
+    int16_t xa_left_h[2];
+    int16_t xa_right_h[2];
     int16_t* xa_left_buf;
     int16_t* xa_right_buf;
     int16_t* xa_mono_buf;

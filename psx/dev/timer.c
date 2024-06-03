@@ -91,8 +91,32 @@ void timer_set_mode(psx_timer_t* timer, int index, uint16_t value) {
     timer->timer[index].blank_once = 0;
     timer->timer[index].paused = 0;
 
-    if (index == 2)
-        printf("timer_set_mode %u %04x\n", index, value);
+    // printf(
+    //     "timer_set_mode %u %04x\n"
+    //     "sync_enable    %u\n"
+    //     "sync_mode      %u\n"
+    //     "reset_target   %u\n"
+    //     "irq_target     %u\n"
+    //     "irq_max        %u\n"
+    //     "irq_repeat     %u\n"
+    //     "irq_toggle     %u\n"
+    //     "clk_source     %u\n"
+    //     "target_reached %u\n"
+    //     "max_reached    %u\n"
+    //     "target         %04x\n",
+    //     index, value,
+    //     timer->timer[index].sync_enable,
+    //     timer->timer[index].sync_mode,
+    //     timer->timer[index].reset_target,
+    //     timer->timer[index].irq_target,
+    //     timer->timer[index].irq_max,
+    //     timer->timer[index].irq_repeat,
+    //     timer->timer[index].irq_toggle,
+    //     timer->timer[index].clk_source,
+    //     timer->timer[index].target_reached,
+    //     timer->timer[index].max_reached,
+    //     timer->timer[index].target
+    // );
 
     switch (index) {
         case 0: {
@@ -209,20 +233,19 @@ void psx_timer_write8(psx_timer_t* timer, uint32_t offset, uint8_t value) {
 void timer_handle_irq(psx_timer_t* timer, int i) {
     int irq = 0;
 
-    int prev_target_reached = timer->timer[i].target_reached;
-    int prev_max_reached = timer->timer[i].max_reached;
     int target_reached = timer->timer[i].counter > timer->timer[i].target;
     int max_reached = timer->timer[i].counter > 65535.0f;
 
     if (target_reached) {
         timer->timer[i].target_reached = 1;
 
-        if (timer->timer[i].reset_target) {
-            timer->timer[i].counter = 0;
-            timer->timer[i].div_counter = 0;
-        }
+        // if ((i == 2) && (T2_CLKSRC == 2))
+        //     printf("target %04x (%f) reached\n", timer->timer[i].target, timer->timer[i].counter);
 
-        if (timer->timer[i].irq_target && !prev_target_reached)
+        if (timer->timer[i].reset_target)
+            timer->timer[i].counter = 0;
+
+        if (timer->timer[i].irq_target)
             irq = 1;
     }
 
@@ -230,11 +253,9 @@ void timer_handle_irq(psx_timer_t* timer, int i) {
         timer->timer[i].counter -= 65536.0f;
         timer->timer[i].max_reached = 1;
 
-        if (timer->timer[i].irq_max && !prev_max_reached)
+        if (timer->timer[i].irq_max)
             irq = 1;
     }
-
-    timer->timer[i].div_counter &= 0xffff;
 
     if (!irq)
         return;
@@ -258,8 +279,9 @@ void timer_handle_irq(psx_timer_t* timer, int i) {
     timer->timer[i].irq = 1;
 
     if (trigger) {
-        // printf("timer %u irq fire\n", i);
-   
+        // if ((i == 1))
+        //     printf("timer 1 irq fire\n");
+
         psx_ic_irq(timer->ic, 16 << i);
     }
 }
@@ -308,10 +330,9 @@ void timer_update_timer2(psx_timer_t* timer, int cyc) {
         return;
 
     if (T2_CLKSRC <= 1) {
-        T2_COUNTER += cyc;
+        T2_COUNTER += (float)cyc;
     } else {
-        T2_COUNTER += ((float)cyc) * (1.0f / 8.0f);
-        // T2_COUNTER = T2_DIV_COUNTER >> 3;
+        T2_COUNTER += ((float)cyc) / 8.0f;
     }
 
     timer_handle_irq(timer, 2);
@@ -331,8 +352,11 @@ void psxe_gpu_hblank_event_cb(psx_gpu_t* gpu) {
 
     timer->hblank = 1;
 
-    if ((T1_CLKSRC & 1) && !T1_PAUSED)
+    if ((T1_CLKSRC & 1) && !T1_PAUSED) {
         ++T1_COUNTER;
+
+        timer_handle_irq(timer, 1);
+    }
 
     if (!T0_SYNC_EN)
         return;

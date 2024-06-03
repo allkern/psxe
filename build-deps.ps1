@@ -6,3 +6,5 @@ $SDL2_URL = "https://github.com/libsdl-org/SDL/releases/download/release-2.30.3/
 
 Invoke-WebRequest -URI $SDL2_URL -OutFile "sdl2.zip"
 Expand-Archive "sdl2.zip" -DestinationPath "." -Force
+
+Remove-Item "sdl2.zip"
