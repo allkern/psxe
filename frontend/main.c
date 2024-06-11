@@ -1,5 +1,6 @@
 #include "../psx/psx.h"
 #include "../psx/input/sda.h"
+#include "../psx/input/guncon.h"
 #include "../psx/disc/cue.h"
 
 #include "screen.h"
@@ -75,6 +76,9 @@ int main(int argc, const char* argv[]) {
     psx_input_t* input = psx_input_create();
     psx_input_init(input);
 
+    // psxi_guncon_t* controller = psxi_guncon_create();
+    // psxi_guncon_init(controller);
+    // psxi_guncon_init_input(controller, input);
     psxi_sda_t* controller = psxi_sda_create();
     psxi_sda_init(controller, SDA_MODEL_DIGITAL);
     psxi_sda_init_input(controller, input);

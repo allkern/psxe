@@ -262,7 +262,7 @@ void psx_pad_button_release(psx_pad_t* pad, int slot, uint32_t data) {
         selected_slot->on_button_release_func(selected_slot->udata, data);
 }
 
-void psx_pad_analog_change(psx_pad_t* pad, int slot, uint32_t stick, uint8_t data) {
+void psx_pad_analog_change(psx_pad_t* pad, int slot, uint32_t stick, uint16_t data) {
     psx_input_t* selected_slot = pad->joy_slot[slot];
 
     if (selected_slot)

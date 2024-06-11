@@ -6,6 +6,8 @@
 #include "gpu.h"
 #include "../log.h"
 
+#define SE10(v) ((int16_t)((v) << 5) >> 5)
+
 int g_psx_gpu_dither_kernel[] = {
     -4, +0, -3, +1,
     +2, -2, +3, -1,
@@ -176,6 +178,9 @@ uint16_t gpu_fetch_texel(psx_gpu_t* gpu, uint16_t tx, uint16_t ty, uint32_t tpx,
     }
 }
 
+#define TL(z, a, b) \
+    ((z < 0) || ((z == 0) && ((b.y > a.y) || ((b.y == a.y) && (b.x < a.x)))))
+
 void gpu_render_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, poly_data_t data, int edge) {
     vertex_t a, b, c, p;
 
@@ -216,7 +221,7 @@ void gpu_render_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, 
     int xmax = max3(a.x, b.x, c.x);
     int ymax = max3(a.y, b.y, c.y);
 
-    if (((xmax - xmin) > 2048) || ((ymax - ymin) > 1024)) 
+    if (((xmax - xmin) > 2048) || ((ymax - ymin) > 1024))
         return;
 
     float area = EDGE(a, b, c);
@@ -233,24 +238,27 @@ void gpu_render_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, 
             p.y = y;
 
             float z0 = EDGE(b, c, p);
+
+            if (TL(z0, b, c))
+                continue;
+
             float z1 = EDGE(c, a, p);
+
+            if (TL(z1, c, a))
+                continue;
+
             float z2 = EDGE(a, b, p);
 
-            int e = ((z0 < 0) || (z1 < 0) || (z2 < 0));
-
-            if (transp && edge)
-                e = ((z0 < 0) || (z1 <= 0) || (z2 < 0));
-
-            if (e)
+            if (TL(z2, a, b))
                 continue;
 
             uint16_t color = 0;
             uint32_t mod   = 0;
 
             if (data.attrib & PA_SHADED) {
-                int cr = (z0 * ((a.c >>  0) & 0xff) + z1 * ((b.c >>  0) & 0xff) + z2 * ((c.c >>  0) & 0xff)) / area;
-                int cg = (z0 * ((a.c >>  8) & 0xff) + z1 * ((b.c >>  8) & 0xff) + z2 * ((c.c >>  8) & 0xff)) / area;
-                int cb = (z0 * ((a.c >> 16) & 0xff) + z1 * ((b.c >> 16) & 0xff) + z2 * ((c.c >> 16) & 0xff)) / area;
+                float cr = (z0 * ((a.c >>  0) & 0xff) + z1 * ((b.c >>  0) & 0xff) + z2 * ((c.c >>  0) & 0xff)) / area;
+                float cg = (z0 * ((a.c >>  8) & 0xff) + z1 * ((b.c >>  8) & 0xff) + z2 * ((c.c >>  8) & 0xff)) / area;
+                float cb = (z0 * ((a.c >> 16) & 0xff) + z1 * ((b.c >> 16) & 0xff) + z2 * ((c.c >> 16) & 0xff)) / area;
 
                 int dy = (y - ymin) & 3;
                 int dx = (x - xmin) & 3;
@@ -262,11 +270,15 @@ void gpu_render_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, 
                 cb += dither;
 
                 // Saturate (clamp) to 00-ff
-                cr = (cr >= 0xff) ? 0xff : ((cr <= 0) ? 0 : cr);
-                cg = (cg >= 0xff) ? 0xff : ((cg <= 0) ? 0 : cg);
-                cb = (cb >= 0xff) ? 0xff : ((cb <= 0) ? 0 : cb);
+                cr = (cr >= 255.0f) ? 255.0f : ((cr <= 0.0f) ? 0.0f : cr);
+                cg = (cg >= 255.0f) ? 255.0f : ((cg <= 0.0f) ? 0.0f : cg);
+                cb = (cb >= 255.0f) ? 255.0f : ((cb <= 0.0f) ? 0.0f : cb);
 
-                uint32_t rgb = (cb << 16) | (cg << 8) | cr;
+                unsigned int ucr = roundf(cr);
+                unsigned int ucg = roundf(cg);
+                unsigned int ucb = roundf(cb);
+
+                uint32_t rgb = (ucb << 16) | (ucg << 8) | ucr;
 
                 mod = rgb;
             } else {
@@ -274,15 +286,15 @@ void gpu_render_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, 
             }
 
             if (data.attrib & PA_TEXTURED) {
-                uint32_t tx = ((z0 * a.tx) + (z1 * b.tx) + (z2 * c.tx)) / area;
-                uint32_t ty = ((z0 * a.ty) + (z1 * b.ty) + (z2 * c.ty)) / area;
+                uint32_t tx = roundf(((z0 * a.tx) + (z1 * b.tx) + (z2 * c.tx)) / area);
+                uint32_t ty = roundf(((z0 * a.ty) + (z1 * b.ty) + (z2 * c.ty)) / area);
 
                 uint16_t texel = gpu_fetch_texel(gpu, tx, ty, tpx, tpy, clutx, cluty, depth);
 
                 if (!texel)
                     continue;
 
-                if (transp)
+                if ((data.attrib & PA_TRANSP) != 0)
                     transp = (texel & 0x8000) != 0;
 
                 if (data.attrib & PA_RAW) {
@@ -304,9 +316,9 @@ void gpu_render_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, 
                     cg = (cg >= 255.0f) ? 255.0f : ((cg <= 0.0f) ? 0.0f : cg);
                     cb = (cb >= 255.0f) ? 255.0f : ((cb <= 0.0f) ? 0.0f : cb);
 
-                    unsigned int ucr = cr;
-                    unsigned int ucg = cg;
-                    unsigned int ucb = cb;
+                    unsigned int ucr = roundf(cr);
+                    unsigned int ucg = roundf(cg);
+                    unsigned int ucb = roundf(cb);
 
                     uint32_t rgb = ucr | (ucg << 8) | (ucb << 16);
 
@@ -355,9 +367,9 @@ void gpu_render_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, 
                 cg = (cg >= 255.0f) ? 255.0f : ((cg <= 0.0f) ? 0.0f : cg);
                 cb = (cb >= 255.0f) ? 255.0f : ((cb <= 0.0f) ? 0.0f : cb);
 
-                unsigned int ucr = cr;
-                unsigned int ucg = cg;
-                unsigned int ucb = cb;
+                unsigned int ucr = roundf(cr);
+                unsigned int ucg = roundf(cg);
+                unsigned int ucb = roundf(cb);
 
                 uint32_t rgb = ucr | (ucg << 8) | (ucb << 16);
 
@@ -431,7 +443,7 @@ void gpu_render_rect(psx_gpu_t* gpu, rect_data_t data) {
                 if (!texel)
                     goto skip;
 
-                if (transp)
+                if ((data.attrib & RA_TRANSP) != 0)
                     transp = (texel & 0x8000) != 0;
 
                 float tr = ((texel >> 0 ) & 0x1f) << 3;
@@ -446,9 +458,13 @@ void gpu_render_rect(psx_gpu_t* gpu, rect_data_t data) {
                 float cg = (tg * mg) / 128.0f;
                 float cb = (tb * mb) / 128.0f;
 
-                unsigned int ucr = cr;
-                unsigned int ucg = cg;
-                unsigned int ucb = cb;
+                cr = (cr >= 255.0f) ? 255.0f : ((cr <= 0.0f) ? 0.0f : cr);
+                cg = (cg >= 255.0f) ? 255.0f : ((cg <= 0.0f) ? 0.0f : cg);
+                cb = (cb >= 255.0f) ? 255.0f : ((cb <= 0.0f) ? 0.0f : cb);
+
+                unsigned int ucr = roundf(cr);
+                unsigned int ucg = roundf(cg);
+                unsigned int ucb = roundf(cb);
 
                 uint32_t rgb = ucr | (ucg << 8) | (ucb << 16);
 
@@ -495,9 +511,9 @@ void gpu_render_rect(psx_gpu_t* gpu, rect_data_t data) {
                 cg = (cg >= 255.0f) ? 255.0f : ((cg <= 0.0f) ? 0.0f : cg);
                 cb = (cb >= 255.0f) ? 255.0f : ((cb <= 0.0f) ? 0.0f : cb);
 
-                unsigned int ucr = cr;
-                unsigned int ucg = cg;
-                unsigned int ucb = cb;
+                unsigned int ucr = roundf(cr);
+                unsigned int ucg = roundf(cg);
+                unsigned int ucb = roundf(cb);
 
                 uint32_t rgb = ucr | (ucg << 8) | (ucb << 16);
 
@@ -851,8 +867,8 @@ void gpu_rect(psx_gpu_t* gpu) {
                 int size_offset = 2 + textured;
 
                 rect.v0.c   = gpu->buf[0] & 0xffffff;
-                rect.v0.x   = gpu->buf[1] & 0xffff;
-                rect.v0.y   = gpu->buf[1] >> 16;
+                rect.v0.x   = SE10(gpu->buf[1] & 0xffff);
+                rect.v0.y   = SE10(gpu->buf[1] >> 16);
                 rect.v0.tx  = (gpu->buf[2] >> 0) & 0xff;
                 rect.v0.ty  = (gpu->buf[2] >> 8) & 0xff;
                 rect.clut   = gpu->buf[2] >> 16;
@@ -903,18 +919,28 @@ void gpu_poly(psx_gpu_t* gpu) {
                 poly.clut = gpu->buf[2] >> 16;
                 poly.texp = gpu->buf[texp_offset] >> 16;
 
+                // Undocumented behavior?
+                // Fixes Mortal Kombat II, Bubble Bobble, Driver 1 & 2
+                if (textured) {
+                    gpu->texp_x = (poly.texp & 0xf) << 6;
+                    gpu->texp_y = (poly.texp & 0x10) << 4;
+                    gpu->texp_d = (poly.texp >> 7) & 0x3;
+                    gpu->gpustat &= 0xfffffe00;
+                    gpu->gpustat |= poly.texp & 0x1ff;
+                }
+
                 poly.v[0].c = gpu->buf[0+0*color_offset] & 0xffffff;
                 poly.v[1].c = gpu->buf[0+1*color_offset] & 0xffffff;
                 poly.v[2].c = gpu->buf[0+2*color_offset] & 0xffffff;
                 poly.v[3].c = gpu->buf[0+3*color_offset] & 0xffffff;
-                poly.v[0].x = gpu->buf[1+0*vert_offset] & 0xffff;
-                poly.v[1].x = gpu->buf[1+1*vert_offset] & 0xffff;
-                poly.v[2].x = gpu->buf[1+2*vert_offset] & 0xffff;
-                poly.v[3].x = gpu->buf[1+3*vert_offset] & 0xffff;
-                poly.v[0].y = gpu->buf[1+0*vert_offset] >> 16;
-                poly.v[1].y = gpu->buf[1+1*vert_offset] >> 16;
-                poly.v[2].y = gpu->buf[1+2*vert_offset] >> 16;
-                poly.v[3].y = gpu->buf[1+3*vert_offset] >> 16;
+                poly.v[0].x = SE10(gpu->buf[1+0*vert_offset] & 0xffff);
+                poly.v[1].x = SE10(gpu->buf[1+1*vert_offset] & 0xffff);
+                poly.v[2].x = SE10(gpu->buf[1+2*vert_offset] & 0xffff);
+                poly.v[3].x = SE10(gpu->buf[1+3*vert_offset] & 0xffff);
+                poly.v[0].y = SE10(gpu->buf[1+0*vert_offset] >> 16);
+                poly.v[1].y = SE10(gpu->buf[1+1*vert_offset] >> 16);
+                poly.v[2].y = SE10(gpu->buf[1+2*vert_offset] >> 16);
+                poly.v[3].y = SE10(gpu->buf[1+3*vert_offset] >> 16);
                 poly.v[0].tx = gpu->buf[2+0*texc_offset] & 0xff;
                 poly.v[1].tx = gpu->buf[2+1*texc_offset] & 0xff;
                 poly.v[2].tx = gpu->buf[2+2*texc_offset] & 0xff;
@@ -925,7 +951,7 @@ void gpu_poly(psx_gpu_t* gpu) {
                 poly.v[3].ty = (gpu->buf[2+3*texc_offset] >> 8) & 0xff;
 
                 if (poly.attrib & PA_QUAD) {
-                    gpu_render_triangle(gpu, poly.v[0], poly.v[1], poly.v[2], poly, 0);
+                    gpu_render_triangle(gpu, poly.v[0], poly.v[1], poly.v[2], poly, 1);
                     gpu_render_triangle(gpu, poly.v[1], poly.v[2], poly.v[3], poly, 1);
                 } else {
                     gpu_render_triangle(gpu, poly.v[0], poly.v[1], poly.v[2], poly, 0);
@@ -1647,8 +1673,8 @@ void psx_gpu_update_cmd(psx_gpu_t* gpu) {
             gpu->draw_y2 = (gpu->buf[0] >> 10) & 0x1ff;
         } break;
         case 0xe5: {
-            gpu->off_x = ((int32_t)((gpu->buf[0] >> 0 ) & 0x7ff) << 21) >> 21;
-            gpu->off_y = ((int32_t)((gpu->buf[0] >> 11) & 0x7ff) << 21) >> 21;
+            gpu->off_x = ((int32_t)(((gpu->buf[0] >> 0 ) & 0x7ff) << 21)) >> 21;
+            gpu->off_y = ((int32_t)(((gpu->buf[0] >> 11) & 0x7ff) << 21)) >> 21;
         } break;
         case 0xe6: {
             /* To-do: Implement mask bit thing */

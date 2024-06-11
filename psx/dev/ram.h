@@ -6,11 +6,16 @@
 #include "../log.h"
 #include "mc2.h"
 
-//#define PSX_RAM_SIZE    0x200000
+#define RAM_SIZE        0x200000
 #define PSX_RAM_SIZE    0x1f000000
 #define PSX_RAM_BEGIN   0x00000000
 //#define PSX_RAM_END     0x001fffff
 #define PSX_RAM_END     0x1effffff
+#define RAM_INIT_FILL   0
+
+#define RAM_SIZE_2MB 0x200000
+#define RAM_SIZE_4MB 0x400000
+#define RAM_SIZE_8MB 0x800000
 
 typedef struct {
     uint32_t bus_delay;
@@ -22,7 +27,7 @@ typedef struct {
 } psx_ram_t;
 
 psx_ram_t* psx_ram_create(void);
-void psx_ram_init(psx_ram_t*, psx_mc2_t*);
+void psx_ram_init(psx_ram_t*, psx_mc2_t*, int size);
 uint32_t psx_ram_read32(psx_ram_t*, uint32_t);
 uint16_t psx_ram_read16(psx_ram_t*, uint32_t);
 uint8_t psx_ram_read8(psx_ram_t*, uint32_t);

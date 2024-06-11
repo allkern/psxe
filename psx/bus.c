@@ -104,6 +104,12 @@ uint16_t psx_bus_read16(psx_bus_t* bus, uint32_t addr) {
     if (addr == 0x1f801054)
         return 0x05;
 
+    if (addr == 0x1f400004)
+        return 0xc0;
+
+    if (addr == 0x1f400006)
+        return 0x1fe0;
+
     printf("Unhandled 16-bit read from %08x:%08x\n", vaddr, addr);
 
     // exit(1);

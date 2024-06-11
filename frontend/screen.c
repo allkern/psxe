@@ -1,6 +1,7 @@
 #include "screen.h"
 
 #include "input/sda.h"
+#include "input/guncon.h"
 
 uint32_t screen_get_button(SDL_Keycode k) {
     if (k == SDLK_x     ) return PSXI_SW_SDA_CROSS;
@@ -355,6 +356,46 @@ void psxe_screen_update(psxe_screen_t* screen) {
                     }
                 }
             } break;
+
+            // To-do: GunCon
+            // case SDL_MOUSEMOTION: {
+            //     psx_pad_analog_change(screen->pad, 0, PSXI_AX_GUNCON_SX, psx_get_dmode_width(screen->psx));
+            //     psx_pad_analog_change(screen->pad, 0, PSXI_AX_GUNCON_SY, psx_get_dmode_height(screen->psx));
+            //     psx_pad_analog_change(screen->pad, 0, PSXI_AX_GUNCON_X, event.motion.x * (1.0f / (float)screen->scale));
+            //     psx_pad_analog_change(screen->pad, 0, PSXI_AX_GUNCON_Y, event.motion.y * (1.0f / (float)screen->scale));
+            // } break;
+
+            // case SDL_MOUSEBUTTONDOWN: {
+            //     switch (event.button.button) {
+            //         case SDL_BUTTON_LEFT: {
+            //             psx_pad_button_press(screen->pad, 0, PSXI_SW_GUNCON_A);
+            //         } break;
+
+            //         case SDL_BUTTON_RIGHT: {
+            //             psx_pad_button_press(screen->pad, 0, PSXI_SW_GUNCON_B);
+            //         } break;
+
+            //         case SDL_BUTTON_MIDDLE: {
+            //             psx_pad_button_press(screen->pad, 0, PSXI_SW_GUNCON_TRIGGER);
+            //         } break;
+            //     }
+            // } break;
+
+            // case SDL_MOUSEBUTTONUP: {
+            //     switch (event.button.button) {
+            //         case SDL_BUTTON_LEFT: {
+            //             psx_pad_button_release(screen->pad, 0, PSXI_SW_GUNCON_A);
+            //         } break;
+
+            //         case SDL_BUTTON_RIGHT: {
+            //             psx_pad_button_release(screen->pad, 0, PSXI_SW_GUNCON_B);
+            //         } break;
+
+            //         case SDL_BUTTON_MIDDLE: {
+            //             psx_pad_button_release(screen->pad, 0, PSXI_SW_GUNCON_TRIGGER);
+            //         } break;
+            //     }
+            // } break;
 
             case SDL_TEXTINPUT: {
                 psx_exp2_atcons_put(screen->psx->exp2, event.text.text[0]);

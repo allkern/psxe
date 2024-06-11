@@ -73,23 +73,24 @@ void cdrom_fetch_video_sector(psx_cdrom_t* cdrom) {
 
         msf_add_f(&cdrom->seek_msf, 1);
 
+        return;
         // Check RT and Video/Data bit
         // if (cdrom->dfifo[0x12] & 4)
         //     continue;
 
         // If we get here it means this is a real-time video sector.
         // If the XA filter is disabled, we're done
-        if (!(cdrom->mode & MODE_XA_FILTER))
-            return;
+        // if (!(cdrom->mode & MODE_XA_FILTER))
+        //     return;
 
-        // Else check XA file/channel
-        int file_eq = cdrom->dfifo[0x10] == cdrom->xa_file;
-        int channel_eq = cdrom->dfifo[0x11] == cdrom->xa_channel;
+        // // Else check XA file/channel
+        // int file_eq = cdrom->dfifo[0x10] == cdrom->xa_file;
+        // int channel_eq = cdrom->dfifo[0x11] == cdrom->xa_channel;
 
-        // If they are equal to our filter values, we're done
-        // else keep searching
-        if (file_eq && channel_eq)
-            return;
+        // // If they are equal to our filter values, we're done
+        // // else keep searching
+        // if (file_eq && channel_eq)
+        //     return;
     }
 }
 
@@ -921,7 +922,7 @@ void cdrom_cmd_getlocp(psx_cdrom_t* cdrom) {
         } break;
 
         case CD_STATE_SEND_RESP1: {
-            msf_t absolute = cdrom->xa_playing ? cdrom->xa_msf : cdrom->seek_msf;
+            msf_t absolute = cdrom->seek_msf;
             msf_t relative = absolute;
             msf_t track_msf = cdrom_get_track_addr(cdrom, absolute);
 
@@ -963,7 +964,7 @@ void cdrom_cmd_getlocp(psx_cdrom_t* cdrom) {
             RESP_PUSH(relative.s);
             RESP_PUSH(relative.m);
             RESP_PUSH(0x01);
-            RESP_PUSH(0x01);
+            RESP_PUSH(0x15);
 
             if (cdrom->ongoing_read_command) {
                 printf("getlocp command=%02x\n", cdrom->ongoing_read_command);
@@ -1803,6 +1804,15 @@ void psx_cdrom_init(psx_cdrom_t* cdrom, psx_ic_t* ic) {
     memset(cdrom->xa_left_resample_buf, 0, (XA_STEREO_RESAMPLE_SIZE * 2) * sizeof(int16_t));
     memset(cdrom->xa_right_resample_buf, 0, (XA_STEREO_RESAMPLE_SIZE * 2) * sizeof(int16_t));
     memset(cdrom->xa_mono_resample_buf, 0, (XA_MONO_RESAMPLE_SIZE * 2) * sizeof(int16_t));
+
+    cdrom->vol[0] = 0x80;
+    cdrom->vol[1] = 0x00;
+    cdrom->vol[2] = 0x80;
+    cdrom->vol[3] = 0x00;
+    cdrom->vapp[0] = 0x80;
+    cdrom->vapp[1] = 0x00;
+    cdrom->vapp[2] = 0x80;
+    cdrom->vapp[3] = 0x00;
 
     cdrom->seek_msf.m = 0;
     cdrom->seek_msf.s = 2;

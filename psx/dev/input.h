@@ -11,7 +11,7 @@ typedef void (*psx_input_write_t)(void*, uint16_t);
 typedef uint32_t (*psx_input_read_t)(void*);
 typedef void (*psx_input_on_button_press_t)(void*, uint32_t);
 typedef void (*psx_input_on_button_release_t)(void*, uint32_t);
-typedef void (*psx_input_on_analog_change_t)(void*, uint32_t, uint8_t);
+typedef void (*psx_input_on_analog_change_t)(void*, uint32_t, uint16_t);
 typedef int (*psx_input_query_fifo_t)(void*);
 
 struct psx_input_t {

@@ -167,7 +167,7 @@ void psx_init(psx_t* psx, const char* bios_path, const char* exp_path) {
     psx_mc1_init(psx->mc1);
     psx_mc2_init(psx->mc2);
     psx_mc3_init(psx->mc3);
-    psx_ram_init(psx->ram, psx->mc2);
+    psx_ram_init(psx->ram, psx->mc2, RAM_SIZE_2MB);
     psx_dma_init(psx->dma, psx->bus, psx->ic);
     psx_exp1_init(psx->exp1, psx->mc1, exp_path);
     psx_exp2_init(psx->exp2, atcons_tx, NULL);
