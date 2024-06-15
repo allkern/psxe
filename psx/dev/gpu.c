@@ -1547,11 +1547,11 @@ void gpu_cmd_02(psx_gpu_t* gpu) {
                 for (int y = gpu->v0.y; y < (gpu->v0.y + gpu->ysiz); y++) {
                     for (int x = gpu->v0.x; x < (gpu->v0.x + gpu->xsiz); x++) {
                         // This shouldn't be needed
-                        int bc = (x >= gpu->draw_x1) && (x <= gpu->draw_x2) &&
-                                 (y >= gpu->draw_y1) && (y <= gpu->draw_y2);
+                        // int bc = (x >= gpu->draw_x1) && (x <= gpu->draw_x2) &&
+                        //          (y >= gpu->draw_y1) && (y <= gpu->draw_y2);
 
-                        if (!bc)
-                            continue;
+                        // if (!bc)
+                        //     continue;
 
                         if ((x < 1024) && (y < 512) && (x >= 0) && (y >= 0))
                             gpu->vram[x + (y * 1024)] = color;
