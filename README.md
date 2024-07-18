@@ -22,16 +22,16 @@ Most BIOS versions are confirmed to work.
 Use the `-b` or `--bios` setting to configure the BIOS file.
 
 ## Progress
-All components have been implemented, those with an orange circle are WIP, while the green ones are largely working correctly.
+All components have been implemented, everything apart from the CDROM and memory cards is pretty much complete.
 
 <img src="https://github.com/allkern/psxe/assets/15825466/199c20e4-4e7e-4d0a-a033-eda347034ed5" width="12" height="12"/> CPU </br>
 <img src="https://github.com/allkern/psxe/assets/15825466/199c20e4-4e7e-4d0a-a033-eda347034ed5" width="12" height="12"/> DMA </br>
 <img src="https://github.com/allkern/psxe/assets/15825466/199c20e4-4e7e-4d0a-a033-eda347034ed5" width="12" height="12"/> GPU </br>
 <img src="https://github.com/allkern/psxe/assets/15825466/199c20e4-4e7e-4d0a-a033-eda347034ed5" width="12" height="12"/> SPU </br>
 <img src="https://github.com/allkern/psxe/assets/15825466/199c20e4-4e7e-4d0a-a033-eda347034ed5" width="12" height="12"/> MDEC </br>
+<img src="https://github.com/allkern/psxe/assets/15825466/199c20e4-4e7e-4d0a-a033-eda347034ed5" width="12" height="12"/> GTE </br>
+<img src="https://github.com/allkern/psxe/assets/15825466/199c20e4-4e7e-4d0a-a033-eda347034ed5" width="12" height="12"/> Timers </br>
 <img src="https://github.com/allkern/psxe/assets/15825466/0ed1fe97-de2f-47de-bb30-82286e6c5fa0" width="12" height="12"/> CDROM </br>
-<img src="https://github.com/allkern/psxe/assets/15825466/0ed1fe97-de2f-47de-bb30-82286e6c5fa0" width="12" height="12"/> Timers </br>
-<img src="https://github.com/allkern/psxe/assets/15825466/0ed1fe97-de2f-47de-bb30-82286e6c5fa0" width="12" height="12"/> GTE </br>
 
 ## Building
 Building the emulator should be easy, just use the scripts provided in this repo.
@@ -58,23 +58,23 @@ Assuming you did everything described above, you should be able to build the emu
 ### Windows
 ```
 git clone https://github.com/allkern/psxe
-cd psx
+cd psxe
 ./build-deps
-./build-win.ps1
+./build-win64.ps1
 ```
 On rare cases these scripts might not work (PowerShell/Windows bugs). If so, please open an issue on the issues tab with information about your system so we can make sure we cover the maximum amount of systems. 
 
 ### Ubuntu
 ```
 git clone https://github.com/allkern/psxe
-cd psx
+cd psxe
 make clean && make
 ```
 
 ### macOS
 ```
 git clone https://github.com/allkern/psxe
-cd psx
+cd psxe
 ./build.sh
 ```
 
