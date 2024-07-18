@@ -2,6 +2,7 @@
 #define QUEUE_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 typedef struct {
     uint8_t* buf;
