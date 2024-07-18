@@ -2,6 +2,7 @@
 #include <string.h>
 
 #include "cdrom.h"
+#include "../spu.h"
 
 #define ITOB(b) itob_table[b]
 
@@ -293,16 +294,16 @@ void cdrom_reload_cdda_buffer(psx_cdrom_t* cdrom, void* buf, size_t size) {
     }
 
     // We hit pregap (end of previous track)
-    if ((ts == TS_PREGAP) && (cdrom->mode & MODE_AUTOPAUSE)) {
-        cdrom->cdda_remaining_samples = 0;
-        cdrom->cdda_sample_index = 0;
+    // if ((ts == TS_PREGAP) && (cdrom->mode & MODE_AUTOPAUSE)) {
+    //     cdrom->cdda_remaining_samples = 0;
+    //     cdrom->cdda_sample_index = 0;
 
-        memset(buf, 0, size);
+    //     memset(buf, 0, size);
 
-        cdrom->state = CD_STATE_IDLE;
+    //     cdrom->state = CD_STATE_IDLE;
 
-        return;
-    }
+    //     return;
+    // }
 
     cdrom->cdda_remaining_samples = CD_SECTOR_SIZE >> 1;
     cdrom->cdda_sample_index = 0;
@@ -345,9 +346,7 @@ void cdrom_send_report_irq(psx_cdrom_t* cdrom) {
     psx_ic_irq(cdrom->ic, IC_CDROM);
 }
 
-void psx_cdrom_get_audio_samples(psx_cdrom_t* cdrom, void* buf, size_t size, psx_spu_t* spu) {
-    memset(buf, 0, size);
-
+void psx_cdrom_get_audio_samples(psx_cdrom_t* cdrom, void* buf, size_t size) {
     if (!cdrom->disc)
         return;
 
@@ -368,7 +367,7 @@ void psx_cdrom_get_audio_samples(psx_cdrom_t* cdrom, void* buf, size_t size, psx
     float rr_vol = (((float)cdrom->vol[2]) / 255.0f);
     float rl_vol = (((float)cdrom->vol[3]) / 255.0f);
 
-    for (int i = 0; i < size >> 1;) {
+    for (int i = 0; i < (size >> 1);) {
         if (!cdrom->cdda_remaining_samples) {
             cdrom_reload_cdda_buffer(cdrom, buf, size);
 
@@ -391,17 +390,6 @@ void psx_cdrom_get_audio_samples(psx_cdrom_t* cdrom, void* buf, size_t size, psx
             continue;
         }
 
-        // if (cdrom->cdda_sample_index >= (2352 >> 1)) {
-        //     printf("ERROR %08x %u rem=%08x %d\n",
-        //         cdrom->cdda_sample_index,
-        //         cdrom->cdda_sample_index,
-        //         cdrom->cdda_remaining_samples,
-        //         cdrom->cdda_remaining_samples
-        //     );
-
-        //     exit(1);
-        // }
-
         int16_t left = cdrom->cdda_buf[cdrom->cdda_sample_index++];
         int16_t right = cdrom->cdda_buf[cdrom->cdda_sample_index++];
 
@@ -410,11 +398,5 @@ void psx_cdrom_get_audio_samples(psx_cdrom_t* cdrom, void* buf, size_t size, psx
         ptr[i++] = right * rr_vol + left  * lr_vol;
 
         cdrom->cdda_remaining_samples -= 2;
-
-        // if (cdrom->cdda_remaining_samples == 0) {
-        //     printf("ERROR rem=%08x %d", cdrom->cdda_remaining_samples, cdrom->cdda_remaining_samples);
-
-        //     exit(1);
-        // }
     }
 }

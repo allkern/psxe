@@ -107,6 +107,16 @@ static const char cdrom_region_letter[] = {
     'I', 'E', 'A'
 };
 
+void cdrom_pause(psx_cdrom_t* cdrom) {
+    cdrom->prev_state = CD_STATE_IDLE;
+    cdrom->state = CD_STATE_IDLE;
+    cdrom->pending_command = 0;
+    cdrom->busy = 0;
+    cdrom->cdda_playing = 0;
+    cdrom->xa_playing = 0;
+    cdrom->read_ongoing = 0;
+}
+
 void cdrom_restore_state(psx_cdrom_t* cdrom) {
     cdrom->state = CD_STATE_IDLE;
 
@@ -143,6 +153,7 @@ void cdrom_cmd_setloc(psx_cdrom_t* cdrom) {
     queue_push(cdrom->response, cdrom_get_stat(cdrom));
 
     cdrom->pending_lba = (BTOI(m) * 4500) + (BTOI(s) * 75) + BTOI(f);
+
     cdrom_restore_state(cdrom);
 }
 
@@ -220,7 +231,7 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
 
     cdrom->state = CD_STATE_READ;
     cdrom->prev_state = CD_STATE_READ;
-    cdrom->delay = CD_DELAY_START_READ;
+    cdrom->delay = cdrom_get_read_delay(cdrom);
     cdrom->read_ongoing = 1;
 }
 
@@ -274,24 +285,18 @@ void cdrom_cmd_pause(psx_cdrom_t* cdrom) {
     if (cdrom->state == CD_STATE_TX_RESP1) {
         cdrom_set_int(cdrom, 3);
 
-        queue_push(cdrom->response, cdrom_get_stat(cdrom));
+        queue_push(cdrom->response, CD_STAT_READ | CD_STAT_SPINDLE);
 
         // Pausing at 1x takes 70ms, 2x takes 35ms
         // but setting delays that high breaks games
-        cdrom->delay = CD_DELAY_1MS;
+        cdrom->delay = CD_DELAY_1MS * ((cdrom->mode & MODE_SPEED) ? 70 : 35);
         cdrom->state = CD_STATE_TX_RESP2;
     } else {
         cdrom_set_int(cdrom, 2);
 
-        queue_push(cdrom->response, cdrom_get_stat(cdrom));
+        queue_push(cdrom->response, CD_STAT_SPINDLE);
 
-        cdrom->prev_state = CD_STATE_IDLE;
-        cdrom->state = CD_STATE_IDLE;
-        cdrom->pending_command = 0;
-        cdrom->busy = 0;
-        cdrom->cdda_playing = 0;
-        cdrom->xa_playing = 0;
-        cdrom->read_ongoing = 0;
+        cdrom_pause(cdrom);
     }
 }
 
@@ -311,13 +316,7 @@ void cdrom_cmd_init(psx_cdrom_t* cdrom) {
 
         queue_push(cdrom->response, cdrom_get_stat(cdrom));
 
-        cdrom->prev_state = CD_STATE_IDLE;
-        cdrom->state = CD_STATE_IDLE;
-        cdrom->pending_command = 0;
-        cdrom->busy = 0;
-        cdrom->cdda_playing = 0;
-        cdrom->xa_playing = 0;
-        cdrom->read_ongoing = 0;
+        cdrom_pause(cdrom);
     }
 }
 
@@ -368,7 +367,8 @@ void cdrom_cmd_setmode(psx_cdrom_t* cdrom) {
     if (prev_speed != (cdrom->mode & MODE_SPEED))
         cdrom->pending_speed_switch_delay = CD_DELAY_1MS;
 
-    cdrom_restore_state(cdrom);
+    cdrom_pause(cdrom);
+    // cdrom_restore_state(cdrom);
 }
 
 void cdrom_cmd_getparam(psx_cdrom_t* cdrom) {
@@ -424,10 +424,10 @@ void cdrom_cmd_getlocl(psx_cdrom_t* cdrom) {
 }
 
 void cdrom_cmd_getlocp(psx_cdrom_t* cdrom) {
-    int track = psx_disc_get_track_number(cdrom->disc, cdrom->lba);
-    int track_lba = psx_disc_get_track_lba(cdrom->disc, track);
-
     int lba = cdrom->lba;
+
+    int track = psx_disc_get_track_number(cdrom->disc, lba);
+    int track_lba = psx_disc_get_track_lba(cdrom->disc, track);
 
     if (!cdrom->seek_precision)
         lba -= 25;
@@ -479,7 +479,7 @@ void cdrom_cmd_setsession(psx_cdrom_t* cdrom) {
         cdrom_set_int(cdrom, 2);
         queue_push(cdrom->response, cdrom_get_stat(cdrom));
 
-        cdrom_restore_state(cdrom);
+        cdrom_pause(cdrom);
     }
 }
 
@@ -604,6 +604,27 @@ void cdrom_cmd_test(psx_cdrom_t* cdrom) {
 
     // To-do: Handle other subfunctions (hard)
     // assert(subf == 32);
+    if (subf == 4) {
+        cdrom_set_int(cdrom, 3);
+
+        queue_push(cdrom->response, CD_STAT_SPINDLE);
+
+        cdrom_restore_state(cdrom);
+
+        return;
+    }
+
+    if (subf == 5) {
+        cdrom_set_int(cdrom, 3);
+
+        queue_push(cdrom->response, 0);
+        queue_push(cdrom->response, 0);
+
+        cdrom_restore_state(cdrom);
+
+        return;
+    }
+
     if (subf != 32) {
         cdrom_error(cdrom,
             CD_STAT_SPINDLE,
@@ -696,7 +717,7 @@ void cdrom_cmd_reads(psx_cdrom_t* cdrom) {
 }
 
 void cdrom_cmd_reset(psx_cdrom_t* cdrom) {
-
+    printf("reset\n");
 }
 
 void cdrom_cmd_getq(psx_cdrom_t* cdrom) {
@@ -708,9 +729,9 @@ void cdrom_cmd_readtoc(psx_cdrom_t* cdrom) {
         cdrom_set_int(cdrom, 3);
         queue_push(cdrom->response, cdrom_get_stat(cdrom));
 
-        cdrom->delay = CD_DELAY_1MS * 1000;
+        cdrom->delay = CD_DELAY_1MS * 10;
         cdrom->state = CD_STATE_TX_RESP2;
-        cdrom->busy = 1;
+        // cdrom->busy = 1;
     } else {
         cdrom_set_int(cdrom, 2);
         queue_push(cdrom->response, cdrom_get_stat(cdrom));

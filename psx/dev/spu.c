@@ -5,10 +5,19 @@
 #include "spu.h"
 #include "../log.h"
 
-#define CLAMP(v, l, h) ((v <= l) ? l : ((v >= h) ? h : v))
+#define CLAMP(v, l, h) (((v) <= (l)) ? (l) : (((v) >= (h)) ? (h) : (v)))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
 #define VOICE_COUNT 24
+
+static float interpolate_hermite(float a, float b, float c, float d, float t) {
+    float x = -a/2.0f + (3.0f*b)/2.0f - (3.0f*c)/2.0f + d/2.0f;
+    float y = a - (5.0f*b)/2.0f + 2.0f*c - d / 2.0f;
+    float z = -a/2.0f + c/2.0f;
+    float w = b;
+ 
+    return (x*t*t*t) + (y*t*t) + (z*t) + w;
+}
 
 static const int g_spu_pos_adpcm_table[] = {
     0, +60, +115, +98, +122
@@ -136,14 +145,16 @@ void spu_read_block(psx_spu_t* spu, int v) {
 
     spu->data[v].block_flags = spu->ram[addr + 1];
 
-    unsigned shift  = 12 - (hdr & 0x0f);
+    unsigned hdr_shift = hdr & 0x0f;
+
+    if (hdr_shift > 12)
+        hdr_shift = 9;
+
+    unsigned shift  = 12 - hdr_shift;
     unsigned filter = (hdr >> 4) & 7;
 
     int32_t f0 = g_spu_pos_adpcm_table[filter];
     int32_t f1 = g_spu_neg_adpcm_table[filter];
-
-    if ((spu->irq9addr << 3) == addr)
-        psx_ic_irq(spu->ic, IC_SPU);
 
     for (int j = 0; j < 28; j++) {
         uint16_t n = (spu->ram[addr + 2 + (j >> 1)] >> ((j & 1) * 4)) & 0xf;
@@ -338,7 +349,6 @@ void spu_kon(psx_spu_t* spu, uint32_t value) {
         }
     }
 
-    spu->kon |= value & 0x00ffffff;
     spu->endx &= ~(value & 0x00ffffff);
 }
 
@@ -346,8 +356,6 @@ void spu_koff(psx_spu_t* spu, uint32_t value) {
     for (int i = 0; i < VOICE_COUNT; i++)
         if (value & (1 << i))
             adsr_load_release(spu, i);
-
-    spu->koff |= value & 0x00ffffff;
 }
 
 int spu_handle_write(psx_spu_t* spu, uint32_t offset, uint32_t value) {
@@ -472,6 +480,8 @@ void spu_write_reverb(psx_spu_t* spu, uint32_t addr, int16_t value) {
 #define R16(addr) (spu_read_reverb(spu, addr))
 #define W16(addr, value) spu_write_reverb(spu, addr, value)
 
+#define SAT(v) CLAMP(v, INT16_MIN, INT16_MAX)
+
 void spu_get_reverb_sample(psx_spu_t* spu, int inl, int inr, int* outl, int* outr) {
     uint32_t mbase = spu->mbase << 3;
     uint32_t dapf1 = spu->dapf1 << 3;
@@ -497,45 +507,61 @@ void spu_get_reverb_sample(psx_spu_t* spu, int inl, int inr, int* outl, int* out
     uint32_t mrapf1 = spu->mrapf1 << 3;
     uint32_t mrapf2 = spu->mrapf2 << 3;
 
-    float vlin = (float)spu->vlin / 32767.0f;
-    float vrin = (float)spu->vrin / 32767.0f;
-    float viir = (float)spu->viir / 32767.0f;
-    float vwall = (float)spu->vwall / 32767.0f;
-    float vcomb1 = (float)spu->vcomb1 / 32767.0f;
-    float vcomb2 = (float)spu->vcomb2 / 32767.0f;
-    float vcomb3 = (float)spu->vcomb3 / 32767.0f;
-    float vcomb4 = (float)spu->vcomb4 / 32767.0f;
-    float vapf1 = (float)spu->vapf1 / 32767.0f;
-    float vapf2 = (float)spu->vapf2 / 32767.0f;
-    float vlout = (float)spu->vlout / 32767.0f;
-    float vrout = (float)spu->vrout / 32767.0f;
+    float vlin = (float)spu->vlin;
+    float vrin = (float)spu->vrin;
+    float viir = (float)spu->viir;
+    float vwall = (float)spu->vwall;
+    float vcomb1 = (float)spu->vcomb1;
+    float vcomb2 = (float)spu->vcomb2;
+    float vcomb3 = (float)spu->vcomb3;
+    float vcomb4 = (float)spu->vcomb4;
+    float vapf1 = (float)spu->vapf1;
+    float vapf2 = (float)spu->vapf2;
+    float vlout = (float)spu->vlout;
+    float vrout = (float)spu->vrout;
 
-    int lin = ((float)inl * 0.5f) * vlin;
-    int rin = ((float)inr * 0.5f) * vrin;
+    int lin = (vlin * inl) / 32768.0f;
+    int rin = (vrin * inr) / 32768.0f;
 
-    int mlsamev = (lin + R16(dlsame)*vwall - R16(mlsame-2))*viir + R16(mlsame-2);
-    int mrsamev = (rin + R16(drsame)*vwall - R16(mrsame-2))*viir + R16(mrsame-2);
-    int mldiffv = (lin + R16(drdiff)*vwall - R16(mldiff-2))*viir + R16(mldiff-2);
-    int mrdiffv = (rin + R16(dldiff)*vwall - R16(mrdiff-2))*viir + R16(mrdiff-2);
+    // same side reflection ltol and rtor
+    int16_t mlsamev = SAT(lin + ((R16(dlsame) * vwall) / 32768.0f) - ((R16(mlsame - 2) * viir) / 32768.0f) + R16(mlsame - 2));
+    int16_t mrsamev = SAT(rin + ((R16(drsame) * vwall) / 32768.0f) - ((R16(mrsame - 2) * viir) / 32768.0f) + R16(mrsame - 2));
+    W16(mlsame, mlsamev);
+    W16(mrsame, mrsamev);
 
-    W16(mlsame, CLAMP(mlsamev, -0x8000, 0x7fff));
-    W16(mrsame, CLAMP(mrsamev, -0x8000, 0x7fff));
-    W16(mldiff, CLAMP(mldiffv, -0x8000, 0x7fff));
-    W16(mrdiff, CLAMP(mrdiffv, -0x8000, 0x7fff));
+    // different side reflection ltor and rtol
+    int16_t mldiffv = SAT(lin + ((R16(drdiff) * vwall) / 32768.0f) - ((R16(mldiff - 2) * viir) / 32768.0f) + R16(mldiff - 2));
+    int16_t mrdiffv = SAT(rin + ((R16(dldiff) * vwall) / 32768.0f) - ((R16(mrdiff - 2) * viir) / 32768.0f) + R16(mrdiff - 2));
+    W16(mldiff, mldiffv);
+    W16(mrdiff, mrdiffv);
 
-    int lout=vcomb1*R16(mlcomb1)+vcomb2*R16(mlcomb2)+vcomb3*R16(mlcomb3)+vcomb4*R16(mlcomb4);
-    int rout=vcomb1*R16(mrcomb1)+vcomb2*R16(mrcomb2)+vcomb3*R16(mrcomb3)+vcomb4*R16(mrcomb4);
+    // early echo (comb filter with input from buffer)
+    int16_t l = SAT((vcomb1 * R16(mlcomb1) / 32768.0f) + (vcomb2 * R16(mlcomb2) / 32768.0f) + (vcomb3 * R16(mlcomb3) / 32768.0f) + (vcomb4 * R16(mlcomb4) / 32768.0f));
+    int16_t r = SAT((vcomb1 * R16(mrcomb1) / 32768.0f) + (vcomb2 * R16(mrcomb2) / 32768.0f) + (vcomb3 * R16(mrcomb3) / 32768.0f) + (vcomb4 * R16(mrcomb4) / 32768.0f));
 
-    lout = CLAMP(lout, -0x8000, 0x7fff);
-    rout = CLAMP(rout, -0x8000, 0x7fff);
+    // late reverb apf1 (all pass filter 1 with input from comb)
+    l = SAT(l - SAT((vapf1 * R16(mlapf1 - dapf1)) / 32768.0f));
+    r = SAT(r - SAT((vapf1 * R16(mrapf1 - dapf1)) / 32768.0f));
 
-    lout-=CLAMP(vapf1*R16(mlapf1 - dapf1), -0x8000, 0x7fff); W16(mlapf1, lout); lout*=vapf1+((float)R16(mlapf1 - dapf1) / 32767.0f);
-    rout-=CLAMP(vapf1*R16(mrapf1 - dapf1), -0x8000, 0x7fff); W16(mrapf1, rout); rout*=vapf1+((float)R16(mrapf1 - dapf1) / 32767.0f);
-    lout-=CLAMP(vapf2*R16(mlapf2 - dapf2), -0x8000, 0x7fff); W16(mlapf2, lout); lout*=vapf2+((float)R16(mlapf2 - dapf2) / 32767.0f);
-    rout-=CLAMP(vapf2*R16(mrapf2 - dapf2), -0x8000, 0x7fff); W16(mrapf2, rout); rout*=vapf2+((float)R16(mrapf2 - dapf2) / 32767.0f);
+    W16(mlapf1, l);
+    W16(mrapf1, r);
+    
+    l = SAT((l * vapf1 / 32768.0f) + R16(mlapf1 - dapf1));
+    r = SAT((r * vapf1 / 32768.0f) + R16(mrapf1 - dapf1));
 
-    *outl = lout * vlout;
-    *outr = rout * vrout;
+    // late reverb apf2 (all pass filter 2 with input from apf1)
+    l = SAT(l - SAT((vapf2 * R16(mlapf2 - dapf2)) / 32768.0f));
+    r = SAT(r - SAT((vapf2 * R16(mrapf2 - dapf2)) / 32768.0f));
+    
+    W16(mlapf2, l);
+    W16(mrapf2, r);
+
+    l = SAT((l * vapf2 / 32768.0f) + R16(mlapf2 - dapf2));
+    r = SAT((r * vapf2 / 32768.0f) + R16(mrapf2 - dapf2));
+
+    // output to mixer (output volume multiplied with input from apf2)
+    *outl = SAT(l * vlout / 32768.0f);
+    *outr = SAT(r * vrout / 32768.0f);
 
     spu->revbaddr = MAX(mbase, (spu->revbaddr + 2) & 0x7fffe);
 }
@@ -563,11 +589,6 @@ uint32_t psx_spu_get_sample(psx_spu_t* spu) {
 
         ++active_voice_count;
 
-        // Shift 3 older samples around
-        spu->data[v].s[3] = spu->data[v].s[2];
-        spu->data[v].s[2] = spu->data[v].s[1];
-        spu->data[v].s[1] = spu->data[v].s[0];
-
         uint32_t sample_index = spu->data[v].counter >> 12;
 
         if (sample_index > 27) {
@@ -581,7 +602,15 @@ uint32_t psx_spu_get_sample(psx_spu_t* spu) {
 
             switch (spu->data[v].block_flags & 3) {
                 case 0: case 2: {
+                    if (((spu->irq9addr << 3) == spu->data[v].current_addr) && (spu->spucnt & 0x40)) {
+                        psx_ic_irq(spu->ic, IC_SPU);
+                    }
+
                     spu->data[v].current_addr += 0x10;
+
+                    if (((spu->irq9addr << 3) == spu->data[v].current_addr) && (spu->spucnt & 0x40)) {
+                        psx_ic_irq(spu->ic, IC_SPU);
+                    }
                 } break;
 
                 case 1: {
@@ -601,7 +630,13 @@ uint32_t psx_spu_get_sample(psx_spu_t* spu) {
             spu_read_block(spu, v);
         }
 
-        // Fetch ADPCM sample
+        //  Fetch ADPCM sample
+        if (spu->data[v].prev_sample_index != sample_index) {
+            spu->data[v].s[3] = spu->data[v].s[2];
+            spu->data[v].s[2] = spu->data[v].s[1];
+            spu->data[v].s[1] = spu->data[v].s[0];
+        }
+
         spu->data[v].s[0] = spu->data[v].buf[sample_index];
 
         // Apply 4-point Gaussian interpolation
@@ -610,7 +645,15 @@ uint32_t psx_spu_get_sample(psx_spu_t* spu) {
         int16_t g1 = g_spu_gauss_table[0x1ff - gauss_index];
         int16_t g2 = g_spu_gauss_table[0x100 + gauss_index];
         int16_t g3 = g_spu_gauss_table[0x000 + gauss_index];
-        int16_t out;
+        int16_t out = spu->data[v].s[0];
+
+        // out = interpolate_hermite(
+        //     spu->data[v].s[3],
+        //     spu->data[v].s[2],
+        //     spu->data[v].s[1],
+        //     spu->data[v].s[0],
+        //     (spu->data[v].counter & 0xfff) / 4096.0f
+        // );
 
         out  = (g0 * spu->data[v].s[3]) >> 15;
         out += (g1 * spu->data[v].s[2]) >> 15;
@@ -619,8 +662,8 @@ uint32_t psx_spu_get_sample(psx_spu_t* spu) {
 
         float adsr_vol = (float)spu->voice[v].envcvol / 32767.0f;
 
-        float samplel = (out * spu->data[v].lvol) * adsr_vol * (float)spu->mainlvol / 32767.0f; 
-        float sampler = (out * spu->data[v].rvol) * adsr_vol * (float)spu->mainrvol / 32767.0f; 
+        float samplel = (out * spu->data[v].lvol) * adsr_vol; 
+        float sampler = (out * spu->data[v].rvol) * adsr_vol; 
 
         left += samplel;
         right += sampler;
@@ -634,22 +677,34 @@ uint32_t psx_spu_get_sample(psx_spu_t* spu) {
 
         /* To-do: Do pitch modulation here */
 
+        spu->data[v].prev_sample_index = spu->data[v].counter >> 12;
         spu->data[v].counter += step;
     }
 
-    if (!active_voice_count)
-        return 0x00000000;
+    // if (!active_voice_count)
+    //     return 0x00000000;
     
     int16_t clamprl = CLAMP(revl, INT16_MIN, INT16_MAX);
     int16_t clamprr = CLAMP(revr, INT16_MIN, INT16_MAX);
     int16_t clampsl = CLAMP(left, INT16_MIN, INT16_MAX);
     int16_t clampsr = CLAMP(right, INT16_MIN, INT16_MAX);
-    
-    if ((spu->spucnt & 0x0080) && spu->even_cycle)
-        spu_get_reverb_sample(spu, clamprl, clamprr, &spu->lrsl, &spu->lrsr);
 
-    uint16_t clampl = CLAMP(clampsl + spu->lrsl, INT16_MIN, INT16_MAX);
-    uint16_t clampr = CLAMP(clampsr + spu->lrsr, INT16_MIN, INT16_MAX);
+    if ((spu->spucnt & 0x4000) == 0)
+        return 0;
+
+    uint16_t clampl;
+    uint16_t clampr;
+
+    if (spu->spucnt & 0x0080) {
+        if (spu->even_cycle)
+            spu_get_reverb_sample(spu, clamprl, clamprr, &spu->lrsl, &spu->lrsr);
+
+        clampl = CLAMP((clampsl + spu->lrsl), INT16_MIN, INT16_MAX) * (float)spu->mainlvol / 32767.0f;
+        clampr = CLAMP((clampsr + spu->lrsr), INT16_MIN, INT16_MAX) * (float)spu->mainrvol / 32767.0f;
+    } else {
+        clampl = CLAMP(clampsl, INT16_MIN, INT16_MAX) * (float)spu->mainlvol / 32767.0f;
+        clampr = CLAMP(clampsr, INT16_MIN, INT16_MAX) * (float)spu->mainrvol / 32767.0f;
+    }
 
     return clampl | (((uint32_t)clampr) << 16);
 }
@@ -658,14 +713,22 @@ void psx_spu_update_cdda_buffer(psx_spu_t* spu, void* buf) {
     int16_t* ptr = buf;
     int16_t* ram = (int16_t*)spu->ram;
 
-    for (int i = 0; i < 0x400;) {
-        ram[i] = ptr[i];
+    for (int i = 0; i < 0x400; i++) {
+        ram[i + 0x000] = *ptr++;
+        ram[i + 0x400] = *ptr++;
+    }
 
-        ++i;
+    // Little bit of lowpass/smoothing
+    for (int i = 0; i < 0x400; i += 8) {
+        int l = 0, r = 0;
 
-        ram[i + 0x400] = ptr[i];
+        for (int j = 0; j < 8; j++) {
+            l += ram[i + j];
+            r += ram[i + j + 0x400];
+        }
 
-        ++i;
+        ram[i + 0x000] = l / 8;
+        ram[i + 0x400] = r / 8;
     }
 }
 

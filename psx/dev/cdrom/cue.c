@@ -354,21 +354,12 @@ uint32_t init_tracks(cue_file_t* file, uint32_t* lba) {
         if ((data->index[0] != -1) && (data->index[1] != -1))
             data->pregap = data->index[1];
 
-        int pregap = data->pregap;
-
-        if (data->pregap)
-            pregap -= prev_pregap;
-
-        *lba += pregap;
-
-        data->start = *lba;
+        data->start = *lba + data->pregap;
         data->end = data->start + (file->size / 0x930);
 
-        *lba += (file->size / 0x930);
+        *lba = data->end;
 
-        prev_pregap = data->pregap;
-
-        return file->size / 0x930;
+        return 0;
     }
 
     // Multiple tracks per file
@@ -571,9 +562,6 @@ int cue_read(cue_t* cue, uint32_t lba, void* buf) {
 
 int cue_get_track_number(cue_t* cue, uint32_t lba) {
     cue_track_t* track = get_sector_track_in_pregap(cue, lba);
-
-    if (cue_query(cue, lba) == TS_PREGAP)
-        return track->number + 1;
 
     return track->number;
 }

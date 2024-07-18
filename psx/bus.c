@@ -105,7 +105,7 @@ uint16_t psx_bus_read16(psx_bus_t* bus, uint32_t addr) {
         return 0x05;
 
     if (addr == 0x1f400004)
-        return 0xc0;
+        return 0xc8;
 
     if (addr == 0x1f400006)
         return 0x1fe0;

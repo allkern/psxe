@@ -6,7 +6,6 @@
 #include "queue.h"
 #include "disc.h"
 #include "../ic.h"
-#include "../spu.h"
 
 #define PSX_CDROM_BEGIN 0x1f801800
 #define PSX_CDROM_END   0x1f801803
@@ -35,14 +34,8 @@
 #define CD_DELAY_STOP_DS 25845878
 #define CD_DELAY_READ_SS (33868800 / 75)
 #define CD_DELAY_READ_DS (33868800 / (2*75))
-#define CD_DELAY_START_READ \
-    (cdrom_get_read_delay(cdrom) + \
-    cdrom_get_seek_delay(cdrom, ts))
-
-#define CD_DELAY_ONGOING_READ \
-    (cdrom_get_read_delay(cdrom) + \
-    cdrom_get_seek_delay(cdrom, ts) + \
-    (CD_DELAY_1MS * 4))
+#define CD_DELAY_START_READ (cdrom_get_read_delay(cdrom))
+#define CD_DELAY_ONGOING_READ (cdrom_get_read_delay(cdrom) + (CD_DELAY_1MS * 4))
 
 #define XA_STEREO_SAMPLES 2016 // Samples per sector
 #define XA_MONO_SAMPLES 4032 // Samples per sector
@@ -307,7 +300,7 @@ void psx_cdrom_write32(psx_cdrom_t* cdrom, uint32_t addr, uint32_t value);
 void psx_cdrom_write16(psx_cdrom_t* cdrom, uint32_t addr, uint32_t value);
 void psx_cdrom_write8(psx_cdrom_t* cdrom, uint32_t addr, uint32_t value);
 void psx_cdrom_update(psx_cdrom_t* cdrom, int cycles);
-void psx_cdrom_get_audio_samples(psx_cdrom_t* cdrom, void* buf, size_t size, psx_spu_t* spu);
+void psx_cdrom_get_audio_samples(psx_cdrom_t* cdrom, void* buf, size_t size);
 void psx_cdrom_destroy(psx_cdrom_t* cdrom);
 
 #endif

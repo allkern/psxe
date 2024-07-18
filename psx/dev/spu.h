@@ -124,6 +124,7 @@ typedef struct __attribute__((__packed__)) {
         uint32_t counter;
         uint32_t current_addr;
         uint32_t repeat_addr;
+        uint32_t prev_sample_index;
         int16_t s[4];
         int block_flags;
         int16_t buf[28];
@@ -132,6 +133,8 @@ typedef struct __attribute__((__packed__)) {
         float rvol;
         int cvol;
         int eon;
+        int reverbl;
+        int reverbr;
 
         /*
         ____lower 16bit (at 1F801C08h+N*10h)___________________________________

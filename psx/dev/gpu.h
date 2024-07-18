@@ -102,6 +102,8 @@ struct psx_gpu_t {
     int buf_index;
     int cmd_args_remaining;
     int cmd_data_remaining;
+    int line_done;
+    vertex_t prev_line_vertex;
 
     // Command counters
     uint32_t color;

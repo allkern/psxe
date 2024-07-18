@@ -45,7 +45,7 @@ uint8_t psx_mc2_read8(psx_mc2_t* mc2, uint32_t offset) {
 
 void psx_mc2_write32(psx_mc2_t* mc2, uint32_t offset, uint32_t value) {
     switch (offset) {
-        case 0x00: mc2->ram_size = value; break;
+        case 0x00: printf("ram_size write %08x\n", value); mc2->ram_size = value; break;
 
         default: {
             log_warn("Unhandled 32-bit MC2 write at offset %08x (%08x)", offset, value);

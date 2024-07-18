@@ -153,6 +153,14 @@ void psx_cdrom_init(psx_cdrom_t* cdrom, psx_ic_t* ic) {
     cdrom->fake_getlocl_data = 1;
 }
 
+void psx_cdrom_set_version(psx_cdrom_t* cdrom, int version) {
+    cdrom->version = version;
+}
+
+void psx_cdrom_set_region(psx_cdrom_t* cdrom, int region) {
+    cdrom->region = region;
+}
+
 void psx_cdrom_open(psx_cdrom_t* cdrom, const char* path) {
     if (!path)
         return;
@@ -426,6 +434,8 @@ void cdrom_handle_read(psx_cdrom_t* cdrom) {
 
     int ts = psx_disc_query(cdrom->disc, cdrom->lba);
 
+    // printf("ts=%u ", ts);
+
     if (ts == TS_FAR) {
         cdrom_error(cdrom,
             CD_STAT_SPINDLE | CD_STAT_SEEKERROR,
@@ -456,14 +466,19 @@ void cdrom_handle_read(psx_cdrom_t* cdrom) {
     cdrom->data->write_index = size_bit ? 0x924 : 0x800;
     cdrom->data->write_index += cdrom->data->read_index;
 
-    // printf("size=%x off=%u lba=%d\n",
-    //     cdrom->data->write_index,
-    //     cdrom->data->read_index,
-    //     cdrom->lba
-    // );
-
     cdrom->pending_lba = cdrom->lba + 1;
     cdrom->delay = cdrom_get_read_delay(cdrom);
+
+    // printf("size=%x off=%u lba=%d: %02x:%02x:%02x delay=%u\n",
+    //     cdrom->data->write_index,
+    //     cdrom->data->read_index,
+    //     cdrom->lba,
+    //     cdrom->data->buf[0xc],
+    //     cdrom->data->buf[0xd],
+    //     cdrom->data->buf[0xe],
+    //     cdrom->data->buf[0xf],
+    //     cdrom->delay
+    // );
 }
 
 void psx_cdrom_update(psx_cdrom_t* cdrom, int cycles) {
@@ -602,13 +617,16 @@ void cdrom_write_cmd(psx_cdrom_t* cdrom, uint8_t data) {
     cdrom->state = CD_STATE_TX_RESP1;
 
     cdrom->pending_command = data;
-    cdrom->delay = CD_DELAY_FR;
 
-    // if (cdrom->pending_command == CDL_INIT)
-    //     cdrom->delay = CD_DELAY_INIT_FR;
+    switch (cdrom->pending_command) {
+        case CDL_INIT:
+            cdrom->delay = CD_DELAY_INIT_FR;
+        break;
 
-    if (cdrom->pending_command == CDL_GETLOCP)
-        cdrom->delay *= 4;
+        default:
+            cdrom->delay = CD_DELAY_FR;
+        break;
+    }
 
     if (cdrom->state == CD_STATE_READ)
         cdrom->busy = 1;
