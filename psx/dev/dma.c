@@ -402,7 +402,7 @@ void psx_dma_do_spu(psx_dma_t* dma) {
         // exit(1);
     }
 
-    dma->spu_irq_delay = BCR_SIZE(spu) * BCR_BCNT(spu);
+    dma->spu_irq_delay = 32;
 
     if (CHCR_TDIR(spu)) {
         for (int j = 0; j < blocks; j++) {
@@ -482,7 +482,7 @@ void psx_dma_update(psx_dma_t* dma, int cyc) {
     }
 
     if (dma->spu_irq_delay) {
-        dma->spu_irq_delay -= cyc;
+        dma->spu_irq_delay = 0;
 
         if (dma->spu_irq_delay <= 0)
             if (dma->dicr & DICR_DMA4EN)

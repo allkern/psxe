@@ -30,7 +30,7 @@ void psx_update(psx_t* psx) {
     psx->cpu->last_cycles = 2;
 
     psx_cdrom_update(psx->cdrom, 2);
-    psx_gpu_update(psx->gpu, psx->cpu->last_cycles);
+    psx_gpu_update(psx->gpu, 2);
     psx_pad_update(psx->pad, psx->cpu->last_cycles);
     psx_timer_update(psx->timer, psx->cpu->last_cycles);
     psx_dma_update(psx->dma, psx->cpu->last_cycles);
@@ -61,7 +61,12 @@ uint32_t psx_get_display_width(psx_t* psx) {
 
     // return (draw > dmode) ? dmode : draw;
 
-    return psx_get_dmode_width(psx);
+    int width = psx_get_dmode_width(psx);
+
+    if (width == 368)
+        width = 384;
+
+    return width;
 }
 
 uint32_t psx_get_display_height(psx_t* psx) {

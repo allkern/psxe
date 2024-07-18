@@ -57,7 +57,13 @@ SDL_GameController* screen_find_controller(void) {
 int screen_get_base_width(psxe_screen_t* screen) {
     int width = psx_get_dmode_width(screen->psx);
 
-    return (width == 256) ? 256 : 320;
+    switch (width) {
+        case 256: return 256;
+        case 320: return 320;
+        case 368: return 384;
+    }
+
+    return 320;
 }
 
 psxe_screen_t* psxe_screen_create(void) {

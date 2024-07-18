@@ -1,7 +1,7 @@
 #include "../psx/psx.h"
 #include "../psx/input/sda.h"
 #include "../psx/input/guncon.h"
-#include "../psx/disc/cue.h"
+#include "../psx/dev/cdrom/cdrom.h"
 
 #include "screen.h"
 #include "config.h"
@@ -12,7 +12,10 @@ void audio_update(void* ud, uint8_t* buf, int size) {
     psx_cdrom_t* cdrom = ((psx_t*)ud)->cdrom;
     psx_spu_t* spu = ((psx_t*)ud)->spu;
 
-    psx_cdrom_get_cdda_samples(cdrom, buf, size, spu);
+    memset(buf, 0, size);
+
+    psx_cdrom_get_audio_samples(cdrom, buf, size);
+    psx_spu_update_cdda_buffer(spu, cdrom->cdda_buf);
 
     for (int i = 0; i < (size >> 2); i++) {
         uint32_t sample = psx_spu_get_sample(spu);

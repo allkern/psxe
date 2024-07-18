@@ -100,6 +100,13 @@ void pad_write_tx(psx_pad_t* pad, uint16_t data) {
 
                 psx_mcd_write(mcd, data);
 
+                if (pad->ctrl & CTRL_ACIE) {
+                    pad->irq_bit = 1;
+                    pad->cycles_until_irq = 1024;
+
+                    return;
+                }
+
                 if (!psx_mcd_query(mcd))
                     pad->dest[slot] = 0;
             } break;
@@ -107,7 +114,7 @@ void pad_write_tx(psx_pad_t* pad, uint16_t data) {
 
         if (pad->ctrl & CTRL_ACIE) {
             pad->irq_bit = 1;
-            pad->cycles_until_irq = JOY_IRQ_DELAY;
+            pad->cycles_until_irq = (pad->dest[slot] == DEST_MCD) ? 2048 : JOY_IRQ_DELAY;
         }
     }
 }

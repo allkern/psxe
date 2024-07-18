@@ -239,7 +239,7 @@ void timer_handle_irq(psx_timer_t* timer, int i) {
     if (target_reached) {
         timer->timer[i].target_reached = 1;
 
-        // if ((i == 2) && (T2_CLKSRC == 2))
+        // if ((i == 1) && (T1_CLKSRC == 1))
         //     printf("target %04x (%f) reached\n", timer->timer[i].target, timer->timer[i].counter);
 
         if (timer->timer[i].reset_target)
@@ -250,7 +250,7 @@ void timer_handle_irq(psx_timer_t* timer, int i) {
     }
 
     if (max_reached) {
-        timer->timer[i].counter -= 65536.0f;
+        timer->timer[i].counter = 0;
         timer->timer[i].max_reached = 1;
 
         if (timer->timer[i].irq_max)
@@ -279,8 +279,8 @@ void timer_handle_irq(psx_timer_t* timer, int i) {
     timer->timer[i].irq = 1;
 
     if (trigger) {
-        // if ((i == 1))
-        //     printf("timer 1 irq fire\n");
+        if ((i == 1))
+            printf("timer 1 irq fire\n");
 
         psx_ic_irq(timer->ic, 16 << i);
     }

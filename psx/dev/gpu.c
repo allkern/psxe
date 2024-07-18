@@ -178,6 +178,47 @@ uint16_t gpu_fetch_texel(psx_gpu_t* gpu, uint16_t tx, uint16_t ty, uint32_t tpx,
     }
 }
 
+uint16_t gpu_fetch_texel_bilinear(psx_gpu_t* gpu, float tx, float ty, uint32_t tpx, uint32_t tpy, uint16_t clutx, uint16_t cluty, int depth) {
+    float txf = floorf(tx);
+    float tyf = floorf(ty);
+    float txc = txf + 1.0f;
+    float tyc = tyf + 1.0f;
+
+    int s0 = gpu_fetch_texel(gpu, (int)txf, (int)tyf, tpx, tpy, clutx, cluty, depth);
+
+    if (!s0)
+        return 0;
+
+    int s1 = gpu_fetch_texel(gpu, (int)txc, (int)tyf, tpx, tpy, clutx, cluty, depth);
+    int s2 = gpu_fetch_texel(gpu, (int)txf, (int)tyc, tpx, tpy, clutx, cluty, depth);
+    int s3 = gpu_fetch_texel(gpu, (int)txc, (int)tyc, tpx, tpy, clutx, cluty, depth);
+
+    float s0r = (s0 >> 0) & 0x1f;
+    float s0g = (s0 >> 5) & 0x1f;
+    float s0b = (s0 >> 10) & 0x1f;
+    float s1r = (s1 >> 0) & 0x1f;
+    float s1g = (s1 >> 5) & 0x1f;
+    float s1b = (s1 >> 10) & 0x1f;
+    float s2r = (s2 >> 0) & 0x1f;
+    float s2g = (s2 >> 5) & 0x1f;
+    float s2b = (s2 >> 10) & 0x1f;
+    float s3r = (s3 >> 0) & 0x1f;
+    float s3g = (s3 >> 5) & 0x1f;
+    float s3b = (s3 >> 10) & 0x1f;
+
+    float q1r = s0r * (txc - tx) + s1r * (tx - txf);
+    float q1g = s0g * (txc - tx) + s1g * (tx - txf);
+    float q1b = s0b * (txc - tx) + s1b * (tx - txf);
+    float q2r = s2r * (txc - tx) + s3r * (tx - txf);
+    float q2g = s2g * (txc - tx) + s3g * (tx - txf);
+    float q2b = s2b * (txc - tx) + s3b * (tx - txf);
+    int qr = q1r * (tyc - ty) + q2r * (ty - tyf);
+    int qg = q1g * (tyc - ty) + q2g * (ty - tyf);
+    int qb = q1b * (tyc - ty) + q2b * (ty - tyf);
+
+    return qr | (qg << 5) | (qb << 10) | (s0 & 0x8000) | (s1 & 0x8000) | (s2 & 0x8000) | (s3 & 0x8000);
+}
+
 #define TL(z, a, b) \
     ((z < 0) || ((z == 0) && ((b.y > a.y) || ((b.y == a.y) && (b.x < a.x)))))
 
@@ -286,10 +327,10 @@ void gpu_render_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, 
             }
 
             if (data.attrib & PA_TEXTURED) {
-                uint32_t tx = roundf(((z0 * a.tx) + (z1 * b.tx) + (z2 * c.tx)) / area);
-                uint32_t ty = roundf(((z0 * a.ty) + (z1 * b.ty) + (z2 * c.ty)) / area);
+                float tx = ((z0 * a.tx) + (z1 * b.tx) + (z2 * c.tx)) / area;
+                float ty = ((z0 * a.ty) + (z1 * b.ty) + (z2 * c.ty)) / area;
 
-                uint16_t texel = gpu_fetch_texel(gpu, tx, ty, tpx, tpy, clutx, cluty, depth);
+                uint16_t texel = gpu_fetch_texel_bilinear(gpu, tx, ty, tpx, tpy, clutx, cluty, depth);
 
                 if (!texel)
                     continue;
@@ -963,6 +1004,86 @@ void gpu_poly(psx_gpu_t* gpu) {
     }
 }
 
+void gpu_line(psx_gpu_t* gpu) {
+    switch (gpu->state) {
+        case GPU_STATE_RECV_CMD: {
+            gpu->state = GPU_STATE_RECV_ARGS;
+
+            int shaded   = (gpu->buf[0] & 0x10000000) != 0;
+            int polyline = (gpu->buf[0] & 0x08000000) != 0;
+
+            gpu->cmd_args_remaining = polyline ? -1 : (shaded ? 3 : 2);
+            gpu->line_done = 0;
+        } break;
+
+        case GPU_STATE_RECV_ARGS: {
+            if (gpu->buf[0] & 0x08000000) {
+                if ((gpu->buf[gpu->buf_index - 1] & 0xf000f000) == 0x50005000) {
+                    gpu->state = GPU_STATE_RECV_CMD;
+
+                    return;
+                }
+
+                // int shaded = (gpu->buf[0] & 0x10000000) != 0;
+
+                // if (shaded) {
+                //     if (gpu->buf_index > 2) {
+
+                //     }
+                // }
+
+                // if (gpu->buf_index > overflow) {
+                //     vertex_t v0, v1;
+
+                //     if (shaded) {
+                //         v0.c = gpu->buf[0] & 0xffffff;
+                //         v1.c = gpu->buf[4] & 0xffffff;
+                //         v0.x = gpu->buf[1] & 0xffff;
+                //         v0.y = gpu->buf[1] >> 16;
+                //         v1.x = gpu->buf[3] & 0xffff;
+                //         v1.y = gpu->buf[3] >> 16;
+                //     } else {
+                //         v0.c = gpu->buf[0] & 0xffffff;
+                //         v1.c = gpu->buf[0] & 0xffffff;
+                //         v0.x = gpu->buf[1] & 0xffff;
+                //         v0.y = gpu->buf[1] >> 16;
+                //         v1.x = gpu->buf[2] & 0xffff;
+                //         v1.y = gpu->buf[2] >> 16;
+                //     }
+
+                //     gpu->prev_line_vertex = v1;
+
+                //     gpu_render_flat_line(gpu, v0, v1, gpu->buf[0] & 0xffffff);
+
+                //     gpu->buf_index = 1;
+                // }
+            } else if (!gpu->cmd_args_remaining) {
+                vertex_t v0, v1;
+
+                if (gpu->buf[0] & 0x10000000) {
+                    v0.c = gpu->buf[0] & 0xffffff;
+                    v1.c = gpu->buf[2] & 0xffffff;
+                    v0.x = gpu->buf[1] & 0xffff;
+                    v0.y = gpu->buf[1] >> 16;
+                    v1.x = gpu->buf[3] & 0xffff;
+                    v1.y = gpu->buf[3] >> 16;
+                } else {
+                    v0.c = gpu->buf[0] & 0xffffff;
+                    v1.c = gpu->buf[0] & 0xffffff;
+                    v0.x = gpu->buf[1] & 0xffff;
+                    v0.y = gpu->buf[1] >> 16;
+                    v1.x = gpu->buf[2] & 0xffff;
+                    v1.y = gpu->buf[2] >> 16;
+                }
+
+                gpu_render_flat_line(gpu, v0, v1, BGR555(gpu->buf[0] & 0xffffff));
+
+                gpu->state = GPU_STATE_RECV_CMD;
+            }
+        } break;
+    }
+}
+
 void gpu_cmd_a0(psx_gpu_t* gpu) {
     switch (gpu->state) {
         case GPU_STATE_RECV_CMD: {
@@ -1547,11 +1668,11 @@ void gpu_cmd_02(psx_gpu_t* gpu) {
                 for (int y = gpu->v0.y; y < (gpu->v0.y + gpu->ysiz); y++) {
                     for (int x = gpu->v0.x; x < (gpu->v0.x + gpu->xsiz); x++) {
                         // This shouldn't be needed
-                        int bc = (x >= gpu->draw_x1) && (x <= gpu->draw_x2) &&
-                                 (y >= gpu->draw_y1) && (y <= gpu->draw_y2);
+                        // int bc = (x >= gpu->draw_x1) && (x <= gpu->draw_x2) &&
+                        //          (y >= gpu->draw_y1) && (y <= gpu->draw_y2);
 
-                        if (!bc)
-                            continue;
+                        // if (!bc)
+                        //     continue;
 
                         if ((x < 1024) && (y < 512) && (x >= 0) && (y >= 0))
                             gpu->vram[x + (y * 1024)] = color;
@@ -1601,16 +1722,10 @@ void gpu_cmd_80(psx_gpu_t* gpu) {
 void psx_gpu_update_cmd(psx_gpu_t* gpu) {
     int type = (gpu->buf[0] >> 29) & 7;
 
-    if (type == 3) {
-        gpu_rect(gpu);
-
-        return;
-    }
-
-    if (type == 1) {
-        gpu_poly(gpu);
-
-        return;
+    switch (type) {
+        case 1: gpu_poly(gpu); return;
+        case 2: gpu_line(gpu); return;
+        case 3: gpu_rect(gpu); return;
     }
 
     switch (gpu->buf[0] >> 24) {
@@ -1820,7 +1935,7 @@ void gpu_hblank_event(psx_gpu_t* gpu) {
         // GetlocP commands, if the timer is too slow it will
         // break.
         // if (!(gpu->line & 7))
-            // psx_ic_irq(gpu->ic, IC_TIMER2);
+        //     psx_ic_irq(gpu->ic, IC_SPU);
             // psx_ic_irq(gpu->ic, IC_SPU);
     } else {
         gpu->gpustat &= ~(1 << 31);

@@ -157,7 +157,7 @@ void psx_mcd_write(psx_mcd_t* mcd, uint8_t data) {
     // log_fatal("mcd write %02x", data);
     // log_set_quiet(1);
 
-    // printf("mcd write %02x\n", data);
+    printf("mcd write %02x\n", data);
 
     switch (mcd->state) {
         case MCD_STATE_TX_FLG: mcd->mode = data; break;

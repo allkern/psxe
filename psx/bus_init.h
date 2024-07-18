@@ -1,6 +1,7 @@
 #ifndef BUS_INIT_H
 #define BUS_INIT_H
 
+#include "dev/cdrom/cdrom.h"
 #include "dev/bios.h"
 #include "dev/ram.h"
 #include "dev/dma.h"
@@ -14,7 +15,6 @@
 #include "dev/gpu.h"
 #include "dev/spu.h"
 #include "dev/timer.h"
-#include "dev/cdrom.h"
 #include "dev/pad.h"
 #include "dev/mdec.h"
 

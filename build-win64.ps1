@@ -16,8 +16,8 @@ gcc -I"$($PSX_DIR)" `
     -I"$($SDL2_DIR)\include\SDL2" `
     "psx\*.c" `
     "psx\dev\*.c" `
+    "psx\dev\cdrom\*.c" `
     "psx\input\*.c" `
-    "psx\disc\*.c" `
     "frontend\*.c" `
     -o "bin\psxe.exe" `
     -DREP_VERSION="`"$($VERSION_TAG)`"" `
