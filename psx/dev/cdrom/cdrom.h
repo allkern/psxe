@@ -245,6 +245,7 @@ typedef struct {
     uint32_t cdda_sample_index;
     uint32_t cdda_sectors_played;
     int cdda_playing;
+    int cdda_prev_track;
     int read_ongoing;
     uint8_t xa_buf[CD_SECTOR_SIZE];
     int16_t xa_left_buf[XA_STEREO_SAMPLES];

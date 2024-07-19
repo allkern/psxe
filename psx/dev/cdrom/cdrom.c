@@ -198,22 +198,24 @@ int cdrom_get_read_delay(psx_cdrom_t* cdrom) {
 }
 
 int cdrom_get_pause_delay(psx_cdrom_t* cdrom) {
-    return (cdrom->mode & MODE_SPEED) ?
-        (CD_DELAY_1MS * (70/2)) : (CD_DELAY_1MS * 70);
+    if (!cdrom->read_ongoing)
+        return 7000;
+
+    return CD_DELAY_1MS * ((cdrom->mode & MODE_SPEED) ? 35 : 70);
 }
 
 int cdrom_get_seek_delay(psx_cdrom_t* cdrom, int ts) {
     int delay = CD_DELAY_FR;
 
-    return delay;
-
     delay += cdrom->pending_speed_switch_delay;
+
     cdrom->pending_speed_switch_delay = 0;
 
     // Ridiculous delays for seeking to an audio sector
     // or out of the disk
     if (ts == TS_FAR)   delay = 650 * CD_DELAY_1MS;
     if (ts == TS_AUDIO) delay = 4000 * CD_DELAY_1MS;
+    // if (ts == TS_PREGAP) delay = 4000 * CD_DELAY_1MS;
 
     return delay;
 }
@@ -434,8 +436,6 @@ void cdrom_handle_read(psx_cdrom_t* cdrom) {
 
     int ts = psx_disc_query(cdrom->disc, cdrom->lba);
 
-    // printf("ts=%u ", ts);
-
     if (ts == TS_FAR) {
         cdrom_error(cdrom,
             CD_STAT_SPINDLE | CD_STAT_SEEKERROR,
@@ -445,6 +445,7 @@ void cdrom_handle_read(psx_cdrom_t* cdrom) {
         return;
     }
 
+    //if (ts == TS_AUDIO || ts == TS_PREGAP) {
     if (ts == TS_AUDIO) {
         cdrom_error(cdrom,
             CD_STAT_SPINDLE | CD_STAT_SEEKERROR,
@@ -496,6 +497,13 @@ void psx_cdrom_update(psx_cdrom_t* cdrom, int cycles) {
 
     if (cdrom->state == CD_STATE_PLAY)
         return;
+
+    // Hold IRQ until IFR is acknowledged
+    if (cdrom->ifr & 0x1f) {
+        cdrom->delay = 2;
+
+        return;
+    }
 
     psx_ic_irq(cdrom->ic, IC_CDROM);
 
@@ -663,11 +671,13 @@ void cdrom_write_ifr(psx_cdrom_t* cdrom, uint8_t data) {
     if (data & 0x40)
         queue_clear(cdrom->parameters);
 
+    // uint8_t prev_ifr = cdrom->ifr & 0x1f;
+
     cdrom->ifr &= ~(data & 0x1f);
 
     // If an INT is acknowledged, then the response
     // FIFO is cleared
-    // if ((cdrom->ifr & 0x1f) == 0)
+    // if (((cdrom->ifr & 0x1f) == 0) && (prev_ifr != 0))
     //     queue_clear(cdrom->response);
 }
 

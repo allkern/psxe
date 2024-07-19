@@ -278,37 +278,56 @@ int cdrom_get_xa_samples(psx_cdrom_t* cdrom, void* buf, size_t size) {
     return 1;
 }
 
-void cdrom_reload_cdda_buffer(psx_cdrom_t* cdrom, void* buf, size_t size) {
+void cdrom_send_autopause_irq(psx_cdrom_t* cdrom) {
+    cdrom_set_int(cdrom, 4);
+
+    queue_push(cdrom->response, cdrom_get_stat(cdrom));
+
+    psx_ic_irq(cdrom->ic, IC_CDROM);
+}
+
+int cdrom_reload_cdda_buffer(psx_cdrom_t* cdrom, void* buf, size_t size) {
     int ts = psx_disc_read(cdrom->disc, cdrom->lba, cdrom->cdda_buf);
 
     // We hit the end of the disc
     if (ts == TS_FAR) {
         cdrom->cdda_remaining_samples = 0;
         cdrom->cdda_sample_index = 0;
+        cdrom->state = CD_STATE_IDLE;
 
         memset(buf, 0, size);
 
-        cdrom->state = CD_STATE_IDLE;
+        // Send autopause IRQ (INT4)
+        if (cdrom->mode & MODE_AUTOPAUSE)
+            cdrom_send_autopause_irq(cdrom);
 
-        return;
+        return 0;
     }
 
-    // We hit pregap (end of previous track)
-    // if ((ts == TS_PREGAP) && (cdrom->mode & MODE_AUTOPAUSE)) {
-    //     cdrom->cdda_remaining_samples = 0;
-    //     cdrom->cdda_sample_index = 0;
+    int track = psx_disc_get_track_number(cdrom->disc, cdrom->lba);
 
-    //     memset(buf, 0, size);
+    // Sense a track change
+    if ((track != cdrom->cdda_prev_track) && (cdrom->mode & MODE_AUTOPAUSE)) {
+        cdrom->cdda_remaining_samples = 0;
+        cdrom->cdda_sample_index = 0;
+        cdrom->state = CD_STATE_IDLE;
 
-    //     cdrom->state = CD_STATE_IDLE;
+        memset(buf, 0, size);
 
-    //     return;
-    // }
+        // Send autopause IRQ (INT4)
+        cdrom_send_autopause_irq(cdrom);
+
+        return 0;
+    } else {
+        cdrom->cdda_prev_track = track;
+    }
 
     cdrom->cdda_remaining_samples = CD_SECTOR_SIZE >> 1;
     cdrom->cdda_sample_index = 0;
 
     cdrom->pending_lba = ++cdrom->lba;
+
+    return 1;
 }
 
 void cdrom_send_report_irq(psx_cdrom_t* cdrom) {
@@ -369,7 +388,8 @@ void psx_cdrom_get_audio_samples(psx_cdrom_t* cdrom, void* buf, size_t size) {
 
     for (int i = 0; i < (size >> 1);) {
         if (!cdrom->cdda_remaining_samples) {
-            cdrom_reload_cdda_buffer(cdrom, buf, size);
+            if (!cdrom_reload_cdda_buffer(cdrom, buf, size))
+                return;
 
             ++cdrom->cdda_sectors_played;
 
