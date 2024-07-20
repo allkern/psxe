@@ -162,18 +162,18 @@ void cdrom_cmd_play(psx_cdrom_t* cdrom) {
 
     queue_push(cdrom->response, cdrom_get_stat(cdrom));
 
+    cdrom_process_setloc(cdrom);
+
     int track = -1;
 
     if (!queue_is_empty(cdrom->parameters)) {
         int track = BTOI(queue_pop(cdrom->parameters));
 
         if (track)
-            cdrom->pending_lba = psx_disc_get_track_lba(cdrom->disc, track);
+            cdrom->lba = psx_disc_get_track_lba(cdrom->disc, track);
     } else {
-        track = psx_disc_get_track_number(cdrom->disc, cdrom->pending_lba);
+        track = psx_disc_get_track_number(cdrom->disc, cdrom->lba);
     }
-
-    cdrom_process_setloc(cdrom);
 
     int mm = cdrom->lba / (60 * 75);
     int ss = (cdrom->lba % (60 * 75)) / 75;
@@ -234,7 +234,7 @@ void cdrom_cmd_readn(psx_cdrom_t* cdrom) {
 
     cdrom->state = CD_STATE_READ;
     cdrom->prev_state = CD_STATE_READ;
-    cdrom->delay = cdrom_get_seek_delay(cdrom, ts);
+    cdrom->delay = CD_DELAY_START_READ;
     cdrom->read_ongoing = 1;
 }
 
@@ -274,13 +274,7 @@ void cdrom_cmd_stop(psx_cdrom_t* cdrom) {
 
         cdrom_process_setloc(cdrom);
 
-        cdrom->prev_state = CD_STATE_IDLE;
-        cdrom->state = CD_STATE_IDLE;
-        cdrom->pending_command = 0;
-        cdrom->busy = 0;
-        cdrom->cdda_playing = 0;
-        cdrom->xa_playing = 0;
-        cdrom->read_ongoing = 0;
+        cdrom_pause(cdrom);
     }
 }
 
@@ -291,14 +285,8 @@ void cdrom_cmd_pause(psx_cdrom_t* cdrom) {
         queue_push(cdrom->response, cdrom_get_stat(cdrom));
 
         // Pausing at 1x takes 70ms, 2x takes 35ms
-        if (!cdrom->read_ongoing) {
-            cdrom->delay = 7000;
-        } else {
-            cdrom->delay = cdrom_get_pause_delay(cdrom);
-        }
-
+        cdrom->delay = cdrom_get_pause_delay(cdrom);
         cdrom->state = CD_STATE_TX_RESP2;
-        cdrom->busy = 1;
     } else {
         cdrom_set_int(cdrom, 2);
 
@@ -492,7 +480,7 @@ void cdrom_cmd_gettn(psx_cdrom_t* cdrom) {
 
     int tn = psx_disc_get_track_count(cdrom->disc);
 
-    printf("tn=%u (%02x)\n", tn, ITOB(tn));
+    printf("getstat=%02x\n", cdrom_get_stat(cdrom));
 
     queue_push(cdrom->response, cdrom_get_stat(cdrom));
     queue_push(cdrom->response, 1);
@@ -718,7 +706,7 @@ void cdrom_cmd_reads(psx_cdrom_t* cdrom) {
 
     cdrom->state = CD_STATE_READ;
     cdrom->prev_state = CD_STATE_READ;
-    cdrom->delay = cdrom_get_seek_delay(cdrom, ts);
+    cdrom->delay = CD_DELAY_START_READ;
     cdrom->read_ongoing = 1;
 }
 

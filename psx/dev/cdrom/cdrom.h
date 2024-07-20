@@ -34,7 +34,7 @@
 #define CD_DELAY_STOP_DS 25845878
 #define CD_DELAY_READ_SS (33868800 / 75)
 #define CD_DELAY_READ_DS (33868800 / (2*75))
-#define CD_DELAY_START_READ (cdrom_get_read_delay(cdrom))
+#define CD_DELAY_START_READ (cdrom_get_read_delay(cdrom) + cdrom_get_seek_delay(cdrom, ts))
 #define CD_DELAY_ONGOING_READ (cdrom_get_read_delay(cdrom) + (CD_DELAY_1MS * 4))
 
 #define XA_STEREO_SAMPLES 2016 // Samples per sector

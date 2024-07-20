@@ -205,9 +205,7 @@ int cdrom_get_pause_delay(psx_cdrom_t* cdrom) {
 }
 
 int cdrom_get_seek_delay(psx_cdrom_t* cdrom, int ts) {
-    int delay = CD_DELAY_FR;
-
-    delay += cdrom->pending_speed_switch_delay;
+    int delay = cdrom->pending_speed_switch_delay;
 
     cdrom->pending_speed_switch_delay = 0;
 

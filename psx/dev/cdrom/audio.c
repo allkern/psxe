@@ -294,32 +294,15 @@ int cdrom_reload_cdda_buffer(psx_cdrom_t* cdrom, void* buf, size_t size) {
         cdrom->cdda_remaining_samples = 0;
         cdrom->cdda_sample_index = 0;
         cdrom->state = CD_STATE_IDLE;
+        cdrom->cdda_prev_track = 0;
+        cdrom->cdda_playing = 0;
 
         memset(buf, 0, size);
 
-        // Send autopause IRQ (INT4)
         if (cdrom->mode & MODE_AUTOPAUSE)
             cdrom_send_autopause_irq(cdrom);
 
         return 0;
-    }
-
-    int track = psx_disc_get_track_number(cdrom->disc, cdrom->lba);
-
-    // Sense a track change
-    if ((track != cdrom->cdda_prev_track) && (cdrom->mode & MODE_AUTOPAUSE)) {
-        cdrom->cdda_remaining_samples = 0;
-        cdrom->cdda_sample_index = 0;
-        cdrom->state = CD_STATE_IDLE;
-
-        memset(buf, 0, size);
-
-        // Send autopause IRQ (INT4)
-        cdrom_send_autopause_irq(cdrom);
-
-        return 0;
-    } else {
-        cdrom->cdda_prev_track = track;
     }
 
     cdrom->cdda_remaining_samples = CD_SECTOR_SIZE >> 1;
@@ -339,7 +322,29 @@ void cdrom_send_report_irq(psx_cdrom_t* cdrom) {
     int track = psx_disc_get_track_number(cdrom->disc, cdrom->lba);
     int track_lba = psx_disc_get_track_lba(cdrom->disc, track);
 
-    int32_t diff = cdrom->lba - track_lba;
+    // Sense a track change
+    if ((track != cdrom->cdda_prev_track) && (cdrom->mode & MODE_AUTOPAUSE)) {
+        cdrom->cdda_remaining_samples = 0;
+        cdrom->cdda_sample_index = 0;
+        cdrom->state = CD_STATE_IDLE;
+        cdrom->cdda_prev_track = 0;
+        cdrom->cdda_playing = 0;
+
+        printf("prev_track=%u track=%u\n", cdrom->cdda_prev_track, track);
+
+        cdrom_send_autopause_irq(cdrom);
+
+        return;
+    } else {
+        cdrom->cdda_prev_track = track;
+    }
+
+    int relative = (cdrom->cdda_sectors_played & 0x10) != 0;
+
+    int32_t diff = cdrom->lba;
+
+    if (relative)
+        diff = cdrom->lba - track_lba;
 
     if (diff < 0)
         diff = -diff;
@@ -348,16 +353,17 @@ void cdrom_send_report_irq(psx_cdrom_t* cdrom) {
     int ss = (diff % (60 * 75)) / 75;
     int ff = (diff % (60 * 75)) % 75;
 
-    printf("report: track %u %02u:%02u:%02u\n",
+    printf("report: track %u %02u:%02u:%02u relative=%d\n",
         track,
-        mm, ss, ff
+        mm, ss, ff,
+        relative
     );
 
     queue_push(cdrom->response, cdrom_get_stat(cdrom));
     queue_push(cdrom->response, ITOB(track));
     queue_push(cdrom->response, 1);
     queue_push(cdrom->response, ITOB(mm));
-    queue_push(cdrom->response, ITOB(ss) | 0x80);
+    queue_push(cdrom->response, ITOB(ss) | (relative ? 0x80 : 0));
     queue_push(cdrom->response, ITOB(ff));
     queue_push(cdrom->response, 0);
     queue_push(cdrom->response, 0);
@@ -393,10 +399,10 @@ void psx_cdrom_get_audio_samples(psx_cdrom_t* cdrom, void* buf, size_t size) {
 
             ++cdrom->cdda_sectors_played;
 
-            if (cdrom->cdda_sectors_played == 75) {
+            if ((cdrom->cdda_sectors_played & 0xf) == 0) {
                 cdrom_send_report_irq(cdrom);
 
-                cdrom->cdda_sectors_played = 0;
+                cdrom->cdda_sectors_played &= 0x3f;
             }
         }
 

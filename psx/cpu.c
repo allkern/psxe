@@ -291,6 +291,9 @@ void psx_cpu_cycle(psx_cpu_t* cpu) {
 
     cpu->opcode = psx_bus_read32(cpu->bus, cpu->pc);
 
+    cpu->last_cycles = 2;
+    cpu->last_cycles += psx_bus_get_access_cycles(cpu->bus);
+
     cpu->pc = cpu->next_pc;
     cpu->next_pc += 4;
 
@@ -312,7 +315,6 @@ void psx_cpu_cycle(psx_cpu_t* cpu) {
     g_psx_cpu_primary_table[OP](cpu);
 
     // Not even trying to get precise timings here
-    cpu->last_cycles = 2;
     cpu->total_cycles += cpu->last_cycles;
 
     cpu->r[0] = 0;
