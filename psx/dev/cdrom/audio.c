@@ -215,7 +215,7 @@ int cdrom_get_xa_samples(psx_cdrom_t* cdrom, void* buf, size_t size) {
                 cdrom->xa_playing = 0;
                 cdrom->xa_remaining_samples = 0;
 
-                return;
+                return 0;
             }
 
             stereo = (cdrom->xa_buf[0x13] & 1) == 1;
@@ -255,7 +255,9 @@ int cdrom_get_xa_samples(psx_cdrom_t* cdrom, void* buf, size_t size) {
             *ptr++ = 0;
             *ptr++ = 0;
 
-            return;
+            --cdrom->xa_remaining_samples;
+
+            continue;
         }
 
         if (stereo) {
