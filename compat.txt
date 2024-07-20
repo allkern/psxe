@@ -67,28 +67,10 @@ Notes:
 *21 Hangs after 0-sized CDROM DMA
 
 Graphical issues:
-Most 3D games have issues with dark models, some suffer from polygon pop-in or polygon explosions.
-Dark models specifically are caused by bad GTE color instructions (NCDS, NCDT, NCCS, CDP, etc.),
-should be fixed once I fix these instructions
-Polygon pop-in might be related to the timers, or maybe wrong IRQ on GTE instruction handling
-I'm pretty sure polygon explosions are caused by my terrible GTE implementation
+Most graphical issues (black models, 1-pixel seams, polygon explosions, etc.) have been fixed!
 
 Silent Hill requires mask bit emulation, otherwise, semi-transparent white boxes appear on top of
 models/sprites
 
-Some 2D sprites/textures may have a slight seam on their borders, probably some off-by-one error on
-my texture sampling code, I'm actively working on tracking down this issue
-
-A very small set of games have hopelessly broken graphics, Mortal Kombat II was the first commercial
-game I was able to boot, with broken graphics, yet after all this time it still stands as the only
-game with badly broken graphics for some reason. I have tried a billion fixes, yet nothing seems to
-improve the graphics, might come back to this issue some time in the future.
-Another example of this is the title screen on "Bubble Bobble also featuring Rainbow Islands", graphics
-are completely broken, but thankfully the actual games seem to be unaffected
-
 Sound/music issues:
-Some games have broken music, Darius Gaiden seems to fail something and keeps retrying XA playback
-sequence goes like: Start XA playback, Getstat, Getstat, GetlocP, retry
-
-Marvel vs. Capcom - Clash of Super Heroes "forgets" to start XA playback, this is a regression, the
-game used to play music no problem, need to investigate
+Some games might play incorrect CDDA tracks, this is due to a bugfix that introduced slight track LBA deviations in our CUE loading code.
