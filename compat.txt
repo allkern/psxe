@@ -1,19 +1,19 @@
 Not working:
-Aconcagua (Japan) (Disc 1) *6
+  Fixed: Aconcagua (Japan) (Disc 1) *6
 Animetic Story Game 1 - Card Captor Sakura (Japan) (Disc 1) *1
 Ape Escape (USA) *21
-Blade (USA) *3
+  Fixed: Blade (USA) *3
 CTR - Crash Team Racing (USA) *16 (regression)
 Crash Bash (USA) *1
-Crime Crackers (Japan) *20
+  Fixed: Crime Crackers (Japan) *20 (e145a4e)
 Disney's Hercules Action Game (USA) *19
 Disney's The Emperor's New Groove (USA).cue *1
-Doom (All) *4
+  Fixed: Doom (All) *4 (e145a4e)
 Elder Gate (Japan) *1
 Fear Effect (USA) (Disc 1) *3
-Final Doom (All) *4
+  Fixed: Final Doom (All) *4 (e145a4e)
 Final Fantasy IX (USA) (Disc 1) *3
-Gran Turismo 2 - Music at the Speed of Sound - The Album (USA) (Bonus PlayStation Disc) *19 (regression)
+  Fixed: Gran Turismo 2 - Music at the Speed of Sound - The Album (USA) (Bonus PlayStation Disc) *19 (regression)
 Hello Kitty - Cube Frenzy (USA) *3
 Initial D (Japan) *3 (regression)
 Konami 80's Arcade Gallery (Japan) *1
@@ -22,11 +22,11 @@ Need for Speed II (USA) *17
 Over Drivin' - Skyline Memorial (Japan) + Nissan Presents - Over Drivin' - Skyline Memorial (Japan) *7
 PS One Winter 03 Kiosk Version 1.21 (USA) *13
 PaRappa the Rapper (Japan) (USA version works) *16
-Paro Wars (Japan) *12
+  Fixed: Paro Wars (Japan) *12 (e145a4e)
 Pet in TV - With My Dear Dog (Japan) *1
-Philosoma (USA) *15
+  Fixed: Philosoma (USA) *15
 PoPoRoGue (Japan) *14
-RayStorm (USA) + RayCrisis (Japan) + RayCrisis - Series Termination (USA) *12
+  Fixed: RayStorm (USA) + RayCrisis (Japan) + RayCrisis - Series Termination (USA) *12
 Rockman (Japan) *1
 S.C.A.R.S (USA) *11
 SimCity 2000 (USA) *3
@@ -37,7 +37,7 @@ Tama - Adventurous Ball in Giddy Labyrinth (Japan) *5
 Time Gal & Ninja Hayate (Japan) (En,Ja) (Disc 1) (Time Gal) *9
 Time Gal & Ninja Hayate (Japan) (En,Ja) (Disc 2) (Ninja Hayate) *9
 Tokimeki Memorial 2 (Japan) *1
-Tomb Raider (USA) *8
+  Fixed: Tomb Raider (USA) *8 (e145a4e)
 Tony Hawk's Pro Skater (USA) *10
 Vib-Ribbon (Japan) *8
 WipeOut (USA) *7
