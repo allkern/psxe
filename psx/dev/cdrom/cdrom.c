@@ -503,55 +503,54 @@ void psx_cdrom_update(psx_cdrom_t* cdrom, int cycles) {
         return;
     }
 
+    switch (cdrom->state) {
+        case CD_STATE_TX_RESP1: {
+            cdrom_handle_resp1(cdrom);
+
+            switch (cdrom->pending_command) {
+                case CDL_READN:
+                case CDL_READS:
+                    break;
+            }
+
+            // Switching to read mode after executing a command
+            // has a 500ms penalty
+            if (cdrom->state == CD_STATE_READ) {
+                cdrom_process_setloc(cdrom);
+
+                int ts = psx_disc_query(cdrom->disc, cdrom->lba);
+                
+                cdrom->state = CD_STATE_READ;
+                cdrom->prev_state = CD_STATE_READ;
+                cdrom->delay = CD_DELAY_ONGOING_READ;
+            }
+        } break;
+
+        case CD_STATE_TX_RESP2: {
+            cdrom_cmd_table[cdrom->pending_command](cdrom);
+
+            // Switching to read mode after executing a command
+            // has a 500ms penalty
+            if (cdrom->state == CD_STATE_READ) {
+                cdrom_process_setloc(cdrom);
+
+                int ts = psx_disc_query(cdrom->disc, cdrom->lba);
+                
+                cdrom->state = CD_STATE_READ;
+                cdrom->prev_state = CD_STATE_READ;
+                cdrom->delay = CD_DELAY_ONGOING_READ;
+            }
+        } break;
+
+        case CD_STATE_READ: {
+            cdrom_handle_read(cdrom);
+        } break;
+    }
+
+    if ((cdrom->ifr & cdrom->ier) == 0)
+        return;
+
     psx_ic_irq(cdrom->ic, IC_CDROM);
-
-    if (cdrom->state == CD_STATE_TX_RESP1) {
-        cdrom_handle_resp1(cdrom);
-
-        switch (cdrom->pending_command) {
-            case CDL_READN:
-            case CDL_READS:
-                return;
-        }
-
-        // Switching to read mode after executing a command
-        // has a 500ms penalty
-        if (cdrom->state == CD_STATE_READ) {
-            cdrom_process_setloc(cdrom);
-
-            int ts = psx_disc_query(cdrom->disc, cdrom->lba);
-            
-            cdrom->state = CD_STATE_READ;
-            cdrom->prev_state = CD_STATE_READ;
-            cdrom->delay = CD_DELAY_ONGOING_READ;
-        }
-
-        return;
-    }
-
-    if (cdrom->state == CD_STATE_TX_RESP2) {
-        cdrom_cmd_table[cdrom->pending_command](cdrom);
-
-        // Switching to read mode after executing a command
-        // has a 500ms penalty
-        if (cdrom->state == CD_STATE_READ) {
-            cdrom_process_setloc(cdrom);
-
-            int ts = psx_disc_query(cdrom->disc, cdrom->lba);
-            
-            cdrom->state = CD_STATE_READ;
-            cdrom->prev_state = CD_STATE_READ;
-            cdrom->delay = CD_DELAY_ONGOING_READ;
-        }
-
-        return;
-    }
-
-    if (cdrom->state == CD_STATE_READ) {
-        cdrom_handle_read(cdrom);
-
-        return;
-    }
 }
 
 uint8_t cdrom_read_status(psx_cdrom_t* cdrom) {

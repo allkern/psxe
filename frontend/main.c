@@ -42,6 +42,9 @@ int main(int argc, const char* argv[]) {
 
     psx_cdrom_t* cdrom = psx_get_cdrom(psx);
 
+    // To-do: Set CDROM firmware version and region based
+    //        on CLI options
+
     if (cfg->cd_path)
         psx_cdrom_open(cdrom, cfg->cd_path);
 

@@ -480,13 +480,11 @@ void cdrom_cmd_gettn(psx_cdrom_t* cdrom) {
 
     int tn = psx_disc_get_track_count(cdrom->disc);
 
-    printf("getstat=%02x\n", cdrom_get_stat(cdrom));
-
     queue_push(cdrom->response, cdrom_get_stat(cdrom));
     queue_push(cdrom->response, 1);
     queue_push(cdrom->response, ITOB(tn));
 
-    cdrom_restore_state(cdrom);
+    cdrom_pause(cdrom);
 }
 
 void cdrom_cmd_gettd(psx_cdrom_t* cdrom) {
@@ -721,15 +719,17 @@ void cdrom_cmd_getq(psx_cdrom_t* cdrom) {
 void cdrom_cmd_readtoc(psx_cdrom_t* cdrom) {
     if (cdrom->state == CD_STATE_TX_RESP1) {
         cdrom_set_int(cdrom, 3);
+
         queue_push(cdrom->response, cdrom_get_stat(cdrom));
 
-        cdrom->delay = PSX_CPU_CPS / 2;
+        cdrom->delay = CD_DELAY_1MS * 500;
         cdrom->state = CD_STATE_TX_RESP2;
     } else {
         cdrom_set_int(cdrom, 2);
-        queue_push(cdrom->response, cdrom_get_stat(cdrom));
 
-        cdrom_restore_state(cdrom);
+        queue_push(cdrom->response, CD_STAT_SPINDLE);
+
+        cdrom_pause(cdrom);
     }
 }
 
