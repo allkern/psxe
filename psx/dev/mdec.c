@@ -445,7 +445,6 @@ void psx_mdec_write32(psx_mdec_t* mdec, uint32_t offset, uint32_t value) {
                 mdec->output_depth    = 0;
                 mdec->input_request   = 0;
                 mdec->output_request  = 0;
-                mdec->busy            = 0;
                 mdec->input_full      = 0;
                 mdec->output_empty    = 1;
                 mdec->current_block   = 4;

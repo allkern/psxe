@@ -506,7 +506,7 @@ void psx_dma_update(psx_dma_t* dma, int cyc) {
     }
 
     if (dma->mdec_in_irq_delay) {
-        dma->mdec_in_irq_delay = 0;
+        --dma->mdec_in_irq_delay;
 
         if (!dma->mdec_in_irq_delay)
             if (dma->dicr & DICR_DMA0EN)
@@ -514,7 +514,7 @@ void psx_dma_update(psx_dma_t* dma, int cyc) {
     }
 
     if (dma->mdec_out_irq_delay) {
-        dma->mdec_out_irq_delay = 0;
+        --dma->mdec_out_irq_delay;
 
         if (!dma->mdec_out_irq_delay)
             if (dma->dicr & DICR_DMA1EN)

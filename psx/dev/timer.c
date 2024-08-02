@@ -279,9 +279,6 @@ void timer_handle_irq(psx_timer_t* timer, int i) {
     timer->timer[i].irq = 1;
 
     if (trigger) {
-        if ((i == 1))
-            printf("timer 1 irq fire\n");
-
         psx_ic_irq(timer->ic, 16 << i);
     }
 }
