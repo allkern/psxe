@@ -1113,8 +1113,6 @@ void gpu_cmd_a0(psx_gpu_t* gpu) {
             unsigned int xpos = (gpu->xpos + gpu->xcnt) & 0x3ff;
             unsigned int ypos = (gpu->ypos + gpu->ycnt) & 0x1ff;
 
-            // To-do: This is segfaulting for some reason
-            //        Fix GPU edge cases in general
             gpu->vram[xpos + (ypos * 1024)] = gpu->recv_data & 0xffff;
 
             ++gpu->xcnt;

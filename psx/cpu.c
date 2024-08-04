@@ -7,96 +7,6 @@
 
 #include "cpu_debug.h"
 
-static const psx_cpu_instruction_t g_psx_cpu_secondary_table[] = {
-    psx_cpu_i_sll    , psx_cpu_i_invalid, psx_cpu_i_srl    , psx_cpu_i_sra    ,
-    psx_cpu_i_sllv   , psx_cpu_i_invalid, psx_cpu_i_srlv   , psx_cpu_i_srav   ,
-    psx_cpu_i_jr     , psx_cpu_i_jalr   , psx_cpu_i_invalid, psx_cpu_i_invalid,
-    psx_cpu_i_syscall, psx_cpu_i_break  , psx_cpu_i_invalid, psx_cpu_i_invalid,
-    psx_cpu_i_mfhi   , psx_cpu_i_mthi   , psx_cpu_i_mflo   , psx_cpu_i_mtlo   ,
-    psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
-    psx_cpu_i_mult   , psx_cpu_i_multu  , psx_cpu_i_div    , psx_cpu_i_divu   ,
-    psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
-    psx_cpu_i_add    , psx_cpu_i_addu   , psx_cpu_i_sub    , psx_cpu_i_subu   ,
-    psx_cpu_i_and    , psx_cpu_i_or     , psx_cpu_i_xor    , psx_cpu_i_nor    ,
-    psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_slt    , psx_cpu_i_sltu   ,
-    psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
-    psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
-    psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
-    psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
-    psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid
-};
-
-static const psx_cpu_instruction_t g_psx_cpu_primary_table[] = {
-    psx_cpu_i_special, psx_cpu_i_bxx    , psx_cpu_i_j      , psx_cpu_i_jal    ,
-    psx_cpu_i_beq    , psx_cpu_i_bne    , psx_cpu_i_blez   , psx_cpu_i_bgtz   ,
-    psx_cpu_i_addi   , psx_cpu_i_addiu  , psx_cpu_i_slti   , psx_cpu_i_sltiu  ,
-    psx_cpu_i_andi   , psx_cpu_i_ori    , psx_cpu_i_xori   , psx_cpu_i_lui    ,
-    psx_cpu_i_cop0   , psx_cpu_i_cop1   , psx_cpu_i_cop2   , psx_cpu_i_cop3   ,
-    psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
-    psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
-    psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
-    psx_cpu_i_lb     , psx_cpu_i_lh     , psx_cpu_i_lwl    , psx_cpu_i_lw     ,
-    psx_cpu_i_lbu    , psx_cpu_i_lhu    , psx_cpu_i_lwr    , psx_cpu_i_invalid,
-    psx_cpu_i_sb     , psx_cpu_i_sh     , psx_cpu_i_swl    , psx_cpu_i_sw     ,
-    psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_swr    , psx_cpu_i_invalid,
-    psx_cpu_i_lwc0   , psx_cpu_i_lwc1   , psx_cpu_i_lwc2   , psx_cpu_i_lwc3   ,
-    psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
-    psx_cpu_i_swc0   , psx_cpu_i_swc1   , psx_cpu_i_swc2   , psx_cpu_i_swc3   ,
-    psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid
-};
-
-static const psx_cpu_instruction_t g_psx_cpu_cop0_table[] = {
-    psx_cpu_i_mfc0   , psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
-    psx_cpu_i_mtc0   , psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
-    psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
-    psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
-    psx_cpu_i_rfe    , psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
-    psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
-    psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
-    psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid
-};
-
-static const psx_cpu_instruction_t g_psx_cpu_cop2_table[] = {
-    psx_cpu_i_mfc2   , psx_cpu_i_invalid, psx_cpu_i_cfc2   , psx_cpu_i_invalid,
-    psx_cpu_i_mtc2   , psx_cpu_i_invalid, psx_cpu_i_ctc2   , psx_cpu_i_invalid,
-    psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
-    psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid, psx_cpu_i_invalid,
-    psx_cpu_i_gte    , psx_cpu_i_gte    , psx_cpu_i_gte    , psx_cpu_i_gte    ,
-    psx_cpu_i_gte    , psx_cpu_i_gte    , psx_cpu_i_gte    , psx_cpu_i_gte    ,
-    psx_cpu_i_gte    , psx_cpu_i_gte    , psx_cpu_i_gte    , psx_cpu_i_gte    ,
-    psx_cpu_i_gte    , psx_cpu_i_gte    , psx_cpu_i_gte    , psx_cpu_i_gte
-};
-
-static const psx_cpu_instruction_t g_psx_cpu_bxx_table[] = {
-    psx_cpu_i_bltz   , psx_cpu_i_bgez   , psx_cpu_i_bltz   , psx_cpu_i_bgez   ,
-    psx_cpu_i_bltz   , psx_cpu_i_bgez   , psx_cpu_i_bltz   , psx_cpu_i_bgez   ,
-    psx_cpu_i_bltz   , psx_cpu_i_bgez   , psx_cpu_i_bltz   , psx_cpu_i_bgez   ,
-    psx_cpu_i_bltz   , psx_cpu_i_bgez   , psx_cpu_i_bltz   , psx_cpu_i_bgez   ,
-    psx_cpu_i_bltzal , psx_cpu_i_bgezal , psx_cpu_i_bltz   , psx_cpu_i_bgez   ,
-    psx_cpu_i_bltz   , psx_cpu_i_bgez   , psx_cpu_i_bltz   , psx_cpu_i_bgez   ,
-    psx_cpu_i_bltz   , psx_cpu_i_bgez   , psx_cpu_i_bltz   , psx_cpu_i_bgez   ,
-    psx_cpu_i_bltz   , psx_cpu_i_bgez   , psx_cpu_i_bltz   , psx_cpu_i_bgez
-};
-
-static const psx_cpu_instruction_t g_psx_gte_table[] = {
-    psx_gte_i_invalid, psx_gte_i_rtps   , psx_gte_i_invalid, psx_gte_i_invalid,
-    psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_nclip  , psx_gte_i_invalid,
-    psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_invalid,
-    psx_gte_i_op     , psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_invalid,
-    psx_gte_i_dpcs   , psx_gte_i_intpl  , psx_gte_i_mvmva  , psx_gte_i_ncds   ,
-    psx_gte_i_cdp    , psx_gte_i_invalid, psx_gte_i_ncdt   , psx_gte_i_invalid,
-    psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_nccs   ,
-    psx_gte_i_cc     , psx_gte_i_invalid, psx_gte_i_ncs    , psx_gte_i_invalid,
-    psx_gte_i_nct    , psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_invalid,
-    psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_invalid,
-    psx_gte_i_sqr    , psx_gte_i_dcpl   , psx_gte_i_dpct   , psx_gte_i_invalid,
-    psx_gte_i_invalid, psx_gte_i_avsz3  , psx_gte_i_avsz4  , psx_gte_i_invalid,
-    psx_gte_i_rtpt   , psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_invalid,
-    psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_invalid,
-    psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_invalid, psx_gte_i_invalid,
-    psx_gte_i_invalid, psx_gte_i_gpf    , psx_gte_i_gpl    , psx_gte_i_ncct
-};
-
 static const uint32_t g_psx_cpu_cop0_write_mask_table[] = {
     0x00000000, // cop0r0   - N/A
     0x00000000, // cop0r1   - N/A
@@ -151,6 +61,29 @@ static const uint8_t g_psx_gte_unr_table[] = {
     0x03, 0x03, 0x02, 0x02, 0x01, 0x01, 0x00, 0x00,
     0x00
 };
+
+static inline void psx_gte_i_rtps(psx_cpu_t*);
+static inline void psx_gte_i_nclip(psx_cpu_t*);
+static inline void psx_gte_i_op(psx_cpu_t*);
+static inline void psx_gte_i_dpcs(psx_cpu_t*);
+static inline void psx_gte_i_intpl(psx_cpu_t*);
+static inline void psx_gte_i_mvmva(psx_cpu_t*);
+static inline void psx_gte_i_ncds(psx_cpu_t*);
+static inline void psx_gte_i_cdp(psx_cpu_t*);
+static inline void psx_gte_i_ncdt(psx_cpu_t*);
+static inline void psx_gte_i_nccs(psx_cpu_t*);
+static inline void psx_gte_i_cc(psx_cpu_t*);
+static inline void psx_gte_i_ncs(psx_cpu_t*);
+static inline void psx_gte_i_nct(psx_cpu_t*);
+static inline void psx_gte_i_sqr(psx_cpu_t*);
+static inline void psx_gte_i_dcpl(psx_cpu_t*);
+static inline void psx_gte_i_dpct(psx_cpu_t*);
+static inline void psx_gte_i_avsz3(psx_cpu_t*);
+static inline void psx_gte_i_avsz4(psx_cpu_t*);
+static inline void psx_gte_i_rtpt(psx_cpu_t*);
+static inline void psx_gte_i_gpf(psx_cpu_t*);
+static inline void psx_gte_i_gpl(psx_cpu_t*);
+static inline void psx_gte_i_ncct(psx_cpu_t*);
 
 #define OP ((cpu->opcode >> 26) & 0x3f)
 #define S ((cpu->opcode >> 21) & 0x1f)
@@ -228,14 +161,6 @@ psx_cpu_t* psx_cpu_create(void) {
 void cpu_a_kcall_hook(psx_cpu_t*);
 void cpu_b_kcall_hook(psx_cpu_t*);
 
-void psx_cpu_fetch(psx_cpu_t* cpu) {
-    //cpu->buf[0] = psx_bus_read32(cpu->bus, cpu->pc);
-    //cpu->pc += 4;
-
-    // Discard fetch cycles
-    psx_bus_get_access_cycles(cpu->bus);
-}
-
 void psx_cpu_destroy(psx_cpu_t* cpu) {
     free(cpu);
 }
@@ -274,58 +199,12 @@ void psx_cpu_init(psx_cpu_t* cpu, psx_bus_t* bus) {
     cpu->cop0_r[COP0_PRID] = 0x00000002;
 }
 
-void psx_cpu_cycle(psx_cpu_t* cpu) {
-    cpu->last_cycles = 0;
-
-    if ((cpu->pc & 0x3fffffff) == 0x000000b4)
-        if (cpu->b_function_hook)
-            cpu->b_function_hook(cpu);
-
-    cpu->saved_pc = cpu->pc;
-    cpu->delay_slot = cpu->branch;
-    cpu->branch = 0;
-    cpu->branch_taken = 0;
-
-    if (cpu->saved_pc & 3)
-        psx_cpu_exception(cpu, CAUSE_ADEL);
-
-    cpu->opcode = psx_bus_read32(cpu->bus, cpu->pc);
-
-    cpu->last_cycles = 2;
-    cpu->last_cycles += psx_bus_get_access_cycles(cpu->bus);
-
-    cpu->pc = cpu->next_pc;
-    cpu->next_pc += 4;
-
-    if (psx_cpu_check_irq(cpu)) {
-        // GTE instructions "win" over interrupts
-        if ((cpu->opcode & 0xfe000000) == 0x4a000000)
-            g_psx_cpu_primary_table[OP](cpu);
-
-        cpu->r[0] = 0;
-
-        cpu->last_cycles = 2;
-        cpu->total_cycles += cpu->last_cycles;
-
-        psx_cpu_exception(cpu, CAUSE_INT);
-
-        return;
-    }
-
-    g_psx_cpu_primary_table[OP](cpu);
-
-    // Not even trying to get precise timings here
-    cpu->total_cycles += cpu->last_cycles;
-
-    cpu->r[0] = 0;
-}
-
-int psx_cpu_check_irq(psx_cpu_t* cpu) {
+static inline int psx_cpu_check_irq(psx_cpu_t* cpu) {
     return (cpu->cop0_r[COP0_SR] & SR_IEC) &&
            (cpu->cop0_r[COP0_SR] & cpu->cop0_r[COP0_CAUSE] & 0x00000700);
 }
 
-void psx_cpu_exception(psx_cpu_t* cpu, uint32_t cause) {
+static inline void psx_cpu_exception(psx_cpu_t* cpu, uint32_t cause) {
     // Set excode and clear 3 LSBs
     cpu->cop0_r[COP0_CAUSE] &= 0xffffff80;
     cpu->cop0_r[COP0_CAUSE] |= cause;
@@ -349,30 +228,99 @@ void psx_cpu_exception(psx_cpu_t* cpu, uint32_t cause) {
     cpu->next_pc = cpu->pc + 4;
 }
 
+void psx_cpu_cycle(psx_cpu_t* cpu) {
+    cpu->last_cycles = 0;
+
+    if ((cpu->pc & 0x3fffffff) == 0x000000b4)
+        if (cpu->b_function_hook)
+            cpu->b_function_hook(cpu);
+
+    cpu->saved_pc = cpu->pc;
+    cpu->delay_slot = cpu->branch;
+    cpu->branch = 0;
+    cpu->branch_taken = 0;
+
+    if (cpu->saved_pc & 3)
+        psx_cpu_exception(cpu, CAUSE_ADEL);
+
+    cpu->opcode = psx_bus_read32(cpu->bus, cpu->pc);
+    cpu->last_cycles = psx_bus_get_access_cycles(cpu->bus);
+
+    cpu->pc = cpu->next_pc;
+    cpu->next_pc += 4;
+
+    if (psx_cpu_check_irq(cpu)) {
+        // GTE instructions "win" over interrupts (fast path)
+        if ((cpu->opcode & 0xfe000000) == 0x4a000000) {
+            DO_PENDING_LOAD;
+
+            cpu->gte_sf = ((cpu->opcode & 0x80000) != 0) * 12;
+            cpu->gte_lm = (cpu->opcode & 0x400) != 0;
+            cpu->gte_cv = (cpu->opcode >> 13) & 3;
+            cpu->gte_v  = (cpu->opcode >> 15) & 3;
+            cpu->gte_mx = (cpu->opcode >> 17) & 3;
+
+            switch (cpu->opcode & 0x3f) {
+                case 0x01: psx_gte_i_rtps(cpu); cpu->last_cycles += 15; break;
+                case 0x06: psx_gte_i_nclip(cpu); cpu->last_cycles += 8; break;
+                case 0x0c: psx_gte_i_op(cpu); cpu->last_cycles += 6; break;
+                case 0x10: psx_gte_i_dpcs(cpu); cpu->last_cycles += 8; break;
+                case 0x11: psx_gte_i_intpl(cpu); cpu->last_cycles += 8; break;
+                case 0x12: psx_gte_i_mvmva(cpu); cpu->last_cycles += 8; break;
+                case 0x13: psx_gte_i_ncds(cpu); cpu->last_cycles += 19; break;
+                case 0x14: psx_gte_i_cdp(cpu); cpu->last_cycles += 13; break;
+                case 0x16: psx_gte_i_ncdt(cpu); cpu->last_cycles += 44; break;
+                case 0x1b: psx_gte_i_nccs(cpu); cpu->last_cycles += 17; break;
+                case 0x1c: psx_gte_i_cc(cpu); cpu->last_cycles += 11; break;
+                case 0x1e: psx_gte_i_ncs(cpu); cpu->last_cycles += 14; break;
+                case 0x20: psx_gte_i_nct(cpu); cpu->last_cycles += 30; break;
+                case 0x28: psx_gte_i_sqr(cpu); cpu->last_cycles += 5; break;
+                case 0x29: psx_gte_i_dcpl(cpu); cpu->last_cycles += 8; break;
+                case 0x2a: psx_gte_i_dpct(cpu); cpu->last_cycles += 17; break;
+                case 0x2d: psx_gte_i_avsz3(cpu); cpu->last_cycles += 5; break;
+                case 0x2e: psx_gte_i_avsz4(cpu); cpu->last_cycles += 6; break;
+                case 0x30: psx_gte_i_rtpt(cpu); cpu->last_cycles += 23; break;
+                case 0x3d: psx_gte_i_gpf(cpu); cpu->last_cycles += 5; break;
+                case 0x3e: psx_gte_i_gpl(cpu); cpu->last_cycles += 5; break;
+                case 0x3f: psx_gte_i_ncct(cpu); cpu->last_cycles += 39; break;
+            }
+        }
+
+        cpu->total_cycles += cpu->last_cycles;
+
+        cpu->r[0] = 0;
+
+        psx_cpu_exception(cpu, CAUSE_INT);
+
+        return;
+    }
+
+    int cyc = psx_cpu_execute(cpu);
+
+    if (!cyc) {
+        printf("psxe: Illegal instruction %08x at %08x (next=%08x, saved=%08x)\n", cpu->opcode, cpu->next_pc, cpu->saved_pc);
+
+        psx_cpu_exception(cpu, CAUSE_RI);
+    }
+
+    cpu->last_cycles += cyc;
+    cpu->total_cycles += cpu->last_cycles;
+
+    cpu->r[0] = 0;
+}
+
 void psx_cpu_set_irq_pending(psx_cpu_t* cpu) {
     cpu->cop0_r[COP0_CAUSE] |= SR_IM2;
 }
 
-void psx_cpu_i_invalid(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_invalid(psx_cpu_t* cpu) {
     log_fatal("%08x: Illegal instruction %08x", cpu->pc - 8, cpu->opcode);
 
     psx_cpu_exception(cpu, CAUSE_RI);
 }
 
-// Primary
-void psx_cpu_i_special(psx_cpu_t* cpu) {
-    g_psx_cpu_secondary_table[SOP](cpu);
-}
-
-void psx_cpu_i_bxx(psx_cpu_t* cpu) {
-    cpu->branch = 1;
-    cpu->branch_taken = 0;
-
-    g_psx_cpu_bxx_table[T](cpu);
-}
-
 // BXX
-void psx_cpu_i_bltz(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_bltz(psx_cpu_t* cpu) {
     TRACE_B("bltz");
 
     int32_t s = (int32_t)cpu->r[S];
@@ -383,7 +331,7 @@ void psx_cpu_i_bltz(psx_cpu_t* cpu) {
         BRANCH(IMM16S << 2);
 }
 
-void psx_cpu_i_bgez(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_bgez(psx_cpu_t* cpu) {
     TRACE_B("bgez");
 
     int32_t s = (int32_t)cpu->r[S];
@@ -394,7 +342,7 @@ void psx_cpu_i_bgez(psx_cpu_t* cpu) {
         BRANCH(IMM16S << 2);
 }
 
-void psx_cpu_i_bltzal(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_bltzal(psx_cpu_t* cpu) {
     TRACE_B("bltzal");
 
     int32_t s = (int32_t)cpu->r[S];
@@ -407,7 +355,7 @@ void psx_cpu_i_bltzal(psx_cpu_t* cpu) {
         BRANCH(IMM16S << 2);
 }
 
-void psx_cpu_i_bgezal(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_bgezal(psx_cpu_t* cpu) {
     TRACE_B("bgezal");
 
     int32_t s = (int32_t)cpu->r[S];
@@ -420,7 +368,7 @@ void psx_cpu_i_bgezal(psx_cpu_t* cpu) {
         BRANCH(IMM16S << 2);
 }
 
-void psx_cpu_i_j(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_j(psx_cpu_t* cpu) {
     cpu->branch = 1;
 
     TRACE_I26("j");
@@ -430,7 +378,7 @@ void psx_cpu_i_j(psx_cpu_t* cpu) {
     cpu->next_pc = (cpu->next_pc & 0xf0000000) | (IMM26 << 2);
 }
 
-void psx_cpu_i_jal(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_jal(psx_cpu_t* cpu) {
     cpu->branch = 1;
 
     TRACE_I26("jal");
@@ -442,7 +390,7 @@ void psx_cpu_i_jal(psx_cpu_t* cpu) {
     cpu->next_pc = (cpu->next_pc & 0xf0000000) | (IMM26 << 2);
 }
 
-void psx_cpu_i_beq(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_beq(psx_cpu_t* cpu) {
     cpu->branch = 1;
     cpu->branch_taken = 0;
 
@@ -457,7 +405,7 @@ void psx_cpu_i_beq(psx_cpu_t* cpu) {
         BRANCH(IMM16S << 2);
 }
 
-void psx_cpu_i_bne(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_bne(psx_cpu_t* cpu) {
     cpu->branch = 1;
     cpu->branch_taken = 0;
 
@@ -472,7 +420,7 @@ void psx_cpu_i_bne(psx_cpu_t* cpu) {
         BRANCH(IMM16S << 2);
 }
 
-void psx_cpu_i_blez(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_blez(psx_cpu_t* cpu) {
     cpu->branch = 1;
     cpu->branch_taken = 0;
 
@@ -486,7 +434,7 @@ void psx_cpu_i_blez(psx_cpu_t* cpu) {
         BRANCH(IMM16S << 2);
 }
 
-void psx_cpu_i_bgtz(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_bgtz(psx_cpu_t* cpu) {
     cpu->branch = 1;
     cpu->branch_taken = 0;
 
@@ -500,7 +448,7 @@ void psx_cpu_i_bgtz(psx_cpu_t* cpu) {
         BRANCH(IMM16S << 2);
 }
 
-void psx_cpu_i_addi(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_addi(psx_cpu_t* cpu) {
     TRACE_I16D("addi");
 
     uint32_t s = cpu->r[S];
@@ -518,7 +466,7 @@ void psx_cpu_i_addi(psx_cpu_t* cpu) {
     }
 }
 
-void psx_cpu_i_addiu(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_addiu(psx_cpu_t* cpu) {
     TRACE_I16D("addiu");
 
     uint32_t s = cpu->r[S];
@@ -528,7 +476,7 @@ void psx_cpu_i_addiu(psx_cpu_t* cpu) {
     cpu->r[T] = s + IMM16S;
 }
 
-void psx_cpu_i_slti(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_slti(psx_cpu_t* cpu) {
     TRACE_I16D("slti");
 
     int32_t s = (int32_t)cpu->r[S];
@@ -538,7 +486,7 @@ void psx_cpu_i_slti(psx_cpu_t* cpu) {
     cpu->r[T] = s < IMM16S;
 }
 
-void psx_cpu_i_sltiu(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_sltiu(psx_cpu_t* cpu) {
     TRACE_I16D("sltiu");
 
     uint32_t s = cpu->r[S];
@@ -548,7 +496,7 @@ void psx_cpu_i_sltiu(psx_cpu_t* cpu) {
     cpu->r[T] = s < IMM16S;
 }
 
-void psx_cpu_i_andi(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_andi(psx_cpu_t* cpu) {
     TRACE_I16D("andi");
 
     uint32_t s = cpu->r[S];
@@ -558,7 +506,7 @@ void psx_cpu_i_andi(psx_cpu_t* cpu) {
     cpu->r[T] = s & IMM16;
 }
 
-void psx_cpu_i_ori(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_ori(psx_cpu_t* cpu) {
     TRACE_I16D("ori");
 
     uint32_t s = cpu->r[S];
@@ -568,7 +516,7 @@ void psx_cpu_i_ori(psx_cpu_t* cpu) {
     cpu->r[T] = s | IMM16;
 }
 
-void psx_cpu_i_xori(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_xori(psx_cpu_t* cpu) {
     TRACE_I16D("xori");
 
     uint32_t s = cpu->r[S];
@@ -578,7 +526,7 @@ void psx_cpu_i_xori(psx_cpu_t* cpu) {
     cpu->r[T] = s ^ IMM16;
 }
 
-void psx_cpu_i_lui(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_lui(psx_cpu_t* cpu) {
     TRACE_I16S("lui");
 
     DO_PENDING_LOAD;
@@ -586,27 +534,19 @@ void psx_cpu_i_lui(psx_cpu_t* cpu) {
     cpu->r[T] = IMM16 << 16;
 }
 
-void psx_cpu_i_cop0(psx_cpu_t* cpu) {
-    g_psx_cpu_cop0_table[S](cpu);
-}
-
-void psx_cpu_i_cop1(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_cop1(psx_cpu_t* cpu) {
     DO_PENDING_LOAD;
 
     psx_cpu_exception(cpu, CAUSE_CPU);
 }
 
-void psx_cpu_i_cop2(psx_cpu_t* cpu) {
-    g_psx_cpu_cop2_table[S](cpu);
-}
-
-void psx_cpu_i_cop3(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_cop3(psx_cpu_t* cpu) {
     DO_PENDING_LOAD;
 
     psx_cpu_exception(cpu, CAUSE_CPU);
 }
 
-void psx_cpu_i_lb(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_lb(psx_cpu_t* cpu) {
     TRACE_M("lb");
 
     uint32_t s = cpu->r[S];
@@ -618,7 +558,7 @@ void psx_cpu_i_lb(psx_cpu_t* cpu) {
     cpu->load_v = SE8(psx_bus_read8(cpu->bus, s + IMM16S));
 }
 
-void psx_cpu_i_lh(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_lh(psx_cpu_t* cpu) {
     TRACE_M("lh");
 
     uint32_t s = cpu->r[S];
@@ -636,7 +576,7 @@ void psx_cpu_i_lh(psx_cpu_t* cpu) {
     }
 }
 
-void psx_cpu_i_lwl(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_lwl(psx_cpu_t* cpu) {
     TRACE_M("lwl");
 
     uint32_t rt = T;
@@ -664,7 +604,7 @@ void psx_cpu_i_lwl(psx_cpu_t* cpu) {
     // );
 }
 
-void psx_cpu_i_lw(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_lw(psx_cpu_t* cpu) {
     TRACE_M("lw");
 
     uint32_t s = cpu->r[S];
@@ -681,7 +621,7 @@ void psx_cpu_i_lw(psx_cpu_t* cpu) {
     }
 }
 
-void psx_cpu_i_lbu(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_lbu(psx_cpu_t* cpu) {
     TRACE_M("lbu");
 
     uint32_t s = cpu->r[S];
@@ -693,7 +633,7 @@ void psx_cpu_i_lbu(psx_cpu_t* cpu) {
     cpu->load_v = psx_bus_read8(cpu->bus, s + IMM16S);
 }
 
-void psx_cpu_i_lhu(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_lhu(psx_cpu_t* cpu) {
     TRACE_M("lhu");
 
     uint32_t s = cpu->r[S];
@@ -710,7 +650,7 @@ void psx_cpu_i_lhu(psx_cpu_t* cpu) {
     }
 }
 
-void psx_cpu_i_lwr(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_lwr(psx_cpu_t* cpu) {
     TRACE_M("lwr");
 
     uint32_t rt = T;
@@ -738,7 +678,7 @@ void psx_cpu_i_lwr(psx_cpu_t* cpu) {
     // );
 }
 
-void psx_cpu_i_sb(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_sb(psx_cpu_t* cpu) {
     TRACE_M("sb");
 
     uint32_t s = cpu->r[S];
@@ -756,7 +696,7 @@ void psx_cpu_i_sb(psx_cpu_t* cpu) {
     psx_bus_write8(cpu->bus, s + IMM16S, t);
 }
 
-void psx_cpu_i_sh(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_sh(psx_cpu_t* cpu) {
     TRACE_M("sh");
 
     uint32_t s = cpu->r[S];
@@ -779,7 +719,7 @@ void psx_cpu_i_sh(psx_cpu_t* cpu) {
     }
 }
 
-void psx_cpu_i_swl(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_swl(psx_cpu_t* cpu) {
     TRACE_M("swl");
 
     uint32_t s = cpu->r[S];
@@ -800,7 +740,7 @@ void psx_cpu_i_swl(psx_cpu_t* cpu) {
     psx_bus_write32(cpu->bus, aligned, v);
 }
 
-void psx_cpu_i_sw(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_sw(psx_cpu_t* cpu) {
     TRACE_M("sw");
 
     uint32_t s = cpu->r[S];
@@ -823,7 +763,7 @@ void psx_cpu_i_sw(psx_cpu_t* cpu) {
     }
 }
 
-void psx_cpu_i_swr(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_swr(psx_cpu_t* cpu) {
     TRACE_M("swr");
 
     uint32_t s = cpu->r[S];
@@ -844,32 +784,32 @@ void psx_cpu_i_swr(psx_cpu_t* cpu) {
     psx_bus_write32(cpu->bus, aligned, v);
 }
 
-void psx_cpu_i_lwc0(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_lwc0(psx_cpu_t* cpu) {
     psx_cpu_exception(cpu, CAUSE_CPU);
 }
 
-void psx_cpu_i_lwc1(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_lwc1(psx_cpu_t* cpu) {
     psx_cpu_exception(cpu, CAUSE_CPU);
 }
 
-void psx_cpu_i_lwc3(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_lwc3(psx_cpu_t* cpu) {
     psx_cpu_exception(cpu, CAUSE_CPU);
 }
 
-void psx_cpu_i_swc0(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_swc0(psx_cpu_t* cpu) {
     psx_cpu_exception(cpu, CAUSE_CPU);
 }
 
-void psx_cpu_i_swc1(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_swc1(psx_cpu_t* cpu) {
     psx_cpu_exception(cpu, CAUSE_CPU);
 }
 
-void psx_cpu_i_swc3(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_swc3(psx_cpu_t* cpu) {
     psx_cpu_exception(cpu, CAUSE_CPU);
 }
 
 // Secondary
-void psx_cpu_i_sll(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_sll(psx_cpu_t* cpu) {
     TRACE_I5D("sll");
 
     uint32_t t = cpu->r[T];
@@ -879,7 +819,7 @@ void psx_cpu_i_sll(psx_cpu_t* cpu) {
     cpu->r[D] = t << IMM5;
 }
 
-void psx_cpu_i_srl(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_srl(psx_cpu_t* cpu) {
     TRACE_I5D("srl");
 
     uint32_t t = cpu->r[T];
@@ -889,7 +829,7 @@ void psx_cpu_i_srl(psx_cpu_t* cpu) {
     cpu->r[D] = t >> IMM5;
 }
 
-void psx_cpu_i_sra(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_sra(psx_cpu_t* cpu) {
     TRACE_I5D("sra");
 
     int32_t t = (int32_t)cpu->r[T];
@@ -899,7 +839,7 @@ void psx_cpu_i_sra(psx_cpu_t* cpu) {
     cpu->r[D] = t >> IMM5;
 }
 
-void psx_cpu_i_sllv(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_sllv(psx_cpu_t* cpu) {
     TRACE_RT("sllv");
 
     uint32_t s = cpu->r[S];
@@ -910,7 +850,7 @@ void psx_cpu_i_sllv(psx_cpu_t* cpu) {
     cpu->r[D] = t << (s & 0x1f);
 }
 
-void psx_cpu_i_srlv(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_srlv(psx_cpu_t* cpu) {
     TRACE_RT("srlv");
 
     uint32_t s = cpu->r[S];
@@ -921,7 +861,7 @@ void psx_cpu_i_srlv(psx_cpu_t* cpu) {
     cpu->r[D] = t >> (s & 0x1f);
 }
 
-void psx_cpu_i_srav(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_srav(psx_cpu_t* cpu) {
     TRACE_RT("srav");
 
     uint32_t s = cpu->r[S];
@@ -932,7 +872,7 @@ void psx_cpu_i_srav(psx_cpu_t* cpu) {
     cpu->r[D] = t >> (s & 0x1f);
 }
 
-void psx_cpu_i_jr(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_jr(psx_cpu_t* cpu) {
     cpu->branch = 1;
 
     TRACE_RS("jr");
@@ -944,7 +884,7 @@ void psx_cpu_i_jr(psx_cpu_t* cpu) {
     cpu->next_pc = s;
 }
 
-void psx_cpu_i_jalr(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_jalr(psx_cpu_t* cpu) {
     cpu->branch = 1;
 
     TRACE_RD("jalr");
@@ -958,7 +898,7 @@ void psx_cpu_i_jalr(psx_cpu_t* cpu) {
     cpu->next_pc = s;
 }
 
-void psx_cpu_i_syscall(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_syscall(psx_cpu_t* cpu) {
     TRACE_I20("syscall");
     
     DO_PENDING_LOAD;
@@ -966,7 +906,7 @@ void psx_cpu_i_syscall(psx_cpu_t* cpu) {
     psx_cpu_exception(cpu, CAUSE_SYSCALL);
 }
 
-void psx_cpu_i_break(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_break(psx_cpu_t* cpu) {
     TRACE_I20("break");
 
     DO_PENDING_LOAD;
@@ -974,7 +914,7 @@ void psx_cpu_i_break(psx_cpu_t* cpu) {
     psx_cpu_exception(cpu, CAUSE_BP);
 }
 
-void psx_cpu_i_mfhi(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_mfhi(psx_cpu_t* cpu) {
     TRACE_MTF("mfhi");
 
     DO_PENDING_LOAD;
@@ -982,7 +922,7 @@ void psx_cpu_i_mfhi(psx_cpu_t* cpu) {
     cpu->r[D] = cpu->hi;
 }
 
-void psx_cpu_i_mthi(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_mthi(psx_cpu_t* cpu) {
     TRACE_MTF("mthi");
 
     DO_PENDING_LOAD;
@@ -990,7 +930,7 @@ void psx_cpu_i_mthi(psx_cpu_t* cpu) {
     cpu->hi = cpu->r[S];
 }
 
-void psx_cpu_i_mflo(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_mflo(psx_cpu_t* cpu) {
     TRACE_MTF("mflo");
 
     DO_PENDING_LOAD;
@@ -998,7 +938,7 @@ void psx_cpu_i_mflo(psx_cpu_t* cpu) {
     cpu->r[D] = cpu->lo;
 }
 
-void psx_cpu_i_mtlo(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_mtlo(psx_cpu_t* cpu) {
     TRACE_MTF("mtlo");
 
     DO_PENDING_LOAD;
@@ -1006,7 +946,7 @@ void psx_cpu_i_mtlo(psx_cpu_t* cpu) {
     cpu->lo = cpu->r[S];
 }
 
-void psx_cpu_i_mult(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_mult(psx_cpu_t* cpu) {
     TRACE_MD("mult");
 
     int64_t s = (int64_t)((int32_t)cpu->r[S]);
@@ -1020,7 +960,7 @@ void psx_cpu_i_mult(psx_cpu_t* cpu) {
     cpu->lo = r & 0xffffffff;
 }
 
-void psx_cpu_i_multu(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_multu(psx_cpu_t* cpu) {
     TRACE_MD("multu");
 
     uint64_t s = (uint64_t)cpu->r[S];
@@ -1034,7 +974,7 @@ void psx_cpu_i_multu(psx_cpu_t* cpu) {
     cpu->lo = r & 0xffffffff;
 }
 
-void psx_cpu_i_div(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_div(psx_cpu_t* cpu) {
     TRACE_MD("div");
 
     int32_t s = (int32_t)cpu->r[S];
@@ -1054,7 +994,7 @@ void psx_cpu_i_div(psx_cpu_t* cpu) {
     }
 }
 
-void psx_cpu_i_divu(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_divu(psx_cpu_t* cpu) {
     TRACE_MD("divu");
 
     uint32_t s = cpu->r[S];
@@ -1071,7 +1011,7 @@ void psx_cpu_i_divu(psx_cpu_t* cpu) {
     }
 }
 
-void psx_cpu_i_add(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_add(psx_cpu_t* cpu) {
     TRACE_RT("add");
 
     int32_t s = cpu->r[S];
@@ -1089,7 +1029,7 @@ void psx_cpu_i_add(psx_cpu_t* cpu) {
     }
 }
 
-void psx_cpu_i_addu(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_addu(psx_cpu_t* cpu) {
     TRACE_RT("addu");
 
     uint32_t s = cpu->r[S];
@@ -1100,7 +1040,7 @@ void psx_cpu_i_addu(psx_cpu_t* cpu) {
     cpu->r[D] = s + t;
 }
 
-void psx_cpu_i_sub(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_sub(psx_cpu_t* cpu) {
     TRACE_RT("sub");
 
     int32_t s = (int32_t)cpu->r[S];
@@ -1118,7 +1058,7 @@ void psx_cpu_i_sub(psx_cpu_t* cpu) {
     }
 }
 
-void psx_cpu_i_subu(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_subu(psx_cpu_t* cpu) {
     TRACE_RT("subu");
 
     uint32_t s = cpu->r[S];
@@ -1129,7 +1069,7 @@ void psx_cpu_i_subu(psx_cpu_t* cpu) {
     cpu->r[D] = s - t;
 }
 
-void psx_cpu_i_and(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_and(psx_cpu_t* cpu) {
     TRACE_RT("and");
 
     uint32_t s = cpu->r[S];
@@ -1140,7 +1080,7 @@ void psx_cpu_i_and(psx_cpu_t* cpu) {
     cpu->r[D] = s & t;
 }
 
-void psx_cpu_i_or(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_or(psx_cpu_t* cpu) {
     TRACE_RT("or");
 
     uint32_t s = cpu->r[S];
@@ -1151,7 +1091,7 @@ void psx_cpu_i_or(psx_cpu_t* cpu) {
     cpu->r[D] = s | t;
 }
 
-void psx_cpu_i_xor(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_xor(psx_cpu_t* cpu) {
     TRACE_RT("xor");
 
     uint32_t s = cpu->r[S];
@@ -1162,7 +1102,7 @@ void psx_cpu_i_xor(psx_cpu_t* cpu) {
     cpu->r[D] = (s ^ t);
 }
 
-void psx_cpu_i_nor(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_nor(psx_cpu_t* cpu) {
     TRACE_RT("nor");
 
     uint32_t s = cpu->r[S];
@@ -1173,7 +1113,7 @@ void psx_cpu_i_nor(psx_cpu_t* cpu) {
     cpu->r[D] = ~(s | t);
 }
 
-void psx_cpu_i_slt(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_slt(psx_cpu_t* cpu) {
     TRACE_RT("slt");
 
     int32_t s = (int32_t)cpu->r[S];
@@ -1184,7 +1124,7 @@ void psx_cpu_i_slt(psx_cpu_t* cpu) {
     cpu->r[D] = s < t;
 }
 
-void psx_cpu_i_sltu(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_sltu(psx_cpu_t* cpu) {
     TRACE_RT("sltu");
 
     uint32_t s = cpu->r[S];
@@ -1196,7 +1136,7 @@ void psx_cpu_i_sltu(psx_cpu_t* cpu) {
 }
 
 // COP0
-void psx_cpu_i_mfc0(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_mfc0(psx_cpu_t* cpu) {
     TRACE_C0M("mfc0");
 
     DO_PENDING_LOAD;
@@ -1205,7 +1145,7 @@ void psx_cpu_i_mfc0(psx_cpu_t* cpu) {
     cpu->load_d = T;
 }
 
-void psx_cpu_i_mtc0(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_mtc0(psx_cpu_t* cpu) {
     TRACE_C0M("mtc0");
 
     uint32_t t = cpu->r[T];
@@ -1215,7 +1155,7 @@ void psx_cpu_i_mtc0(psx_cpu_t* cpu) {
     cpu->cop0_r[D] = t & g_psx_cpu_cop0_write_mask_table[D];
 }
 
-void psx_cpu_i_rfe(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_rfe(psx_cpu_t* cpu) {
     TRACE_N("rfe");
 
     DO_PENDING_LOAD;
@@ -1230,13 +1170,13 @@ void psx_cpu_i_rfe(psx_cpu_t* cpu) {
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define CLAMP(v, a, b) (((v) < (a)) ? (a) : (((v) > (b)) ? (b) : (v)))
 
-void gte_handle_irgb_write(psx_cpu_t* cpu) {
+static inline void gte_handle_irgb_write(psx_cpu_t* cpu) {
     cpu->cop2_dr.ir[1] = ((cpu->cop2_dr.irgb >> 0) & 0x1f) * 0x80;
     cpu->cop2_dr.ir[2] = ((cpu->cop2_dr.irgb >> 5) & 0x1f) * 0x80;
     cpu->cop2_dr.ir[3] = ((cpu->cop2_dr.irgb >> 10) & 0x1f) * 0x80;
 }
 
-void gte_handle_irgb_read(psx_cpu_t* cpu) {
+static inline void gte_handle_irgb_read(psx_cpu_t* cpu) {
     int r = CLAMP(cpu->cop2_dr.ir[1] >> 7, 0x00, 0x1f);
     int g = CLAMP(cpu->cop2_dr.ir[2] >> 7, 0x00, 0x1f);
     int b = CLAMP(cpu->cop2_dr.ir[3] >> 7, 0x00, 0x1f);
@@ -1244,13 +1184,13 @@ void gte_handle_irgb_read(psx_cpu_t* cpu) {
     cpu->cop2_dr.irgb = r | (g << 5) | (b << 10);
 }
 
-void gte_handle_sxyp_write(psx_cpu_t* cpu) {
+static inline void gte_handle_sxyp_write(psx_cpu_t* cpu) {
     cpu->cop2_dr.sxy[0] = cpu->cop2_dr.sxy[1];
     cpu->cop2_dr.sxy[1] = cpu->cop2_dr.sxy[2];
     cpu->cop2_dr.sxy[2] = cpu->cop2_dr.sxy[3];
 }
 
-void gte_handle_lzcs_write(psx_cpu_t* cpu) {
+static inline void gte_handle_lzcs_write(psx_cpu_t* cpu) {
     if ((cpu->cop2_dr.lzcs == 0xffffffff) || !cpu->cop2_dr.lzcs) {
         cpu->cop2_dr.lzcr = 32;
 
@@ -1334,7 +1274,7 @@ uint32_t gte_read_register(psx_cpu_t* cpu, uint32_t r) {
     return 0x00000000;
 }
 
-void gte_write_register(psx_cpu_t* cpu, uint32_t r, uint32_t value) {
+static inline void gte_write_register(psx_cpu_t* cpu, uint32_t r, uint32_t value) {
     switch (r) {
         case 0 : cpu->cop2_dr.v[0].xy = value; break;
         case 1 : cpu->cop2_dr.v[0].z = value; break;
@@ -1403,7 +1343,7 @@ void gte_write_register(psx_cpu_t* cpu, uint32_t r, uint32_t value) {
     }
 }
 
-void psx_cpu_i_lwc2(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_lwc2(psx_cpu_t* cpu) {
     uint32_t s = cpu->r[S];
     uint32_t addr = s + IMM16S;
 
@@ -1416,7 +1356,7 @@ void psx_cpu_i_lwc2(psx_cpu_t* cpu) {
     }
 }
 
-void psx_cpu_i_swc2(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_swc2(psx_cpu_t* cpu) {
     uint32_t s = cpu->r[S];
     uint32_t addr = s + IMM16S;
 
@@ -1436,7 +1376,7 @@ void psx_cpu_i_swc2(psx_cpu_t* cpu) {
     }
 }
 
-void psx_cpu_i_mfc2(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_mfc2(psx_cpu_t* cpu) {
     TRACE_C2M("mfc2");
 
     DO_PENDING_LOAD;
@@ -1445,7 +1385,7 @@ void psx_cpu_i_mfc2(psx_cpu_t* cpu) {
     cpu->load_d = T;
 }
 
-void psx_cpu_i_cfc2(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_cfc2(psx_cpu_t* cpu) {
     TRACE_C2MC("cfc2");
 
     DO_PENDING_LOAD;
@@ -1454,7 +1394,7 @@ void psx_cpu_i_cfc2(psx_cpu_t* cpu) {
     cpu->load_d = T;
 }
 
-void psx_cpu_i_mtc2(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_mtc2(psx_cpu_t* cpu) {
     TRACE_C2M("mtc2");
 
     uint32_t t = cpu->r[T];
@@ -1464,7 +1404,7 @@ void psx_cpu_i_mtc2(psx_cpu_t* cpu) {
     gte_write_register(cpu, D, t);
 }
 
-void psx_cpu_i_ctc2(psx_cpu_t* cpu) {
+static inline void psx_cpu_i_ctc2(psx_cpu_t* cpu) {
     TRACE_C2MC("ctc2");
 
     uint32_t t = cpu->r[T];
@@ -1476,7 +1416,7 @@ void psx_cpu_i_ctc2(psx_cpu_t* cpu) {
 
 #define R_FLAG cpu->cop2_cr.flag
 
-int64_t gte_clamp_mac0(psx_cpu_t* cpu, int64_t value) {
+static inline int64_t gte_clamp_mac0(psx_cpu_t* cpu, int64_t value) {
     cpu->s_mac0 = value;
 
     if (value < (-0x80000000ll)) {
@@ -1488,7 +1428,7 @@ int64_t gte_clamp_mac0(psx_cpu_t* cpu, int64_t value) {
     return value;
 }
 
-int32_t gte_clamp_mac(psx_cpu_t* cpu, int i, int64_t value) {
+static inline int32_t gte_clamp_mac(psx_cpu_t* cpu, int i, int64_t value) {
     if (i == 3)
         cpu->s_mac3 = value;
 
@@ -1501,7 +1441,7 @@ int32_t gte_clamp_mac(psx_cpu_t* cpu, int i, int64_t value) {
     return (int32_t)(((value << 20) >> 20) >> cpu->gte_sf);
 }
 
-int64_t gte_check_mac(psx_cpu_t* cpu, int i, int64_t value) {
+static inline int64_t gte_check_mac(psx_cpu_t* cpu, int i, int64_t value) {
     if (value < -0x80000000000ll) {
         R_FLAG |= 0x8000000 >> (i - 1);
     } else if (value > 0x7ffffffffffll) {
@@ -1511,7 +1451,7 @@ int64_t gte_check_mac(psx_cpu_t* cpu, int i, int64_t value) {
     return (value << 20) >> 20;
 }
 
-int32_t gte_clamp_ir0(psx_cpu_t* cpu, int32_t value) {
+static inline int32_t gte_clamp_ir0(psx_cpu_t* cpu, int32_t value) {
     if (value < 0) {
         R_FLAG |= 0x1000;
 
@@ -1525,7 +1465,7 @@ int32_t gte_clamp_ir0(psx_cpu_t* cpu, int32_t value) {
     return value;
 }
 
-int64_t gte_clamp_sxy(psx_cpu_t* cpu, int i, int64_t value) {
+static inline int64_t gte_clamp_sxy(psx_cpu_t* cpu, int i, int64_t value) {
     if (value < -0x400) {
         R_FLAG |= (uint32_t)(0x4000 >> (i - 1));
 
@@ -1539,7 +1479,7 @@ int64_t gte_clamp_sxy(psx_cpu_t* cpu, int i, int64_t value) {
     return value;
 }
 
-int32_t gte_clamp_sz3(psx_cpu_t* cpu, int32_t value) {
+static inline int32_t gte_clamp_sz3(psx_cpu_t* cpu, int32_t value) {
     if (value < 0) {
         R_FLAG |= 0x40000;
 
@@ -1553,7 +1493,7 @@ int32_t gte_clamp_sz3(psx_cpu_t* cpu, int32_t value) {
     return value;
 }
 
-uint8_t gte_clamp_rgb(psx_cpu_t* cpu, int i, int value) {
+static inline uint8_t gte_clamp_rgb(psx_cpu_t* cpu, int i, int value) {
     if (value < 0) {
         R_FLAG |= (uint32_t)0x200000 >> (i - 1);
 
@@ -1567,7 +1507,7 @@ uint8_t gte_clamp_rgb(psx_cpu_t* cpu, int i, int value) {
     return (uint8_t)value;
 }
 
-int32_t gte_clamp_ir(psx_cpu_t* cpu, int i, int64_t value, int lm) {
+static inline int32_t gte_clamp_ir(psx_cpu_t* cpu, int i, int64_t value, int lm) {
     if (lm && (value < 0)) {
         R_FLAG |= (uint32_t)(0x1000000 >> (i - 1));
 
@@ -1585,7 +1525,7 @@ int32_t gte_clamp_ir(psx_cpu_t* cpu, int i, int64_t value, int lm) {
     return (int32_t)value;
 }
 
-int32_t gte_clamp_ir_z(psx_cpu_t* cpu, int64_t value, int sf, int lm) {
+static inline int32_t gte_clamp_ir_z(psx_cpu_t* cpu, int64_t value, int sf, int lm) {
     int32_t value_sf = value >> sf;
     int32_t value_12 = value >> 12;
     int32_t min = 0;
@@ -1599,14 +1539,14 @@ int32_t gte_clamp_ir_z(psx_cpu_t* cpu, int64_t value, int sf, int lm) {
     return (int32_t)CLAMP(value_sf, min, 0x7fffl);
 }
 
-int clz(uint32_t value) {
+static inline int clz(uint32_t value) {
     if (!value)
         return 32;
     
     return __builtin_clz(value);
 }
 
-uint32_t gte_divide(psx_cpu_t* cpu, uint16_t n, uint16_t d) {
+static inline uint32_t gte_divide(psx_cpu_t* cpu, uint16_t n, uint16_t d) {
     // Overflow
     if (n >= d * 2) {
         R_FLAG |= (1 << 31) | (1 << 17);
@@ -1626,19 +1566,7 @@ uint32_t gte_divide(psx_cpu_t* cpu, uint16_t n, uint16_t d) {
     return MIN(0x1ffff, res);
 }
 
-void psx_cpu_i_gte(psx_cpu_t* cpu) {
-    DO_PENDING_LOAD;
-
-    cpu->gte_sf = ((cpu->opcode & 0x80000) != 0) * 12;
-    cpu->gte_lm = (cpu->opcode & 0x400) != 0;
-    cpu->gte_cv = (cpu->opcode >> 13) & 3;
-    cpu->gte_v  = (cpu->opcode >> 15) & 3;
-    cpu->gte_mx = (cpu->opcode >> 17) & 3;
-
-    g_psx_gte_table[cpu->opcode & 0x3f](cpu);
-}
-
-void psx_gte_i_invalid(psx_cpu_t* cpu) {
+static inline void psx_gte_i_invalid(psx_cpu_t* cpu) {
     log_fatal("invalid: Unimplemented GTE instruction %02x, %02x", cpu->opcode & 0x3f, cpu->opcode >> 25);
 }
 
@@ -1879,7 +1807,7 @@ void psx_gte_i_invalid(psx_cpu_t* cpu) {
     R_GC2 = gte_clamp_rgb(cpu, 2, R_MAC2 >> 4); \
     R_BC2 = gte_clamp_rgb(cpu, 3, R_MAC3 >> 4); }
 
-void gte_interpolate_color(psx_cpu_t* cpu, int64_t mac1, int64_t mac2, int64_t mac3) {
+static inline void gte_interpolate_color(psx_cpu_t* cpu, int64_t mac1, int64_t mac2, int64_t mac3) {
     R_MAC1 = gte_clamp_mac(cpu, 1, (I64(R_RFC) << 12) - mac1);
     R_MAC2 = gte_clamp_mac(cpu, 2, (I64(R_GFC) << 12) - mac2);
     R_MAC3 = gte_clamp_mac(cpu, 3, (I64(R_BFC) << 12) - mac3);
@@ -1915,12 +1843,12 @@ void gte_interpolate_color(psx_cpu_t* cpu, int64_t mac1, int64_t mac2, int64_t m
     R_IR3 = gte_clamp_ir(cpu, 3, R_MAC3, cpu->gte_sf);
 }
 
-void psx_gte_i_rtps(psx_cpu_t* cpu) {
+static inline void psx_gte_i_rtps(psx_cpu_t* cpu) {
     R_FLAG = 0;
     GTE_RTP_DQ(0);
 }
 
-void psx_gte_i_nclip(psx_cpu_t* cpu) {
+static inline void psx_gte_i_nclip(psx_cpu_t* cpu) {
     R_FLAG = 0;
 
     int64_t value = I64((int16_t)R_SX0) * (I64((int16_t)R_SY1) - I64((int16_t)R_SY2));
@@ -1930,7 +1858,7 @@ void psx_gte_i_nclip(psx_cpu_t* cpu) {
     R_MAC0 = (int)gte_clamp_mac0(cpu, value);
 }
 
-void psx_gte_i_op(psx_cpu_t* cpu) {
+static inline void psx_gte_i_op(psx_cpu_t* cpu) {
     R_FLAG = 0;
 
     R_MAC1 = gte_clamp_mac(cpu, 1, I64(I64((int16_t)R_RT22) * I64(R_IR3)) - I64((I64((int16_t)R_RT33) * I64(R_IR2))));
@@ -1942,7 +1870,7 @@ void psx_gte_i_op(psx_cpu_t* cpu) {
     R_IR3 = gte_clamp_ir(cpu, 3, R_MAC3, cpu->gte_lm);
 }
 
-void psx_gte_i_dpcs(psx_cpu_t* cpu) {
+static inline void psx_gte_i_dpcs(psx_cpu_t* cpu) {
     R_FLAG = 0;
 
     int64_t mac1 = gte_clamp_mac(cpu, 1, (((int64_t)R_RFC) << 12) - (((int64_t)R_RC) << 16));
@@ -1970,7 +1898,7 @@ void psx_gte_i_dpcs(psx_cpu_t* cpu) {
     R_BC2 = gte_clamp_rgb(cpu, 3, R_MAC3 >> 4);
 }
 
-void psx_gte_i_intpl(psx_cpu_t* cpu) {
+static inline void psx_gte_i_intpl(psx_cpu_t* cpu) {
     R_FLAG = 0;
 
     int64_t mac1 = gte_clamp_mac(cpu, 1, (((int64_t)R_RFC) << 12) - (I64(R_IR1) << 12));
@@ -2015,7 +1943,7 @@ void psx_gte_i_intpl(psx_cpu_t* cpu) {
 #define R_CV2 cv.y
 #define R_CV3 cv.z
 
-void psx_gte_i_mvmva(psx_cpu_t* cpu) {
+static inline void psx_gte_i_mvmva(psx_cpu_t* cpu) {
     R_FLAG = 0;
 
     gte_matrix_t mx = { 0 };
@@ -2104,13 +2032,13 @@ void psx_gte_i_mvmva(psx_cpu_t* cpu) {
 #undef R_CV3
 
 // To-do: Fix flags
-void psx_gte_i_ncds(psx_cpu_t* cpu) {
+static inline void psx_gte_i_ncds(psx_cpu_t* cpu) {
     R_FLAG = 0;
 
     NCDS(0);
 }
 
-void psx_gte_i_cdp(psx_cpu_t* cpu) {
+static inline void psx_gte_i_cdp(psx_cpu_t* cpu) {
     R_FLAG = 0;
     R_MAC1 = gte_clamp_mac(cpu, 1, gte_check_mac(cpu, 1, gte_check_mac(cpu, 1, (I64(R_RBK) << 12) + (I64(R_LR1) * I64(R_IR1))) + (I64(R_LR2) * I64(R_IR2))) + (I64(R_LR3) * I64(R_IR3)));
     R_MAC2 = gte_clamp_mac(cpu, 2, gte_check_mac(cpu, 2, gte_check_mac(cpu, 2, (I64(R_GBK) << 12) + (I64(R_LG1) * I64(R_IR1))) + (I64(R_LG2) * I64(R_IR2))) + (I64(R_LG3) * I64(R_IR3)));
@@ -2135,19 +2063,19 @@ void psx_gte_i_cdp(psx_cpu_t* cpu) {
     R_CD2 = R_CODE;
 }
 
-void psx_gte_i_ncdt(psx_cpu_t* cpu) {
+static inline void psx_gte_i_ncdt(psx_cpu_t* cpu) {
     R_FLAG = 0;
     NCDS(0);
     NCDS(1);
     NCDS(2);
 }
 
-void psx_gte_i_nccs(psx_cpu_t* cpu) {
+static inline void psx_gte_i_nccs(psx_cpu_t* cpu) {
     R_FLAG = 0;
     NCCS(0);
 }
 
-void psx_gte_i_cc(psx_cpu_t* cpu) {
+static inline void psx_gte_i_cc(psx_cpu_t* cpu) {
     R_FLAG = 0;
     R_MAC1 = gte_clamp_mac(cpu, 1, gte_check_mac(cpu, 1, gte_check_mac(cpu, 1, (I64(R_RBK) << 12) + (I64(R_LR1) * I64(R_IR1))) + (I64(R_LR2) * I64(R_IR2))) + (I64(R_LR3) * I64(R_IR3)));
     R_MAC2 = gte_clamp_mac(cpu, 2, gte_check_mac(cpu, 2, gte_check_mac(cpu, 2, (I64(R_GBK) << 12) + (I64(R_LG1) * I64(R_IR1))) + (I64(R_LG2) * I64(R_IR2))) + (I64(R_LG3) * I64(R_IR3)));
@@ -2169,19 +2097,19 @@ void psx_gte_i_cc(psx_cpu_t* cpu) {
     R_IR3 = gte_clamp_ir(cpu, 3, R_MAC3, cpu->gte_lm);
 }
 
-void psx_gte_i_ncs(psx_cpu_t* cpu) {
+static inline void psx_gte_i_ncs(psx_cpu_t* cpu) {
     R_FLAG = 0;
     NCS(0);
 }
 
-void psx_gte_i_nct(psx_cpu_t* cpu) {
+static inline void psx_gte_i_nct(psx_cpu_t* cpu) {
     R_FLAG = 0;
     NCS(0);
     NCS(1);
     NCS(2);
 }
 
-void psx_gte_i_sqr(psx_cpu_t* cpu) {
+static inline void psx_gte_i_sqr(psx_cpu_t* cpu) {
     R_FLAG = 0;
 
     R_MAC1 = gte_clamp_mac(cpu, 1, I64(R_IR1) * I64(R_IR1));
@@ -2193,7 +2121,7 @@ void psx_gte_i_sqr(psx_cpu_t* cpu) {
     R_IR3 = gte_clamp_ir(cpu, 3, R_MAC3, cpu->gte_lm);
 }
 
-void psx_gte_i_dcpl(psx_cpu_t* cpu) {
+static inline void psx_gte_i_dcpl(psx_cpu_t* cpu) {
     R_FLAG = 0;
 
     R_MAC1 = gte_clamp_mac(cpu, 1, I64(R_RC) * I64(R_IR1)) << 4;
@@ -2216,14 +2144,14 @@ void psx_gte_i_dcpl(psx_cpu_t* cpu) {
     R_BC2 = gte_clamp_rgb(cpu, 3, R_MAC3 >> 4);
 }
 
-void psx_gte_i_dpct(psx_cpu_t* cpu) {
+static inline void psx_gte_i_dpct(psx_cpu_t* cpu) {
     R_FLAG = 0;
     DPCT1;
     DPCT1;
     DPCT1;
 }
 
-void psx_gte_i_avsz3(psx_cpu_t* cpu) {
+static inline void psx_gte_i_avsz3(psx_cpu_t* cpu) {
     R_FLAG = 0;
 
     int64_t avg = I64(R_ZSF3) * (R_SZ1 + R_SZ2 + R_SZ3);
@@ -2232,7 +2160,7 @@ void psx_gte_i_avsz3(psx_cpu_t* cpu) {
     R_OTZ = gte_clamp_sz3(cpu, avg >> 12);
 }
 
-void psx_gte_i_avsz4(psx_cpu_t* cpu) {
+static inline void psx_gte_i_avsz4(psx_cpu_t* cpu) {
     R_FLAG = 0;
 
     int64_t avg = I64(R_ZSF4) * (R_SZ0 + R_SZ1 + R_SZ2 + R_SZ3);
@@ -2241,14 +2169,14 @@ void psx_gte_i_avsz4(psx_cpu_t* cpu) {
     R_OTZ = gte_clamp_sz3(cpu, avg >> 12);
 }
 
-void psx_gte_i_rtpt(psx_cpu_t* cpu) {
+static inline void psx_gte_i_rtpt(psx_cpu_t* cpu) {
     R_FLAG = 0;
     GTE_RTP(0);
     GTE_RTP(1);
     GTE_RTP_DQ(2);
 }
 
-void psx_gte_i_gpf(psx_cpu_t* cpu) {
+static inline void psx_gte_i_gpf(psx_cpu_t* cpu) {
     R_FLAG = 0;
 
     R_MAC1 = gte_clamp_mac(cpu, 1, R_IR0 * R_IR1);
@@ -2265,7 +2193,7 @@ void psx_gte_i_gpf(psx_cpu_t* cpu) {
     R_BC2 = gte_clamp_rgb(cpu, 3, R_MAC3 >> 4);
 }
 
-void psx_gte_i_gpl(psx_cpu_t* cpu) {
+static inline void psx_gte_i_gpl(psx_cpu_t* cpu) {
     R_FLAG = 0;
 
     R_MAC1 = gte_clamp_mac(cpu, 1, (I64(R_MAC1) << cpu->gte_sf) + (R_IR0 * R_IR1));
@@ -2282,11 +2210,153 @@ void psx_gte_i_gpl(psx_cpu_t* cpu) {
     R_BC2 = gte_clamp_rgb(cpu, 3, R_MAC3 >> 4);
 }
 
-void psx_gte_i_ncct(psx_cpu_t* cpu) {
+static inline void psx_gte_i_ncct(psx_cpu_t* cpu) {
     R_FLAG = 0;
     NCCS(0);
     NCCS(1);
     NCCS(2);
+}
+
+int psx_cpu_execute(psx_cpu_t* cpu) {
+    switch ((cpu->opcode & 0xfc000000) >> 26) {
+        case 0x00000000 >> 26: {
+            switch (cpu->opcode & 0x0000003f) {
+                case 0x00000000: psx_cpu_i_sll(cpu); return 2;
+                case 0x00000002: psx_cpu_i_srl(cpu); return 2;
+                case 0x00000003: psx_cpu_i_sra(cpu); return 2;
+                case 0x00000004: psx_cpu_i_sllv(cpu); return 2;
+                case 0x00000006: psx_cpu_i_srlv(cpu); return 2;
+                case 0x00000007: psx_cpu_i_srav(cpu); return 2;
+                case 0x00000008: psx_cpu_i_jr(cpu); return 2;
+                case 0x00000009: psx_cpu_i_jalr(cpu); return 2;
+                case 0x0000000c: psx_cpu_i_syscall(cpu); return 2;
+                case 0x0000000d: psx_cpu_i_break(cpu); return 2;
+                case 0x00000010: psx_cpu_i_mfhi(cpu); return 2;
+                case 0x00000011: psx_cpu_i_mthi(cpu); return 2;
+                case 0x00000012: psx_cpu_i_mflo(cpu); return 2;
+                case 0x00000013: psx_cpu_i_mtlo(cpu); return 2;
+                case 0x00000018: psx_cpu_i_mult(cpu); return 2;
+                case 0x00000019: psx_cpu_i_multu(cpu); return 2;
+                case 0x0000001a: psx_cpu_i_div(cpu); return 2;
+                case 0x0000001b: psx_cpu_i_divu(cpu); return 2;
+                case 0x00000020: psx_cpu_i_add(cpu); return 2;
+                case 0x00000021: psx_cpu_i_addu(cpu); return 2;
+                case 0x00000022: psx_cpu_i_sub(cpu); return 2;
+                case 0x00000023: psx_cpu_i_subu(cpu); return 2;
+                case 0x00000024: psx_cpu_i_and(cpu); return 2;
+                case 0x00000025: psx_cpu_i_or(cpu); return 2;
+                case 0x00000026: psx_cpu_i_xor(cpu); return 2;
+                case 0x00000027: psx_cpu_i_nor(cpu); return 2;
+                case 0x0000002a: psx_cpu_i_slt(cpu); return 2;
+                case 0x0000002b: psx_cpu_i_sltu(cpu); return 2;
+            } break;
+        } break;
+        case 0x04000000 >> 26: {
+            cpu->branch = 1;
+            cpu->branch_taken = 0;
+
+            switch ((cpu->opcode & 0x001f0000) >> 16) {
+                case 0x00000000 >> 16: psx_cpu_i_bltz(cpu); return 2;
+                case 0x00010000 >> 16: psx_cpu_i_bgez(cpu); return 2;
+                case 0x00100000 >> 16: psx_cpu_i_bltzal(cpu); return 2;
+                case 0x00110000 >> 16: psx_cpu_i_bgezal(cpu); return 2;
+                // bltz/bgez dupes
+                default: {
+                    if (cpu->opcode & 0x00010000) {
+                        psx_cpu_i_bgez(cpu);
+                    } else {
+                        psx_cpu_i_bltz(cpu);
+                    }
+                } return 2;
+            } break;
+        } break;
+        case 0x08000000 >> 26: psx_cpu_i_j(cpu); return 2;
+        case 0x0c000000 >> 26: psx_cpu_i_jal(cpu); return 2;
+        case 0x10000000 >> 26: psx_cpu_i_beq(cpu); return 2;
+        case 0x14000000 >> 26: psx_cpu_i_bne(cpu); return 2;
+        case 0x18000000 >> 26: psx_cpu_i_blez(cpu); return 2;
+        case 0x1c000000 >> 26: psx_cpu_i_bgtz(cpu); return 2;
+        case 0x20000000 >> 26: psx_cpu_i_addi(cpu); return 2;
+        case 0x24000000 >> 26: psx_cpu_i_addiu(cpu); return 2;
+        case 0x28000000 >> 26: psx_cpu_i_slti(cpu); return 2;
+        case 0x2c000000 >> 26: psx_cpu_i_sltiu(cpu); return 2;
+        case 0x30000000 >> 26: psx_cpu_i_andi(cpu); return 2;
+        case 0x34000000 >> 26: psx_cpu_i_ori(cpu); return 2;
+        case 0x38000000 >> 26: psx_cpu_i_xori(cpu); return 2;
+        case 0x3c000000 >> 26: psx_cpu_i_lui(cpu); return 2;
+        case 0x40000000 >> 26: {
+            switch ((cpu->opcode & 0x03e00000) >> 21) {
+                case 0x00000000 >> 21: psx_cpu_i_mfc0(cpu); return 2;
+                case 0x00800000 >> 21: psx_cpu_i_mtc0(cpu); return 2;
+                case 0x02000000 >> 21: psx_cpu_i_rfe(cpu); return 2;
+            }
+        } break;
+        case 0x48000000 >> 26: {
+            switch ((cpu->opcode & 0x03e00000) >> 21) {
+                case 0x00000000 >> 21: psx_cpu_i_mfc2(cpu); return 2;
+                case 0x00400000 >> 21: psx_cpu_i_cfc2(cpu); return 2;
+                case 0x00800000 >> 21: psx_cpu_i_mtc2(cpu); return 2;
+                case 0x00c00000 >> 21: psx_cpu_i_ctc2(cpu); return 2;
+                default: {
+                    DO_PENDING_LOAD;
+
+                    cpu->gte_sf = ((cpu->opcode & 0x80000) != 0) * 12;
+                    cpu->gte_lm = (cpu->opcode & 0x400) != 0;
+                    cpu->gte_cv = (cpu->opcode >> 13) & 3;
+                    cpu->gte_v  = (cpu->opcode >> 15) & 3;
+                    cpu->gte_mx = (cpu->opcode >> 17) & 3;
+
+                    switch (cpu->opcode & 0x3f) {
+                        case 0x01: psx_gte_i_rtps(cpu); return 15;
+                        case 0x06: psx_gte_i_nclip(cpu); return 8;
+                        case 0x0c: psx_gte_i_op(cpu); return 6;
+                        case 0x10: psx_gte_i_dpcs(cpu); return 8;
+                        case 0x11: psx_gte_i_intpl(cpu); return 8;
+                        case 0x12: psx_gte_i_mvmva(cpu); return 8;
+                        case 0x13: psx_gte_i_ncds(cpu); return 19;
+                        case 0x14: psx_gte_i_cdp(cpu); return 13;
+                        case 0x16: psx_gte_i_ncdt(cpu); return 44;
+                        case 0x1b: psx_gte_i_nccs(cpu); return 17;
+                        case 0x1c: psx_gte_i_cc(cpu); return 11;
+                        case 0x1e: psx_gte_i_ncs(cpu); return 14;
+                        case 0x20: psx_gte_i_nct(cpu); return 30;
+                        case 0x28: psx_gte_i_sqr(cpu); return 5;
+                        case 0x29: psx_gte_i_dcpl(cpu); return 8;
+                        case 0x2a: psx_gte_i_dpct(cpu); return 17;
+                        case 0x2d: psx_gte_i_avsz3(cpu); return 5;
+                        case 0x2e: psx_gte_i_avsz4(cpu); return 6;
+                        case 0x30: psx_gte_i_rtpt(cpu); return 23;
+                        case 0x3d: psx_gte_i_gpf(cpu); return 5;
+                        case 0x3e: psx_gte_i_gpl(cpu); return 5;
+                        case 0x3f: psx_gte_i_ncct(cpu); return 39;
+                        default: psx_gte_i_invalid(cpu); return 0;
+                    }
+                } break;
+            }
+        } break;
+        case 0x80000000 >> 26: psx_cpu_i_lb(cpu); return 2;
+        case 0x84000000 >> 26: psx_cpu_i_lh(cpu); return 2;
+        case 0x88000000 >> 26: psx_cpu_i_lwl(cpu); return 2;
+        case 0x8c000000 >> 26: psx_cpu_i_lw(cpu); return 2;
+        case 0x90000000 >> 26: psx_cpu_i_lbu(cpu); return 2;
+        case 0x94000000 >> 26: psx_cpu_i_lhu(cpu); return 2;
+        case 0x98000000 >> 26: psx_cpu_i_lwr(cpu); return 2;
+        case 0xa0000000 >> 26: psx_cpu_i_sb(cpu); return 2;
+        case 0xa4000000 >> 26: psx_cpu_i_sh(cpu); return 2;
+        case 0xa8000000 >> 26: psx_cpu_i_swl(cpu); return 2;
+        case 0xac000000 >> 26: psx_cpu_i_sw(cpu); return 2;
+        case 0xb8000000 >> 26: psx_cpu_i_swr(cpu); return 2;
+        case 0xc0000000 >> 26: psx_cpu_i_lwc0(cpu); return 2;
+        case 0xc4000000 >> 26: psx_cpu_i_lwc1(cpu); return 2;
+        case 0xc8000000 >> 26: psx_cpu_i_lwc2(cpu); return 2;
+        case 0xcc000000 >> 26: psx_cpu_i_lwc3(cpu); return 2;
+        case 0xe0000000 >> 26: psx_cpu_i_swc0(cpu); return 2;
+        case 0xe4000000 >> 26: psx_cpu_i_swc1(cpu); return 2;
+        case 0xe8000000 >> 26: psx_cpu_i_swc2(cpu); return 2;
+        case 0xec000000 >> 26: psx_cpu_i_swc3(cpu); return 2;
+    }
+
+    return 0;
 }
 
 #undef R_R0

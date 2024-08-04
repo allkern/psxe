@@ -27,10 +27,8 @@ void psx_load_exe(psx_t* psx, const char* path) {
 void psx_update(psx_t* psx) {
     psx_cpu_cycle(psx->cpu);
 
-    psx->cpu->last_cycles = 2;
-
-    psx_cdrom_update(psx->cdrom, 2);
-    psx_gpu_update(psx->gpu, 2);
+    psx_cdrom_update(psx->cdrom, psx->cpu->last_cycles);
+    psx_gpu_update(psx->gpu, psx->cpu->last_cycles);
     psx_pad_update(psx->pad, psx->cpu->last_cycles);
     psx_timer_update(psx->timer, psx->cpu->last_cycles);
     psx_dma_update(psx->dma, psx->cpu->last_cycles);
