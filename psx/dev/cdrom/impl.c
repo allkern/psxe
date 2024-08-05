@@ -484,7 +484,7 @@ void cdrom_cmd_gettn(psx_cdrom_t* cdrom) {
     queue_push(cdrom->response, 1);
     queue_push(cdrom->response, ITOB(tn));
 
-    cdrom_pause(cdrom);
+    cdrom_restore_state(cdrom);
 }
 
 void cdrom_cmd_gettd(psx_cdrom_t* cdrom) {

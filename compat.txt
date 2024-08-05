@@ -6,16 +6,16 @@ Not working:
 CTR - Crash Team Racing (USA) *16 (regression)
   Fixed: Crash Bash (USA) *1 (2989bb6)
   Fixed: Crime Crackers (Japan) *20 (e145a4e)
-Disney's Hercules Action Game (USA) *22
-Disney's The Emperor's New Groove (USA).cue *22
+  Fixed: Disney's Hercules Action Game (USA) *22
+  Fixed: Disney's The Emperor's New Groove (USA).cue *22
   Fixed: Doom (All) *4 (e145a4e)
   Fixed: Elder Gate (Japan) *1 (2989bb6)
   Fixed: Fear Effect (USA) (Disc 1) *3
   Fixed: Final Doom (All) *4 (e145a4e)
   Fixed: Final Fantasy IX (USA) (Disc 1) *22
   Fixed: Gran Turismo 2 - Music at the Speed of Sound - The Album (USA) (Bonus PlayStation Disc) *19 (regression)
-Hello Kitty - Cube Frenzy (USA) *22
-Initial D (Japan) *3 (regression)
+  Fixed: Hello Kitty - Cube Frenzy (USA) *22 (FMVs are very slow though)
+  Fixed: Initial D (Japan) *22
   Fixed: Konami 80's Arcade Gallery (Japan) *1 (2989bb6)
 Nagano Winter Olympics '98 (USA) *18
 Need for Speed II (USA) *17
@@ -38,7 +38,7 @@ Tama - Adventurous Ball in Giddy Labyrinth (Japan) *5
   Fixed: Time Gal & Ninja Hayate (Japan) (En,Ja) (Disc 2) (Ninja Hayate) *9
   Fixed: Tokimeki Memorial 2 (Japan) *1 (2989bb6)
   Fixed: Tomb Raider (USA) *8 (e145a4e)
-Tony Hawk's Pro Skater (USA) *10
+  Fixed: Tony Hawk's Pro Skater (USA) *22
 Vib-Ribbon (Japan) *8
 WipeOut (USA) *7
   Fixed: Yu-Gi-Oh! Forbidden Memories (USA) *1 (2989bb6)
@@ -65,7 +65,7 @@ Notes:
 *19 Hangs on CdlSetloc deadloop
 *20 GetlocP loop hangs
 *21 Hangs after 0-sized CDROM DMA
-*22 MDEC corruption (need to fix ASAP)
+*22 MDEC corruption (fixed, XA resample buffer overflow)
 
 Graphical issues:
 Most graphical issues (black models, 1-pixel seams, polygon explosions, etc.) have been fixed!

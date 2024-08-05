@@ -39,8 +39,10 @@
 
 #define XA_STEREO_SAMPLES 2016 // Samples per sector
 #define XA_MONO_SAMPLES 4032 // Samples per sector
-#define XA_STEREO_RESAMPLE_SIZE 2352 // 2352 * 2
-#define XA_MONO_RESAMPLE_SIZE 4704 // 4704 * 2
+#define XA_STEREO_RESAMPLE_SIZE 2352 // 2352
+#define XA_MONO_RESAMPLE_SIZE 4704 // 4704
+#define XA_STEREO_RESAMPLE_MAX_SIZE 4704 // 2352 * 2 (because of 18KHz mode)
+#define XA_MONO_RESAMPLE_MAX_SIZE 9408 // 4704 * 2 (because of 18KHz mode)
 #define XA_UPSAMPLE_SIZE 28224 // 4032 * 7
 #define XA_RINGBUF_SIZE 32
 
@@ -252,9 +254,9 @@ typedef struct {
     int16_t xa_right_buf[XA_STEREO_SAMPLES];
     int16_t xa_mono_buf[XA_MONO_SAMPLES];
     int16_t xa_upsample_buf[XA_UPSAMPLE_SIZE];
-    int16_t xa_left_resample_buf[XA_STEREO_RESAMPLE_SIZE];
-    int16_t xa_right_resample_buf[XA_STEREO_RESAMPLE_SIZE];
-    int16_t xa_mono_resample_buf[XA_MONO_RESAMPLE_SIZE];
+    int16_t xa_left_resample_buf[XA_STEREO_RESAMPLE_MAX_SIZE];
+    int16_t xa_right_resample_buf[XA_STEREO_RESAMPLE_MAX_SIZE];
+    int16_t xa_mono_resample_buf[XA_MONO_RESAMPLE_MAX_SIZE];
 } psx_cdrom_t;
 
 enum {
