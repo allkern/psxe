@@ -11,7 +11,8 @@
 enum {
     CUE_OK = 0,
     CUE_FILE_NOT_FOUND,
-    CUE_TRACK_FILE_NOT_FOUND
+    CUE_TRACK_FILE_NOT_FOUND,
+    CUE_TRACK_READ_ERROR
 };
 
 enum {

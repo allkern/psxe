@@ -28,12 +28,14 @@ void psx_exp1_load(psx_exp1_t* exp1, const char* path) {
     FILE* file = fopen(path, "rb");
 
     if (!file) {
-        perror("Error opening expansion ROM file \'%s\'");
+        perror("Error opening expansion ROM file");
 
         exit(1);
     }
 
-    fread(exp1->rom, 1, PSX_EXP1_SIZE, file);
+    if (!fread(exp1->rom, 1, PSX_EXP1_SIZE, file)) {
+        perror("Error reading expansion ROM file");
+    }
 
     fclose(file);
 }

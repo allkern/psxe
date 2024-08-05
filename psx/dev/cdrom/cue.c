@@ -414,7 +414,9 @@ int cue_load(cue_t* cue, int mode) {
             data->buf = malloc(data->size);
 
             fseek(file, 0, SEEK_SET);
-            fread(data->buf, 1, data->size, file);
+
+            if (!fread(data->buf, 1, data->size, file))
+                return CUE_TRACK_READ_ERROR;
 
             fclose(file);
         } else {
@@ -554,7 +556,8 @@ int cue_read(cue_t* cue, uint32_t lba, void* buf) {
     } else {
         fseek(file->buf, (lba - file->start) * 2352, SEEK_SET);
 
-        fread(buf, 1, 2352, file->buf);
+        // Should always succeed, ignore result for speed
+        (void)fread(buf, 1, 2352, file->buf);
     }
 
     return (track->mode == CUE_MODE2_2352) ? TS_DATA : TS_AUDIO;

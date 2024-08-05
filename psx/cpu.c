@@ -1554,6 +1554,10 @@ static inline uint32_t gte_divide(psx_cpu_t* cpu, uint16_t n, uint16_t d) {
     return MIN(0x1ffff, res);
 }
 
+static inline void psx_gte_i_invalid(psx_cpu_t* cpu) {
+    log_fatal("invalid: Unimplemented GTE instruction %02x, %02x", cpu->opcode & 0x3f, cpu->opcode >> 25);
+}
+
 #define I64(v) ((int64_t)v)
 #define R_TRX cpu->cop2_cr.tr.x
 #define R_TRY cpu->cop2_cr.tr.y
