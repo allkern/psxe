@@ -10,14 +10,14 @@
 
 #define VOICE_COUNT 24
 
-static float interpolate_hermite(float a, float b, float c, float d, float t) {
-    float x = -a/2.0f + (3.0f*b)/2.0f - (3.0f*c)/2.0f + d/2.0f;
-    float y = a - (5.0f*b)/2.0f + 2.0f*c - d / 2.0f;
-    float z = -a/2.0f + c/2.0f;
-    float w = b;
+// static float interpolate_hermite(float a, float b, float c, float d, float t) {
+//     float x = -a/2.0f + (3.0f*b)/2.0f - (3.0f*c)/2.0f + d/2.0f;
+//     float y = a - (5.0f*b)/2.0f + 2.0f*c - d / 2.0f;
+//     float z = -a/2.0f + c/2.0f;
+//     float w = b;
  
-    return (x*t*t*t) + (y*t*t) + (z*t) + w;
-}
+//     return (x*t*t*t) + (y*t*t) + (z*t) + w;
+// }
 
 static const int g_spu_pos_adpcm_table[] = {
     0, +60, +115, +98, +122
@@ -572,7 +572,6 @@ void spu_get_reverb_sample(psx_spu_t* spu, int inl, int inr, int* outl, int* out
 uint32_t psx_spu_get_sample(psx_spu_t* spu) {
     spu->even_cycle ^= 1;
 
-    int active_voice_count = 0;
     int left = 0;
     int right = 0;
     int revl = 0;
@@ -586,8 +585,6 @@ uint32_t psx_spu_get_sample(psx_spu_t* spu) {
             continue;
 
         spu_handle_adsr(spu, v);
-
-        ++active_voice_count;
 
         uint32_t sample_index = spu->data[v].counter >> 12;
 
@@ -681,9 +678,6 @@ uint32_t psx_spu_get_sample(psx_spu_t* spu) {
         spu->data[v].counter += step;
     }
 
-    // if (!active_voice_count)
-    //     return 0x00000000;
-    
     int16_t clamprl = CLAMP(revl, INT16_MIN, INT16_MAX);
     int16_t clamprr = CLAMP(revr, INT16_MIN, INT16_MAX);
     int16_t clampsl = CLAMP(left, INT16_MIN, INT16_MAX);

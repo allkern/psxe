@@ -530,8 +530,8 @@ int cue_read(cue_t* cue, uint32_t lba, void* buf) {
     // then we are being requested a pregap sector. Clear buffer
     // and initialize sync data (not actually needed)
     if (!track) {
-        memset(buf, 0, 2352);
-        memset(buf + 1, 255, 10);
+        memset((uint8_t*)buf, 0, 2352);
+        memset((uint8_t*)buf + 1, 255, 10);
 
         return TS_PREGAP;
     }
@@ -548,7 +548,7 @@ int cue_read(cue_t* cue, uint32_t lba, void* buf) {
     // );
 
     if (file->buf_mode == LD_BUFFERED) {
-        uint8_t* ptr = file->buf + ((lba - file->start) * 2352);
+        uint8_t* ptr = (uint8_t*)file->buf + ((lba - file->start) * 2352);
 
         memcpy(buf, ptr, 2352);
     } else {
@@ -584,10 +584,10 @@ int cue_get_track_lba(cue_t* cue, int track) {
 
 void cue_init_disc(cue_t* cue, psx_disc_t* disc) {
     disc->udata = cue;
-    disc->read_sector = cue_read;
-    disc->query_sector = cue_query;
-    disc->get_track_number = cue_get_track_number;
-    disc->get_track_count = cue_get_track_count;
-    disc->get_track_lba = cue_get_track_lba;
-    disc->destroy = cue_destroy;
+    disc->read_sector = (read_sector_func)cue_read;
+    disc->query_sector = (query_sector_func)cue_query;
+    disc->get_track_number = (get_track_number_func)cue_get_track_number;
+    disc->get_track_count = (get_track_count_func)cue_get_track_count;
+    disc->get_track_lba = (get_track_lba_func)cue_get_track_lba;
+    disc->destroy = (destroy_func)cue_destroy;
 }

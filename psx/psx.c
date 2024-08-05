@@ -119,7 +119,7 @@ double psx_get_display_aspect(psx_t* psx) {
     return aspect;
 }
 
-void atcons_tx(void* udata, char c) {
+void atcons_tx(void* udata, unsigned char c) {
     putchar(c);
 }
 

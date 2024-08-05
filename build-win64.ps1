@@ -27,6 +27,6 @@ gcc -I"$($PSX_DIR)" `
     -m64 -lSDL2main -lSDL2 -Wno-overflow `
     -Wall -pedantic -DLOG_USE_COLOR `
     -Wno-address-of-packed-member `
-    -ffast-math -Ofast -g -flto
+    -ffast-math -Ofast -g -flto -Werror
 
 Copy-Item -Path "$($SDL2_DIR)\bin\SDL2.dll" -Destination "bin"

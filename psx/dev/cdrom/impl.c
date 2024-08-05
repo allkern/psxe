@@ -516,7 +516,6 @@ void cdrom_cmd_gettd(psx_cdrom_t* cdrom) {
 
     int mm = f / (60 * 75);
     int ss = (f % (60 * 75)) / 75;
-    int ff = (f % (60 * 75)) % 75;
 
     // printf("gettd: track %u lba=%08x (%u) %02u:%02u:%02u\n",
     //     track,
@@ -536,9 +535,7 @@ void cdrom_cmd_seekl(psx_cdrom_t* cdrom) {
         cdrom_set_int(cdrom, 3);
         queue_push(cdrom->response, cdrom_get_stat(cdrom));
 
-        int ts = psx_disc_query(cdrom->disc, cdrom->pending_lba);
-
-        cdrom->delay = CD_DELAY_1MS; // cdrom_get_seek_delay(cdrom, ts);
+        cdrom->delay = CD_DELAY_1MS;
         cdrom->state = CD_STATE_TX_RESP2;
     } else {
         int ts = psx_disc_query(cdrom->disc, cdrom->pending_lba);
@@ -577,7 +574,7 @@ void cdrom_cmd_seekp(psx_cdrom_t* cdrom) {
         cdrom_set_int(cdrom, 3);
         queue_push(cdrom->response, cdrom_get_stat(cdrom));
 
-        cdrom->delay = CD_DELAY_1MS; // cdrom_get_seek_delay(cdrom, ts);
+        cdrom->delay = CD_DELAY_1MS;
         cdrom->state = CD_STATE_TX_RESP2;
         cdrom->busy = 1;
     } else {

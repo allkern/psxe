@@ -298,7 +298,7 @@ void psx_cpu_cycle(psx_cpu_t* cpu) {
     int cyc = psx_cpu_execute(cpu);
 
     if (!cyc) {
-        printf("psxe: Illegal instruction %08x at %08x (next=%08x, saved=%08x)\n", cpu->opcode, cpu->next_pc, cpu->saved_pc);
+        printf("psxe: Illegal instruction %08x at %08x (next=%08x, saved=%08x)\n", cpu->opcode, cpu->pc, cpu->next_pc, cpu->saved_pc);
 
         psx_cpu_exception(cpu, CAUSE_RI);
     }
@@ -532,18 +532,6 @@ static inline void psx_cpu_i_lui(psx_cpu_t* cpu) {
     DO_PENDING_LOAD;
 
     cpu->r[T] = IMM16 << 16;
-}
-
-static inline void psx_cpu_i_cop1(psx_cpu_t* cpu) {
-    DO_PENDING_LOAD;
-
-    psx_cpu_exception(cpu, CAUSE_CPU);
-}
-
-static inline void psx_cpu_i_cop3(psx_cpu_t* cpu) {
-    DO_PENDING_LOAD;
-
-    psx_cpu_exception(cpu, CAUSE_CPU);
 }
 
 static inline void psx_cpu_i_lb(psx_cpu_t* cpu) {
@@ -1806,42 +1794,6 @@ static inline void psx_gte_i_invalid(psx_cpu_t* cpu) {
     R_RC2 = gte_clamp_rgb(cpu, 1, R_MAC1 >> 4); \
     R_GC2 = gte_clamp_rgb(cpu, 2, R_MAC2 >> 4); \
     R_BC2 = gte_clamp_rgb(cpu, 3, R_MAC3 >> 4); }
-
-static inline void gte_interpolate_color(psx_cpu_t* cpu, int64_t mac1, int64_t mac2, int64_t mac3) {
-    R_MAC1 = gte_clamp_mac(cpu, 1, (I64(R_RFC) << 12) - mac1);
-    R_MAC2 = gte_clamp_mac(cpu, 2, (I64(R_GFC) << 12) - mac2);
-    R_MAC3 = gte_clamp_mac(cpu, 3, (I64(R_BFC) << 12) - mac3);
-
-    // printf("input=(%08x, %08x, %08x) (%d, %d, %d) mac=(%08x, %08x, %08x), (%d, %d, %d) fc=(%08x, %08x, %08x)\n",
-    //     mac1,
-    //     mac2,
-    //     mac3,
-    //     mac1,
-    //     mac2,
-    //     mac3,
-    //     R_MAC1,
-    //     R_MAC2,
-    //     R_MAC3,
-    //     R_MAC1,
-    //     R_MAC2,
-    //     R_MAC3,
-    //     I64(R_RFC) << 12,
-    //     I64(R_GFC) << 12,
-    //     I64(R_BFC) << 12
-    // );
-
-    R_IR1 = gte_clamp_ir(cpu, 1, R_MAC1, 0);
-    R_IR2 = gte_clamp_ir(cpu, 2, R_MAC2, 0);
-    R_IR3 = gte_clamp_ir(cpu, 3, R_MAC3, 0);
-
-    R_MAC1 = gte_clamp_mac(cpu, 1, (R_IR1 * R_IR0) + mac1);
-    R_MAC2 = gte_clamp_mac(cpu, 2, (R_IR2 * R_IR0) + mac2);
-    R_MAC3 = gte_clamp_mac(cpu, 3, (R_IR3 * R_IR0) + mac3);
-
-    R_IR1 = gte_clamp_ir(cpu, 1, R_MAC1, cpu->gte_sf);
-    R_IR2 = gte_clamp_ir(cpu, 2, R_MAC2, cpu->gte_sf);
-    R_IR3 = gte_clamp_ir(cpu, 3, R_MAC3, cpu->gte_sf);
-}
 
 static inline void psx_gte_i_rtps(psx_cpu_t* cpu) {
     R_FLAG = 0;
