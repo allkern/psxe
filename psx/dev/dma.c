@@ -346,7 +346,7 @@ void psx_dma_do_cdrom(psx_dma_t* dma) {
     uint32_t size = BCR_SIZE(cdrom);
 
     if (!size)
-        printf("0 sized CDROM DMA\n");
+        size = 0x10000;
 
     dma->cdrom_irq_delay = 1;
 

@@ -332,8 +332,6 @@ void cdrom_send_report_irq(psx_cdrom_t* cdrom) {
         cdrom->cdda_prev_track = 0;
         cdrom->cdda_playing = 0;
 
-        printf("prev_track=%u track=%u\n", cdrom->cdda_prev_track, track);
-
         cdrom_send_autopause_irq(cdrom);
 
         return;
