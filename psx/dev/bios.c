@@ -18,6 +18,9 @@ void psx_bios_init(psx_bios_t* bios) {
 }
 
 void psx_bios_load(psx_bios_t* bios, const char* path) {
+    if (!path)
+        return;
+
     FILE* file = fopen(path, "rb");
 
     if (!file) {

@@ -7,6 +7,10 @@
 
 #include <stdint.h>
 
+#define PSXE_VERSION STR(REP_VERSION)
+#define PSXE_COMMIT STR(REP_COMMIT_HASH)
+#define PSXE_BUILD_OS STR(OS_INFO)
+
 typedef struct {
     psx_bios_t* bios;
     psx_ram_t* ram;

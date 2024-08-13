@@ -153,6 +153,29 @@ void psx_cdrom_init(psx_cdrom_t* cdrom, psx_ic_t* ic) {
     cdrom->fake_getlocl_data = 1;
 }
 
+void psx_cdrom_reset(psx_cdrom_t* cdrom) {
+    queue_clear(cdrom->data);
+    queue_clear(cdrom->response);
+    queue_clear(cdrom->parameters);
+
+    cdrom->prev_state = CD_STATE_IDLE;
+    cdrom->state = CD_STATE_IDLE;
+    cdrom->pending_command = 0;
+    cdrom->busy = 0;
+    cdrom->cdda_playing = 0;
+    cdrom->xa_playing = 0;
+    cdrom->read_ongoing = 0;
+
+    queue_clear(cdrom->data);
+    queue_clear(cdrom->response);
+    queue_clear(cdrom->parameters);
+
+    cdrom->vol[0] = 0x80;
+    cdrom->vol[1] = 0x00;
+    cdrom->vol[2] = 0x80;
+    cdrom->vol[3] = 0x00;
+}
+
 void psx_cdrom_set_version(psx_cdrom_t* cdrom, int version) {
     cdrom->version = version;
 }
@@ -164,6 +187,8 @@ void psx_cdrom_set_region(psx_cdrom_t* cdrom, int region) {
 void psx_cdrom_open(psx_cdrom_t* cdrom, const char* path) {
     if (!path)
         return;
+
+    cdrom_cmd_reset(cdrom);
 
     cdrom->disc = psx_disc_create();
     cdrom->disc_type = psx_disc_open(cdrom->disc, path);
@@ -609,6 +634,9 @@ void psx_cdrom_write8(psx_cdrom_t* cdrom, uint32_t addr, uint32_t value) {
 
 void psx_cdrom_destroy(psx_cdrom_t* cdrom) {
     psx_cdrom_close(cdrom);
+    queue_destroy(cdrom->data);
+    queue_destroy(cdrom->response);
+    queue_destroy(cdrom->parameters);
     free(cdrom);
 }
 
