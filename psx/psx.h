@@ -7,6 +7,9 @@
 
 #include <stdint.h>
 
+#define STR1(m) #m
+#define STR(m) STR1(m)
+
 #define PSXE_VERSION STR(REP_VERSION)
 #define PSXE_COMMIT STR(REP_COMMIT_HASH)
 #define PSXE_BUILD_OS STR(OS_INFO)
