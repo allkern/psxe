@@ -292,18 +292,27 @@ void psx_pad_detach_joy(psx_pad_t* pad, int slot) {
     pad->joy_slot[slot] = NULL;
 }
 
-void psx_pad_attach_mcd(psx_pad_t* pad, int slot, const char* path) {
+int psx_pad_attach_mcd(psx_pad_t* pad, int slot, const char* path) {
     printf("Memory Card support is disabled\n");
 
-    return;
+    return 0;
 
     if (pad->mcd_slot[slot])
         psx_pad_detach_mcd(pad, slot);
 
     psx_mcd_t* mcd = psx_mcd_create();
-    psx_mcd_init(mcd, path);
+
+    int r = psx_mcd_init(mcd, path);
+    
+    if (r) {
+        psx_pad_detach_mcd(pad, slot);
+
+        return r;
+    }
 
     pad->mcd_slot[slot] = mcd;
+
+    return 0;
 }
 
 void psx_pad_detach_mcd(psx_pad_t* pad, int slot) {

@@ -184,17 +184,22 @@ void psx_cdrom_set_region(psx_cdrom_t* cdrom, int region) {
     cdrom->region = region;
 }
 
-void psx_cdrom_open(psx_cdrom_t* cdrom, const char* path) {
+int psx_cdrom_open(psx_cdrom_t* cdrom, const char* path) {
     if (!path)
-        return;
+        return 1;
 
     cdrom_cmd_reset(cdrom);
 
     cdrom->disc = psx_disc_create();
     cdrom->disc_type = psx_disc_open(cdrom->disc, path);
 
-    if (cdrom->disc_type == CDT_ERROR)
+    if (cdrom->disc_type == CDT_ERROR) {
         psx_cdrom_close(cdrom);
+
+        return 0;
+    }
+
+    return 1;
 }
 
 void psx_cdrom_close(psx_cdrom_t* cdrom) {

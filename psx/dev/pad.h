@@ -134,7 +134,7 @@ void psx_pad_button_release(psx_pad_t*, int, uint32_t);
 void psx_pad_analog_change(psx_pad_t*, int, uint32_t, uint16_t);
 void psx_pad_attach_joy(psx_pad_t*, int, psx_input_t*);
 void psx_pad_detach_joy(psx_pad_t*, int);
-void psx_pad_attach_mcd(psx_pad_t*, int, const char*);
+int psx_pad_attach_mcd(psx_pad_t*, int, const char*);
 void psx_pad_detach_mcd(psx_pad_t*, int);
 void psx_pad_update(psx_pad_t*, int);
 

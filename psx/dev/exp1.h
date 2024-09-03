@@ -18,8 +18,8 @@ typedef struct {
 } psx_exp1_t;
 
 psx_exp1_t* psx_exp1_create(void);
-void psx_exp1_init(psx_exp1_t*, psx_mc1_t*, const char*);
-void psx_exp1_load(psx_exp1_t*, const char*);
+int psx_exp1_init(psx_exp1_t*, psx_mc1_t*, const char*);
+int psx_exp1_load(psx_exp1_t*, const char*);
 uint32_t psx_exp1_read32(psx_exp1_t*, uint32_t);
 uint16_t psx_exp1_read16(psx_exp1_t*, uint32_t);
 uint8_t psx_exp1_read8(psx_exp1_t*, uint32_t);

@@ -295,7 +295,7 @@ void psx_cdrom_init(psx_cdrom_t* cdrom, psx_ic_t* ic);
 void psx_cdrom_reset(psx_cdrom_t* cdrom);
 void psx_cdrom_set_version(psx_cdrom_t* cdrom, int version);
 void psx_cdrom_set_region(psx_cdrom_t* cdrom, int region);
-void psx_cdrom_open(psx_cdrom_t* cdrom, const char* path);
+int psx_cdrom_open(psx_cdrom_t* cdrom, const char* path);
 void psx_cdrom_close(psx_cdrom_t* cdrom);
 uint32_t psx_cdrom_read32(psx_cdrom_t* cdrom, uint32_t addr);
 uint32_t psx_cdrom_read16(psx_cdrom_t* cdrom, uint32_t addr);

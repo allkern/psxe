@@ -5,7 +5,7 @@ psx_mcd_t* psx_mcd_create(void) {
     return (psx_mcd_t*)malloc(sizeof(psx_mcd_t));
 }
 
-void psx_mcd_init(psx_mcd_t* mcd, const char* path) {
+int psx_mcd_init(psx_mcd_t* mcd, const char* path) {
     memset(mcd, 0, sizeof(psx_mcd_t));
 
     mcd->state = MCD_STATE_TX_HIZ;
@@ -17,20 +17,19 @@ void psx_mcd_init(psx_mcd_t* mcd, const char* path) {
     memset(mcd->buf, 0, MCD_MEMORY_SIZE);
 
     if (!path)
-        return;
+        return 0;
 
     FILE* file = fopen(path, "rb");
 
     if (!file)
-        return;
+        return 1;
 
-    if (!fread(mcd->buf, 1, MCD_MEMORY_SIZE, file)) {
-        perror("Error reading memory card data");
-
-        exit(1);
-    }
+    if (!fread(mcd->buf, 1, MCD_MEMORY_SIZE, file))
+        return 2;
 
     fclose(file);
+
+    return 0;
 }
 
 uint8_t psx_mcd_read(psx_mcd_t* mcd) {

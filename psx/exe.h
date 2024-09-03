@@ -48,6 +48,6 @@ typedef struct {
     uint32_t ispoff;
 } psx_exe_hdr_t;
 
-void psx_exe_load(psx_cpu_t*, const char*);
+int psx_exe_load(psx_cpu_t*, const char*);
 
 #endif

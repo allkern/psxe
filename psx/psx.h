@@ -36,9 +36,9 @@ typedef struct {
 } psx_t;
 
 psx_t* psx_create(void);
-void psx_init(psx_t*, const char*, const char*);
-void psx_load_expansion(psx_t*, const char*);
-void psx_load_bios(psx_t*, const char*);
+int psx_init(psx_t*, const char*, const char*);
+int psx_load_expansion(psx_t*, const char*);
+int psx_load_bios(psx_t*, const char*);
 void psx_hard_reset(psx_t*);
 void psx_soft_reset(psx_t*);
 void psx_load_state(psx_t*, const char*);
@@ -55,7 +55,7 @@ uint32_t psx_get_display_height(psx_t*);
 uint32_t psx_get_display_format(psx_t*);
 double psx_get_display_aspect(psx_t*);
 uint32_t* psx_take_screenshot(psx_t*);
-void psx_swap_disc(psx_t*, const char*);
+int psx_swap_disc(psx_t*, const char*);
 psx_bios_t* psx_get_bios(psx_t*);
 psx_ram_t* psx_get_ram(psx_t*);
 psx_dma_t* psx_get_dma(psx_t*);

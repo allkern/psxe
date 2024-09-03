@@ -17,17 +17,14 @@ void psx_bios_init(psx_bios_t* bios) {
     bios->bus_delay = 18;
 }
 
-void psx_bios_load(psx_bios_t* bios, const char* path) {
+int psx_bios_load(psx_bios_t* bios, const char* path) {
     if (!path)
-        return;
+        return 0;
 
     FILE* file = fopen(path, "rb");
 
-    if (!file) {
-        log_error("Couldn't open BIOS file \"%s\"", path);
-
-        exit(1);
-    }
+    if (!file)
+        return 1;
 
     // Almost all PS1 BIOS ROMs are 512 KiB in size.
     // There's (at least) one exception, and that is SCPH-5903.
@@ -43,15 +40,12 @@ void psx_bios_load(psx_bios_t* bios, const char* path) {
     bios->buf = malloc(size);
     bios->io_size = size;
 
-    if (!fread(bios->buf, 1, size, file)) {
-        perror("Error reading BIOS file");
-
-        exit(1);
-    }
-
-    log_info("Loaded BIOS file \"%s\"", path);
+    if (!fread(bios->buf, 1, size, file))
+        return 2;
 
     fclose(file);
+
+    return 0;
 }
 
 uint32_t psx_bios_read32(psx_bios_t* bios, uint32_t offset) {

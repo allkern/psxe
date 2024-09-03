@@ -4,8 +4,8 @@ psx_t* psx_create(void) {
     return (psx_t*)malloc(sizeof(psx_t));
 }
 
-void psx_load_bios(psx_t* psx, const char* path) {
-    psx_bios_load(psx->bios, path);
+int psx_load_bios(psx_t* psx, const char* path) {
+    return psx_bios_load(psx->bios, path);
 }
 
 void psx_load_state(psx_t* psx, const char* path) {
@@ -54,11 +54,6 @@ void* psx_get_vram(psx_t* psx) {
 }
 
 uint32_t psx_get_display_width(psx_t* psx) {
-    // int draw = psx->gpu->draw_x2 - psx->gpu->draw_x1;
-    // int dmode = psx_get_dmode_width(psx);
-
-    // return (draw > dmode) ? dmode : draw;
-
     int width = psx_get_dmode_width(psx);
 
     if (width == 368)
@@ -68,11 +63,6 @@ uint32_t psx_get_display_width(psx_t* psx) {
 }
 
 uint32_t psx_get_display_height(psx_t* psx) {
-    // int draw = psx->gpu->draw_y2 - psx->gpu->draw_y1;
-    // int dmode = psx_get_dmode_height(psx);
-
-    // return (draw > dmode) ? dmode : draw;
-
     return psx_get_dmode_height(psx);
 }
 
@@ -123,7 +113,7 @@ void atcons_tx(void* udata, unsigned char c) {
     putchar(c);
 }
 
-void psx_init(psx_t* psx, const char* bios_path, const char* exp_path) {
+int psx_init(psx_t* psx, const char* bios_path, const char* exp_path) {
     memset(psx, 0, sizeof(psx_t));
 
     psx->bios = psx_bios_create();
@@ -166,13 +156,19 @@ void psx_init(psx_t* psx, const char* bios_path, const char* exp_path) {
 
     // Init devices
     psx_bios_init(psx->bios);
-    psx_bios_load(psx->bios, bios_path);
+    
+    if (psx_bios_load(psx->bios, bios_path))
+        return 1;
+
     psx_mc1_init(psx->mc1);
     psx_mc2_init(psx->mc2);
     psx_mc3_init(psx->mc3);
     psx_ram_init(psx->ram, psx->mc2, RAM_SIZE_2MB);
     psx_dma_init(psx->dma, psx->bus, psx->ic);
-    psx_exp1_init(psx->exp1, psx->mc1, exp_path);
+
+    if (psx_exp1_init(psx->exp1, psx->mc1, exp_path))
+        return 2;
+
     psx_exp2_init(psx->exp2, atcons_tx, NULL);
     psx_ic_init(psx->ic, psx->cpu);
     psx_scratchpad_init(psx->scratchpad);
@@ -183,10 +179,12 @@ void psx_init(psx_t* psx, const char* bios_path, const char* exp_path) {
     psx_pad_init(psx->pad, psx->ic);
     psx_mdec_init(psx->mdec);
     psx_cpu_init(psx->cpu, psx->bus);
+
+    return 0;
 }
 
-void psx_load_expansion(psx_t* psx, const char* path) {
-    psx_exp1_init(psx->exp1, psx->mc1, path);
+int psx_load_expansion(psx_t* psx, const char* path) {
+    return psx_exp1_init(psx->exp1, psx->mc1, path);
 }
 
 void psx_hard_reset(psx_t* psx) {
@@ -205,7 +203,7 @@ uint32_t* psx_take_screenshot(psx_t* psx) {
     exit(1);
 }
 
-void psx_swap_disc(psx_t* psx, const char* path) {
+int psx_swap_disc(psx_t* psx, const char* path) {
     psx_cdrom_destroy(psx->cdrom);
 
     psx->cdrom = psx_cdrom_create();
@@ -213,7 +211,8 @@ void psx_swap_disc(psx_t* psx, const char* path) {
     psx_bus_init_cdrom(psx->bus, psx->cdrom);
 
     psx_cdrom_init(psx->cdrom, psx->ic);
-    psx_cdrom_open(psx->cdrom, path);
+
+    return psx_cdrom_open(psx->cdrom, path);
 }
 
 void psx_destroy(psx_t* psx) {
