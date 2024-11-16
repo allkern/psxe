@@ -3,7 +3,7 @@ Not working:
   Fixed: Animetic Story Game 1 - Card Captor Sakura (Japan) (Disc 1) *1 (2989bb6)
   Fixed: Ape Escape (USA) *21 (0=10000h CDROM DMA BS)
   Fixed: Blade (USA) *3
-CTR - Crash Team Racing (USA) *16 (regression)
+  Fixed: CTR - Crash Team Racing (USA) *16 (regression) (f7e41cf)
   Fixed: Crash Bash (USA) *1 (2989bb6)
   Fixed: Crime Crackers (Japan) *20 (e145a4e)
   Fixed: Disney's Hercules Action Game (USA) *22
@@ -39,7 +39,7 @@ Tama - Adventurous Ball in Giddy Labyrinth (Japan) *5
   Fixed: Tokimeki Memorial 2 (Japan) *1 (2989bb6)
   Fixed: Tomb Raider (USA) *8 (e145a4e)
   Fixed: Tony Hawk's Pro Skater (USA) *22
-Vib-Ribbon (Japan) *8
+  Fixed: Vib-Ribbon (Japan) *8 (f7e41cf)
 WipeOut (USA) *7
   Fixed: Yu-Gi-Oh! Forbidden Memories (USA) *1 (2989bb6)
 
