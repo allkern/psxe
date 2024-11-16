@@ -22,7 +22,7 @@ Most BIOS versions are confirmed to work.
 Use the `-b` or `--bios` setting to configure the BIOS file.
 
 ## Progress
-All components have been implemented, everything apart from the CDROM and memory cards is pretty much complete.
+All components have been implemented, Memory card support is temporarily disabled.
 
 <img src="https://github.com/allkern/psxe/assets/15825466/199c20e4-4e7e-4d0a-a033-eda347034ed5" width="12" height="12"/> CPU </br>
 <img src="https://github.com/allkern/psxe/assets/15825466/199c20e4-4e7e-4d0a-a033-eda347034ed5" width="12" height="12"/> DMA </br>
@@ -31,7 +31,8 @@ All components have been implemented, everything apart from the CDROM and memory
 <img src="https://github.com/allkern/psxe/assets/15825466/199c20e4-4e7e-4d0a-a033-eda347034ed5" width="12" height="12"/> MDEC </br>
 <img src="https://github.com/allkern/psxe/assets/15825466/199c20e4-4e7e-4d0a-a033-eda347034ed5" width="12" height="12"/> GTE </br>
 <img src="https://github.com/allkern/psxe/assets/15825466/199c20e4-4e7e-4d0a-a033-eda347034ed5" width="12" height="12"/> Timers </br>
-<img src="https://github.com/allkern/psxe/assets/15825466/0ed1fe97-de2f-47de-bb30-82286e6c5fa0" width="12" height="12"/> CDROM </br>
+<img src="https://github.com/allkern/psxe/assets/15825466/199c20e4-4e7e-4d0a-a033-eda347034ed5" width="12" height="12"/> CDROM </br>
+<img src="https://github.com/allkern/psxe/assets/15825466/0ed1fe97-de2f-47de-bb30-82286e6c5fa0" width="12" height="12"/> Memory cards </br>
 
 ## Building
 Building the emulator should be easy, just use the scripts provided in this repo.
