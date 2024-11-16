@@ -111,6 +111,7 @@ void psx_spu_init(psx_spu_t* spu, psx_ic_t* ic) {
 
     // Mute all voices
     spu->endx = 0x00ffffff;
+    spu->irq9addr = 0xffff;
 }
 
 uint32_t psx_spu_read32(psx_spu_t* spu, uint32_t offset) {
@@ -703,6 +704,8 @@ uint32_t psx_spu_get_sample(psx_spu_t* spu) {
     return clampl | (((uint32_t)clampr) << 16);
 }
 
+int counter = 0;
+
 void psx_spu_update_cdda_buffer(psx_spu_t* spu, void* buf) {
     int16_t* ptr = buf;
     int16_t* ram = (int16_t*)spu->ram;
@@ -723,6 +726,18 @@ void psx_spu_update_cdda_buffer(psx_spu_t* spu, void* buf) {
 
         ram[i + 0x000] = l / 8;
         ram[i + 0x400] = r / 8;
+    }
+
+    // Simulate capture IRQ
+    if (spu->ramdtc & 0xc) {
+        if (spu->irq9addr <= 0x1ff) {
+            if (!counter) {
+                psx_ic_irq(spu->ic, IC_SPU);
+            }
+
+            counter++;
+            counter &= 0x1;
+        }
     }
 }
 
