@@ -182,7 +182,7 @@ void psx_bus_write32(psx_bus_t* bus, uint32_t addr, uint32_t value) {
 }
 
 
-void psx_bus_write16(psx_bus_t* bus, uint32_t addr, uint16_t value) {
+void psx_bus_write16(psx_bus_t* bus, uint32_t addr, uint32_t value) {
     bus->access_cycles = 0;
 
     uint32_t vaddr = addr;
@@ -217,7 +217,7 @@ void psx_bus_write16(psx_bus_t* bus, uint32_t addr, uint16_t value) {
     //exit(1);
 }
 
-void psx_bus_write8(psx_bus_t* bus, uint32_t addr, uint8_t value) {
+void psx_bus_write8(psx_bus_t* bus, uint32_t addr, uint32_t value) {
     bus->access_cycles = 0;
 
     uint32_t vaddr = addr;

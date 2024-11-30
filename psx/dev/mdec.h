@@ -57,9 +57,9 @@ typedef struct {
 
     uint8_t* output;
     int output_index;
-    uint16_t output_words_remaining;
+    uint32_t output_words_remaining;
 
-    uint16_t words_remaining;
+    uint32_t words_remaining;
     int current_block;
     int output_bit15;
     int output_signed;

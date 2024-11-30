@@ -237,6 +237,8 @@ void mdec_decode_macroblock(psx_mdec_t* mdec) {
         mdec->output_empty = 0;
         mdec->output_index = 0;
 
+        // printf("output words remaining: %d (%x) count=%d block_size=%lld size=%lld\n", mdec->output_words_remaining, mdec->output_words_remaining, block_count, block_size, size);
+
         // log_set_quiet(0);
         // log_fatal("Finished decoding %u-bit MDEC data input=(%04x -> %08x)",
         //     (mdec->output_depth == 3) ? 15 : 24,

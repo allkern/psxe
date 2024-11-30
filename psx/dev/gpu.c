@@ -335,7 +335,7 @@ void gpu_render_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, 
                 if (!texel)
                     continue;
 
-                if ((data.attrib & PA_TRANSP) != 0)
+                if (data.attrib & PA_TRANSP)
                     transp = (texel & 0x8000) != 0;
 
                 if (data.attrib & PA_RAW) {
