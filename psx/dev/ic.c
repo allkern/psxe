@@ -6,8 +6,16 @@
 
 #include "../log.h"
 
+// Static buffer for IC instance
+static psx_ic_t g_ic_instance;
+static int g_ic_instance_used = 0;
+
 psx_ic_t* psx_ic_create(void) {
-    return (psx_ic_t*)malloc(sizeof(psx_ic_t));
+    if (g_ic_instance_used) {
+        return NULL; // Only one instance allowed
+    }
+    g_ic_instance_used = 1;
+    return &g_ic_instance;
 }
 
 void psx_ic_init(psx_ic_t* ic, psx_cpu_t* cpu) {
@@ -121,5 +129,6 @@ void psx_ic_irq(psx_ic_t* ic, int id) {
 }
 
 void psx_ic_destroy(psx_ic_t* ic) {
-    free(ic);
+    // Mark instance as available again
+    g_ic_instance_used = 0;
 }

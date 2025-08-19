@@ -22,8 +22,16 @@ const char* states[] = {
     "YPH"
 };
 
+// Static buffer for guncon instance
+static psxi_guncon_t g_guncon_instance;
+static int g_guncon_instance_used = 0;
+
 psxi_guncon_t* psxi_guncon_create(void) {
-    return (psxi_guncon_t*)malloc(sizeof(psxi_guncon_t));
+    if (g_guncon_instance_used) {
+        return NULL; // Only one instance allowed
+    }
+    g_guncon_instance_used = 1;
+    return &g_guncon_instance;
 }
 
 void psxi_guncon_init(psxi_guncon_t* guncon) {
@@ -134,5 +142,6 @@ void psxi_guncon_init_input(psxi_guncon_t* guncon, psx_input_t* input) {
 }
 
 void psxi_guncon_destroy(psxi_guncon_t* guncon) {
-    free(guncon);
+    // Mark instance as available again
+    g_guncon_instance_used = 0;
 }

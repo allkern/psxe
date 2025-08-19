@@ -1,12 +1,13 @@
 #include "bios.h"
 #include "../log.h"
+#include "../mem_track.h"
 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
 psx_bios_t* psx_bios_create(void) {
-    return (psx_bios_t*)malloc(sizeof(psx_bios_t));
+    return (psx_bios_t*)MALLOC_TRACKED(sizeof(psx_bios_t));
 }
 
 void psx_bios_init(psx_bios_t* bios) {
@@ -37,7 +38,7 @@ int psx_bios_load(psx_bios_t* bios, const char* path) {
 
     fseek(file, 0, SEEK_SET);
 
-    bios->buf = malloc(size);
+    bios->buf = MALLOC_TRACKED(size);
     bios->io_size = size;
 
     if (!fread(bios->buf, 1, size, file))
@@ -73,6 +74,6 @@ void psx_bios_write8(psx_bios_t* bios, uint32_t offset, uint8_t value) {
 }
 
 void psx_bios_destroy(psx_bios_t* bios) {
-    free(bios->buf);
-    free(bios);
+    FREE_TRACKED(bios->buf);
+    FREE_TRACKED(bios);
 }

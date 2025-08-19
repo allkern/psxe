@@ -1,7 +1,21 @@
 #include "psx.h"
+#include "mem_track.h"
+#include <stdlib.h>
+
+// Static buffer for PSX instance
+static psx_t g_psx_instance;
+static int g_psx_instance_used = 0;
 
 psx_t* psx_create(void) {
-    return (psx_t*)malloc(sizeof(psx_t));
+    if (g_psx_instance_used) {
+        return NULL; // Only one instance allowed
+    }
+    g_psx_instance_used = 1;
+    
+    // Register the static buffer size
+    REGISTER_STATIC_BUFFER(g_psx_instance, "psx_main_instance");
+    
+    return &g_psx_instance;
 }
 
 int psx_load_bios(psx_t* psx, const char* path) {
@@ -221,6 +235,7 @@ void psx_destroy(psx_t* psx) {
     psx_bus_destroy(psx->bus);
     psx_ram_destroy(psx->ram);
     psx_exp1_destroy(psx->exp1);
+    psx_exp2_destroy(psx->exp2);  // Missing destroy call!
     psx_mc1_destroy(psx->mc1);
     psx_mc2_destroy(psx->mc2);
     psx_mc3_destroy(psx->mc3);
@@ -233,7 +248,8 @@ void psx_destroy(psx_t* psx) {
     psx_pad_destroy(psx->pad);
     psx_mdec_destroy(psx->mdec);
 
-    free(psx);
+    // Mark instance as available again
+    g_psx_instance_used = 0;
 }
 
 psx_bios_t* psx_get_bios(psx_t* psx) {

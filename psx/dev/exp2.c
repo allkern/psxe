@@ -4,9 +4,10 @@
 
 #include "../log.h"
 #include "exp2.h"
+#include "../mem_track.h"
 
 psx_exp2_t* psx_exp2_create(void) {
-    return (psx_exp2_t*)malloc(sizeof(psx_exp2_t));
+    return (psx_exp2_t*)MALLOC_TRACKED(sizeof(psx_exp2_t));
 }
 
 void psx_exp2_init(psx_exp2_t* exp2, exp2_tty_tx atcons_tx, exp2_tty_tx duart_tx) {
@@ -76,5 +77,5 @@ void psx_exp2_write8(psx_exp2_t* exp2, uint32_t offset, uint8_t value) {
 }
 
 void psx_exp2_destroy(psx_exp2_t* exp2) {
-    free(exp2);
+    FREE_TRACKED(exp2);
 }

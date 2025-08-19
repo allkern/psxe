@@ -2,9 +2,13 @@
 #include "../psx/input/sda.h"
 #include "../psx/input/guncon.h"
 #include "../psx/dev/cdrom/cdrom.h"
+#include "../psx/mem_track.h"
 
 #include "screen.h"
 #include "config.h"
+
+#include <windows.h>
+#include <psapi.h>
 
 #undef main
 
@@ -37,8 +41,52 @@ int main(int argc, const char* argv[]) {
 
     log_set_level(cfg->log_level);
 
+#ifdef ENABLE_MEM_TRACKING
+    // Initialize memory tracking
+    reset_mem_stats();
+    log_info("Memory tracking enabled");
+#endif
+
+    // Display architecture information
+    #ifdef _WIN64
+        printf("PSXE Architecture: 64-bit (x64)\r\n");
+    #elif defined(_WIN32)
+        printf("PSXE Architecture: 32-bit (x86)\r\n");
+    #elif defined(__x86_64__) || defined(__amd64__)
+        printf("PSXE Architecture: 64-bit (x64)\r\n");
+    #elif defined(__i386__)
+        printf("PSXE Architecture: 32-bit (x86)\r\n");
+    #elif defined(__aarch64__)
+        printf("PSXE Architecture: 64-bit (ARM64)\r\n");
+    #elif defined(__arm__)
+        printf("PSXE Architecture: 32-bit (ARM)\r\n");
+    #else
+        printf("PSXE Architecture: Unknown\r\n");
+    #endif
+
+    // Display pointer size as additional confirmation
+    log_info("Pointer size: %lu bytes (%s)\r\n", sizeof(void*), 
+             sizeof(void*) == 8 ? "64-bit" : sizeof(void*) == 4 ? "32-bit" : "unknown");
+
+    // Memory usage before PSX initialization
+    PROCESS_MEMORY_COUNTERS memCounter;
+    if (GetProcessMemoryInfo(GetCurrentProcess(), &memCounter, sizeof(memCounter))) {
+        log_warn("Memory before PSX init: Working=%.2fMB, Private=%.2fMB, Peak=%.2fMB\r\n", 
+                 memCounter.WorkingSetSize / (1024.0 * 1024.0),
+                 memCounter.PagefileUsage / (1024.0 * 1024.0),
+                 memCounter.PeakWorkingSetSize / (1024.0 * 1024.0));
+    }
+
     psx_t* psx = psx_create();
     psx_init(psx, cfg->bios, cfg->exp_path);
+
+    // Memory usage after PSX initialization
+    if (GetProcessMemoryInfo(GetCurrentProcess(), &memCounter, sizeof(memCounter))) {
+        printf("Memory after PSX init: Working=%.2fMB, Private=%.2fMB, Peak=%.2fMB\r\n", 
+                 memCounter.WorkingSetSize / (1024.0 * 1024.0),
+                 memCounter.PagefileUsage / (1024.0 * 1024.0),
+                 memCounter.PeakWorkingSetSize / (1024.0 * 1024.0));
+    }
 
     psx_cdrom_t* cdrom = psx_get_cdrom(psx);
 
@@ -51,6 +99,14 @@ int main(int argc, const char* argv[]) {
     psxe_screen_t* screen = psxe_screen_create();
     psxe_screen_init(screen, psx);
     psxe_screen_set_scale(screen, cfg->scale);
+
+    // Memory usage after screen/SDL initialization
+    if (GetProcessMemoryInfo(GetCurrentProcess(), &memCounter, sizeof(memCounter))) {
+        printf("Memory after SDL/Screen init: Working=%.2fMB, Private=%.2fMB, Peak=%.2fMB\r\n", 
+                 memCounter.WorkingSetSize / (1024.0 * 1024.0),
+                 memCounter.PagefileUsage / (1024.0 * 1024.0),
+                 memCounter.PeakWorkingSetSize / (1024.0 * 1024.0));
+    }
     psxe_screen_reload(screen);
 
     SDL_Init(SDL_INIT_AUDIO);
@@ -82,9 +138,6 @@ int main(int argc, const char* argv[]) {
     psx_input_t* input = psx_input_create();
     psx_input_init(input);
 
-    // psxi_guncon_t* controller = psxi_guncon_create();
-    // psxi_guncon_init(controller);
-    // psxi_guncon_init_input(controller, input);
     psxi_sda_t* controller = psxi_sda_create();
     psxi_sda_init(controller, SDA_MODEL_DIGITAL);
     psxi_sda_init_input(controller, input);
@@ -121,9 +174,20 @@ int main(int argc, const char* argv[]) {
     log_fatal("gp=%08x sp=%08x fp=%08x ra=%08x", cpu->r[28], cpu->r[29], cpu->r[30], cpu->r[31]);
     log_fatal("pc=%08x hi=%08x lo=%08x ep=%08x", cpu->pc, cpu->hi, cpu->lo, cpu->cop0_r[COP0_EPC]);
 
+#ifdef ENABLE_MEM_TRACKING
+    // Print memory tracking statistics before cleanup
+    print_mem_stats();
+#endif
+
     psx_pad_detach_joy(psx->pad, 0);
     psx_destroy(psx);
     psxe_screen_destroy(screen);
+
+#ifdef ENABLE_MEM_TRACKING
+    // Print final memory statistics after cleanup
+    printf("=== Final Memory Statistics ===\n");
+    print_mem_stats();
+#endif
 
     return 0;
 }

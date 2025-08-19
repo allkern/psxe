@@ -4,6 +4,7 @@
 #include "cpu.h"
 #include "log.h"
 #include "exe.h"
+#include "bus_init.h"
 
 #include <stdint.h>
 
@@ -75,5 +76,6 @@ psx_pad_t* psx_get_pad(psx_t*);
 psx_mdec_t* psx_get_mdec(psx_t*);
 psx_cpu_t* psx_get_cpu(psx_t*);
 void psx_destroy(psx_t*);
+void psx_print_perf_stats(void);
 
 #endif

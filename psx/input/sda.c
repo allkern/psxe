@@ -10,13 +10,34 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Static buffer for SDA instance - ensure proper alignment
+static psxi_sda_t g_sda_instance = {0};
+static int g_sda_instance_used = 0;
+
 psxi_sda_t* psxi_sda_create(void) {
-    return (psxi_sda_t*)malloc(sizeof(psxi_sda_t));
+    if (g_sda_instance_used) {
+        return NULL; // Only one instance allowed
+    }
+    g_sda_instance_used = 1;
+    return &g_sda_instance;
 }
 
 void psxi_sda_init(psxi_sda_t* sda, uint16_t model) {
-    memset(sda, 0, sizeof(psxi_sda_t));
+    // Initialize structure members directly instead of memset
+    // to avoid LTO optimization issues
+    sda->prev_model = 0;
+    sda->model = 0;
+    sda->state = 0;
+    sda->sa_mode = 0;
+    sda->sw = 0;
+    sda->tx_data = 0;
+    sda->tx_data_ready = 0;
+    sda->adc0 = 0;
+    sda->adc1 = 0;
+    sda->adc2 = 0;
+    sda->adc3 = 0;
 
+    // Now set the actual values
     sda->tx_data = 0xff;
     sda->tx_data_ready = 1;
     sda->prev_model = model;
@@ -151,5 +172,6 @@ void psxi_sda_init_input(psxi_sda_t* sda, psx_input_t* input) {
 }
 
 void psxi_sda_destroy(psxi_sda_t* sda) {
-    free(sda);
+    // Mark instance as available again
+    g_sda_instance_used = 0;
 }

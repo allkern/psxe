@@ -3,6 +3,7 @@
 
 #include "disc.h"
 #include "cue.h"
+#include "../../mem_track.h"
 
 #define MSF_TO_LBA(m, s, f) ((m * 4500) + (s * 75) + f)
 
@@ -13,8 +14,10 @@ const char* disc_cd_extensions[] = {
     0
 };
 
+static psx_disc_t g_disc_instance;
+
 psx_disc_t* psx_disc_create(void) {
-    return malloc(sizeof(psx_disc_t));
+    return &g_disc_instance;
 }
 
 int disc_get_extension(const char* path) {
@@ -109,5 +112,5 @@ int psx_disc_get_track_lba(psx_disc_t* disc, int track) {
 void psx_disc_destroy(psx_disc_t* disc) {
     disc->destroy(disc->udata);
 
-    free(disc);
+    memset(disc, 0, sizeof(psx_disc_t));
 }

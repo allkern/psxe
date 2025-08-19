@@ -5,8 +5,16 @@
 #include "mc2.h"
 #include "../log.h"
 
+// Static buffer for MC2 instance
+static psx_mc2_t g_mc2_instance;
+static int g_mc2_instance_used = 0;
+
 psx_mc2_t* psx_mc2_create(void) {
-    return (psx_mc2_t*)malloc(sizeof(psx_mc2_t));
+    if (g_mc2_instance_used) {
+        return NULL; // Only one instance allowed
+    }
+    g_mc2_instance_used = 1;
+    return &g_mc2_instance;
 }
 
 /*
@@ -62,5 +70,6 @@ void psx_mc2_write8(psx_mc2_t* mc2, uint32_t offset, uint8_t value) {
 }
 
 void psx_mc2_destroy(psx_mc2_t* mc2) {
-    free(mc2);
+    // Mark instance as available again
+    g_mc2_instance_used = 0;
 }

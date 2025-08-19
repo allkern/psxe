@@ -5,9 +5,10 @@
 
 #include <string.h>
 #include <stdlib.h>
+#include "../mem_track.h"
 
 psx_input_t* psx_input_create(void) {
-    return (psx_input_t*)malloc(sizeof(psx_input_t));
+    return (psx_input_t*)MALLOC_TRACKED(sizeof(psx_input_t));
 }
 
 void psx_input_init(psx_input_t* input) {
@@ -35,8 +36,8 @@ void psx_input_set_on_analog_change_func(psx_input_t* input, psx_input_on_analog
 }
 
 void psx_input_destroy(psx_input_t* input) {
-    free(input->udata);
-    free(input);
+    // FREE_TRACKED(input->udata);
+    FREE_TRACKED(input);
 }
 
 #endif

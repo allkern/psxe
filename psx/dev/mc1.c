@@ -41,8 +41,16 @@
 
 // #define COM_DLY(dev)
 
+// Static buffer for MC1 instance
+static psx_mc1_t g_mc1_instance;
+static int g_mc1_instance_used = 0;
+
 psx_mc1_t* psx_mc1_create(void) {
-    return (psx_mc1_t*)malloc(sizeof(psx_mc1_t));
+    if (g_mc1_instance_used) {
+        return NULL; // Only one instance allowed
+    }
+    g_mc1_instance_used = 1;
+    return &g_mc1_instance;
 }
 
 /*
@@ -242,5 +250,6 @@ uint32_t psx_mc1_get_pad_write_delay(psx_mc1_t* mc1) {
 }
 
 void psx_mc1_destroy(psx_mc1_t* mc1) {
-    free(mc1);
+    // Mark instance as available again
+    g_mc1_instance_used = 0;
 }

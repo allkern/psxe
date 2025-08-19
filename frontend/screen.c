@@ -1,7 +1,9 @@
 #include "screen.h"
+#include "../psx/mem_track.h"
 
 #include "input/sda.h"
 #include "input/guncon.h"
+#include "../psx/psx.h"
 
 uint32_t screen_get_button(SDL_Keycode k) {
     if (k == SDLK_x     ) return PSXI_SW_SDA_CROSS;
@@ -66,8 +68,22 @@ int screen_get_base_width(psxe_screen_t* screen) {
     return 320;
 }
 
+// Static buffer for screen instance
+static psxe_screen_t g_screen_instance;
+static int g_screen_instance_used = 0;
+
 psxe_screen_t* psxe_screen_create(void) {
-    return (psxe_screen_t*)malloc(sizeof(psxe_screen_t));
+    if (g_screen_instance_used) {
+        return NULL; // Only one instance allowed
+    }
+    g_screen_instance_used = 1;
+    
+#ifdef ENABLE_MEM_TRACKING
+    // Register static buffer size
+    add_static_buffer_size(sizeof(g_screen_instance), "screen_instance");
+#endif
+    
+    return &g_screen_instance;
 }
 
 void psxe_screen_init(psxe_screen_t* screen, psx_t* psx) {
@@ -91,8 +107,7 @@ void psxe_screen_init(psxe_screen_t* screen, psx_t* psx) {
     screen->texture_height = PSX_GPU_FB_HEIGHT;
 
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_GAMECONTROLLER);
-    SDL_SetRenderDrawColor(screen->renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
-
+    
     screen->controller = screen_find_controller();
 }
 
@@ -125,8 +140,11 @@ void psxe_screen_reload(psxe_screen_t* screen) {
     screen->renderer = SDL_CreateRenderer(
         screen->window,
         -1,
-        SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC
+        SDL_RENDERER_ACCELERATED | SDL_RENDERER_TARGETTEXTURE | SDL_RENDERER_PRESENTVSYNC
     );
+
+    // Set renderer to prioritize performance
+    SDL_SetRenderDrawColor(screen->renderer, 0, 0, 0, 255);
 
     screen->texture = SDL_CreateTexture(
         screen->renderer,
@@ -175,26 +193,28 @@ void psxe_screen_update(psxe_screen_t* screen) {
     void* display_buf = screen->debug_mode ?
         psx_get_vram(screen->psx) : psx_get_display_buffer(screen->psx);
 
-    // printf("res=(%u,%u) off=(%u,%u) disp=(%u,%u-%u,%u) draw=(%u,%u-%u,%u) vres=%u\n",
-    //     screen->texture_width,
-    //     screen->texture_height,
-    //     screen->psx->gpu->disp_x,
-    //     screen->psx->gpu->disp_y,
-    //     screen->psx->gpu->disp_x1,
-    //     screen->psx->gpu->disp_y1,
-    //     screen->psx->gpu->disp_x2,
-    //     screen->psx->gpu->disp_y2,
-    //     screen->psx->gpu->draw_x1,
-    //     screen->psx->gpu->draw_y1,
-    //     screen->psx->gpu->draw_x2,
-    //     screen->psx->gpu->draw_y2,
-    //     screen->psx->gpu->disp_y2 - screen->psx->gpu->disp_y1
-    // );
-
     if ((screen->psx->gpu->disp_y + screen->texture_height) > 512)
         display_buf = psx_get_vram(screen->psx);
 
-    SDL_UpdateTexture(screen->texture, NULL, display_buf, PSX_GPU_FB_STRIDE);
+    // Use more efficient texture streaming
+    void* pixels;
+    int pitch;
+    if (SDL_LockTexture(screen->texture, NULL, &pixels, &pitch) == 0) {
+        // Calculate the correct copy size using the actual pitch
+        int copy_width = screen->texture_width * 2; // 2 bytes per pixel for BGR555
+        for (int y = 0; y < screen->texture_height; y++) {
+            memcpy((char*)pixels + y * pitch, 
+                   (char*)display_buf + y * PSX_GPU_FB_STRIDE, 
+                   copy_width);
+        }
+        SDL_UnlockTexture(screen->texture);
+    } else {
+        // Fallback to SDL_UpdateTexture if locking fails
+        SDL_UpdateTexture(screen->texture, NULL, display_buf, PSX_GPU_FB_STRIDE);
+    }
+
+    // Clear and render in one go for better GPU utilization
+    SDL_SetRenderDrawColor(screen->renderer, 0, 0, 0, 255);
     SDL_RenderClear(screen->renderer);
 
     if (!screen->debug_mode) {
@@ -363,46 +383,6 @@ void psxe_screen_update(psxe_screen_t* screen) {
                 }
             } break;
 
-            // To-do: GunCon
-            // case SDL_MOUSEMOTION: {
-            //     psx_pad_analog_change(screen->pad, 0, PSXI_AX_GUNCON_SX, psx_get_dmode_width(screen->psx));
-            //     psx_pad_analog_change(screen->pad, 0, PSXI_AX_GUNCON_SY, psx_get_dmode_height(screen->psx));
-            //     psx_pad_analog_change(screen->pad, 0, PSXI_AX_GUNCON_X, event.motion.x * (1.0f / (float)screen->scale));
-            //     psx_pad_analog_change(screen->pad, 0, PSXI_AX_GUNCON_Y, event.motion.y * (1.0f / (float)screen->scale));
-            // } break;
-
-            // case SDL_MOUSEBUTTONDOWN: {
-            //     switch (event.button.button) {
-            //         case SDL_BUTTON_LEFT: {
-            //             psx_pad_button_press(screen->pad, 0, PSXI_SW_GUNCON_A);
-            //         } break;
-
-            //         case SDL_BUTTON_RIGHT: {
-            //             psx_pad_button_press(screen->pad, 0, PSXI_SW_GUNCON_B);
-            //         } break;
-
-            //         case SDL_BUTTON_MIDDLE: {
-            //             psx_pad_button_press(screen->pad, 0, PSXI_SW_GUNCON_TRIGGER);
-            //         } break;
-            //     }
-            // } break;
-
-            // case SDL_MOUSEBUTTONUP: {
-            //     switch (event.button.button) {
-            //         case SDL_BUTTON_LEFT: {
-            //             psx_pad_button_release(screen->pad, 0, PSXI_SW_GUNCON_A);
-            //         } break;
-
-            //         case SDL_BUTTON_RIGHT: {
-            //             psx_pad_button_release(screen->pad, 0, PSXI_SW_GUNCON_B);
-            //         } break;
-
-            //         case SDL_BUTTON_MIDDLE: {
-            //             psx_pad_button_release(screen->pad, 0, PSXI_SW_GUNCON_TRIGGER);
-            //         } break;
-            //     }
-            // } break;
-
             case SDL_TEXTINPUT: {
                 psx_exp2_atcons_put(screen->psx->exp2, event.text.text[0]);
             } break;
@@ -432,7 +412,8 @@ void psxe_screen_destroy(psxe_screen_t* screen) {
 
     SDL_Quit();
 
-    free(screen);
+    // Mark instance as available again
+    g_screen_instance_used = 0;
 }
 
 void psxe_gpu_dmode_event_cb(psx_gpu_t* gpu) {

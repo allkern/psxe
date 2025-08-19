@@ -2,9 +2,10 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include "../../mem_track.h"
 
 list_t* list_create(void) {
-    list_t* list = malloc(sizeof(list_t));
+    list_t* list = MALLOC_TRACKED(sizeof(list_t));
 
     list_init(list);
 
@@ -18,7 +19,7 @@ void list_init(list_t* list) {
 }
 
 void list_push_front(list_t* list, void* data) {
-    node_t* node = malloc(sizeof(node_t));
+    node_t* node = MALLOC_TRACKED(sizeof(node_t));
 
     node->data = data;
     node->next = list->first;
@@ -32,7 +33,7 @@ void list_push_front(list_t* list, void* data) {
 }
 
 void list_push_back(list_t* list, void* data) {
-    node_t* node = malloc(sizeof(node_t));
+    node_t* node = MALLOC_TRACKED(sizeof(node_t));
 
     node->data = data;
     node->next = NULL;
@@ -54,7 +55,7 @@ void list_pop_front(list_t* list) {
 
     node_t* next = list->first->next;
 
-    free(list->first);
+    FREE_TRACKED(list->first);
 
     list->first = next;
 
@@ -70,7 +71,7 @@ void list_pop_back(list_t* list) {
     while (node->next != list->last)
         node = node->next;
 
-    free(node->next);
+    FREE_TRACKED(node->next);
 
     node->next = NULL;
 
@@ -113,10 +114,10 @@ void list_destroy(list_t* list) {
     while (node) {
         node_t* next = node->next;
 
-        free(node);
+        FREE_TRACKED(node);
 
         node = next;
     }
 
-    free(list);
+    FREE_TRACKED(list);
 }

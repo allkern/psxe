@@ -1,8 +1,9 @@
 #include "mcd.h"
 #include "../log.h"
+#include "../mem_track.h"
 
 psx_mcd_t* psx_mcd_create(void) {
-    return (psx_mcd_t*)malloc(sizeof(psx_mcd_t));
+    return (psx_mcd_t*)MALLOC_TRACKED(sizeof(psx_mcd_t));
 }
 
 int psx_mcd_init(psx_mcd_t* mcd, const char* path) {
@@ -11,7 +12,7 @@ int psx_mcd_init(psx_mcd_t* mcd, const char* path) {
     mcd->state = MCD_STATE_TX_HIZ;
     mcd->flag = 0x08;
     mcd->path = path;
-    mcd->buf = malloc(MCD_MEMORY_SIZE);
+    mcd->buf = MALLOC_TRACKED(MCD_MEMORY_SIZE);
     mcd->tx_data_ready = 0;
 
     memset(mcd->buf, 0, MCD_MEMORY_SIZE);
@@ -189,6 +190,6 @@ void psx_mcd_destroy(psx_mcd_t* mcd) {
     fwrite(mcd->buf, 1, MCD_MEMORY_SIZE, file);
     fclose(file);
 
-    free(mcd->buf);
-    free(mcd);
+    FREE_TRACKED(mcd->buf);
+    FREE_TRACKED(mcd);
 }

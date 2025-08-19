@@ -4,6 +4,7 @@
 
 #include "spu.h"
 #include "../log.h"
+#include "../mem_track.h"
 
 #define CLAMP(v, l, h) (((v) <= (l)) ? (l) : (((v) >= (h)) ? (h) : (v)))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
@@ -95,7 +96,7 @@ static const int16_t g_spu_gauss_table[] = {
 };
 
 psx_spu_t* psx_spu_create(void) {
-    return (psx_spu_t*)malloc(sizeof(psx_spu_t));
+    return (psx_spu_t*)MALLOC_TRACKED(sizeof(psx_spu_t));
 }
 
 void psx_spu_init(psx_spu_t* spu, psx_ic_t* ic) {
@@ -105,7 +106,7 @@ void psx_spu_init(psx_spu_t* spu, psx_ic_t* ic) {
     spu->io_size = PSX_SPU_SIZE;
 
     spu->ic = ic;
-    spu->ram = (uint8_t*)malloc(SPU_RAM_SIZE);
+    spu->ram = (uint8_t*)MALLOC_TRACKED(SPU_RAM_SIZE);
 
     memset(spu->ram, 0, SPU_RAM_SIZE);
 
@@ -454,8 +455,8 @@ void psx_spu_write8(psx_spu_t* spu, uint32_t offset, uint8_t value) {
 }
 
 void psx_spu_destroy(psx_spu_t* spu) {
-    free(spu->ram);
-    free(spu);
+    FREE_TRACKED(spu->ram);
+    FREE_TRACKED(spu);
 }
 
 // To-do: Optimize reverb

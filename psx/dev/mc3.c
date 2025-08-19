@@ -5,8 +5,16 @@
 #include "mc3.h"
 #include "../log.h"
 
+// Static buffer for MC3 instance
+static psx_mc3_t g_mc3_instance;
+static int g_mc3_instance_used = 0;
+
 psx_mc3_t* psx_mc3_create(void) {
-    return (psx_mc3_t*)malloc(sizeof(psx_mc3_t));
+    if (g_mc3_instance_used) {
+        return NULL; // Only one instance allowed
+    }
+    g_mc3_instance_used = 1;
+    return &g_mc3_instance;
 }
 
 /*
@@ -60,5 +68,6 @@ void psx_mc3_write8(psx_mc3_t* mc3, uint32_t offset, uint8_t value) {
 }
 
 void psx_mc3_destroy(psx_mc3_t* mc3) {
-    free(mc3);
+    // Mark instance as available again
+    g_mc3_instance_used = 0;
 }

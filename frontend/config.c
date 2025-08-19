@@ -5,6 +5,7 @@
 #include "common.h"
 
 #include "../psx/log.h"
+#include "../psx/mem_track.h"
 
 static const char* g_version_text =
 #ifdef _WIN32
@@ -66,8 +67,22 @@ static const char* g_regions_text =
 static const char* g_desc_text =
     "\nPlease report any bugs to <https://github.com/allkern/psxe/issues>\n";
 
+// Static buffer for config instance
+static psxe_config_t g_config_instance;
+static int g_config_instance_used = 0;
+
 psxe_config_t* psxe_cfg_create(void) {
-    return (psxe_config_t*)malloc(sizeof(psxe_config_t));
+    if (g_config_instance_used) {
+        return NULL; // Only one instance allowed
+    }
+    g_config_instance_used = 1;
+    
+#ifdef ENABLE_MEM_TRACKING
+    // Register static buffer size
+    add_static_buffer_size(sizeof(g_config_instance), "config_instance");
+#endif
+    
+    return &g_config_instance;
 }
 
 void psxe_cfg_init(psxe_config_t* cfg) {
@@ -75,7 +90,8 @@ void psxe_cfg_init(psxe_config_t* cfg) {
 }
 
 void psxe_cfg_destroy(psxe_config_t* cfg) {
-    free(cfg);
+    // Mark instance as available again
+    g_config_instance_used = 0;
 }
 
 void psxe_cfg_load_defaults(psxe_config_t* cfg) {

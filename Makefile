@@ -3,6 +3,11 @@
 CFLAGS := -g -DLOG_USE_COLOR `sdl2-config --cflags --libs`
 CFLAGS += -Ofast -Wno-overflow -Wall -pedantic -Wno-address-of-packed-member -flto
 
+# Add memory tracking flag
+ifdef TRACK_MEMORY
+	CFLAGS += -DENABLE_MEM_TRACKING
+endif
+
 PLATFORM := $(shell uname -s)
 
 ifeq ($(PLATFORM),Darwin)

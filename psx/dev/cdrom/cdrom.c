@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 #include "cdrom.h"
+#include "../../mem_track.h"
 
 typedef void (*cdrom_cmd_func)(psx_cdrom_t* cdrom);
 
@@ -72,7 +73,7 @@ cdrom_cmd_func cdrom_cmd_table[] = {
     cdrom_cmd_videocd
 };
 
-static const char* cdrom_cmd_names[] = {
+static const char* cdrom_cmd_names[] __attribute__((unused)) = {
     "<unimplemented>",
     "CdlGetstat",
     "CdlSetloc",
@@ -120,8 +121,11 @@ void cdrom_write_vol2(psx_cdrom_t* cdrom, uint8_t data);
 void cdrom_write_vol3(psx_cdrom_t* cdrom, uint8_t data);
 void cdrom_write_vapp(psx_cdrom_t* cdrom, uint8_t data);
 
-psx_cdrom_t* psx_cdrom_create(void) {
-    return malloc(sizeof(psx_cdrom_t));
+static psx_cdrom_t g_cdrom_instance;
+
+psx_cdrom_t* psx_cdrom_create(void)
+{
+    return &g_cdrom_instance;
 }
 
 void psx_cdrom_init(psx_cdrom_t* cdrom, psx_ic_t* ic) {
@@ -140,7 +144,7 @@ void psx_cdrom_init(psx_cdrom_t* cdrom, psx_ic_t* ic) {
     queue_init(cdrom->parameters, 32);
 
     cdrom->version = CDR_VERSION_C0A;
-    cdrom->region = CDR_REGION_AMERICA;
+    cdrom->region = CDR_REGION_EUROPE;
 
     cdrom->vol[0] = 0x80;
     cdrom->vol[1] = 0x00;
@@ -642,7 +646,7 @@ void psx_cdrom_destroy(psx_cdrom_t* cdrom) {
     queue_destroy(cdrom->data);
     queue_destroy(cdrom->response);
     queue_destroy(cdrom->parameters);
-    free(cdrom);
+    memset(cdrom, 0, sizeof(psx_cdrom_t));
 }
 
 void cdrom_write_stat(psx_cdrom_t* cdrom, uint8_t data) {
@@ -668,10 +672,10 @@ void cdrom_write_cmd(psx_cdrom_t* cdrom, uint8_t data) {
     if (cdrom->state == CD_STATE_READ)
         cdrom->busy = 1;
 
-    printf("cdrom: %-16s (%02x) params: ", cdrom_cmd_names[data], data);
+    // printf("cdrom: %-16s (%02x) params: ", cdrom_cmd_names[data], data);
 
     if (queue_is_empty(cdrom->parameters)) {
-        puts("(none)");
+        // puts("(none)");
 
         return;
     }

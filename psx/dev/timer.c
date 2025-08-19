@@ -148,8 +148,16 @@ const char* g_psx_timer_reg_names[] = {
     "target", 0, 0, 0
 };
 
+// Static buffer for timer instance
+static psx_timer_t g_timer_instance;
+static int g_timer_instance_used = 0;
+
 psx_timer_t* psx_timer_create(void) {
-    return (psx_timer_t*)malloc(sizeof(psx_timer_t));
+    if (g_timer_instance_used) {
+        return NULL; // Only one instance allowed
+    }
+    g_timer_instance_used = 1;
+    return &g_timer_instance;
 }
 
 void psx_timer_init(psx_timer_t* timer, psx_ic_t* ic, psx_gpu_t* gpu) {
@@ -423,5 +431,6 @@ void psxe_gpu_vblank_end_event_cb(psx_gpu_t* gpu) {
 }
 
 void psx_timer_destroy(psx_timer_t* timer) {
-    free(timer);
+    // Mark instance as available again
+    g_timer_instance_used = 0;
 }

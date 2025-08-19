@@ -4,6 +4,7 @@
 
 #include "pad.h"
 #include "../log.h"
+#include "../mem_track.h"
 
 #define JOY_IRQ_DELAY 512
 
@@ -143,7 +144,7 @@ void pad_handle_ctrl_write(psx_pad_t* pad, uint32_t value) {
 }
 
 psx_pad_t* psx_pad_create(void) {
-    return (psx_pad_t*)malloc(sizeof(psx_pad_t));
+    return (psx_pad_t*)MALLOC_TRACKED(sizeof(psx_pad_t));
 }
 
 void psx_pad_init(psx_pad_t* pad, psx_ic_t* ic) {
@@ -347,5 +348,5 @@ void psx_pad_destroy(psx_pad_t* pad) {
     psx_pad_detach_mcd(pad, 0);
     psx_pad_detach_mcd(pad, 1);
 
-    free(pad);
+    FREE_TRACKED(pad);
 }

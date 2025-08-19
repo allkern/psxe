@@ -3,13 +3,14 @@
 #include <stdio.h>
 
 #include "queue.h"
+#include "../../mem_track.h"
 
 queue_t* queue_create(void) {
-    return malloc(sizeof(queue_t));
+    return MALLOC_TRACKED(sizeof(queue_t));
 }
 
 void queue_init(queue_t* queue, size_t size) {
-    queue->buf = malloc(size);
+    queue->buf = MALLOC_TRACKED(size);
     queue->read_index = 0;
     queue->write_index = 0;
     queue->size = size;
@@ -70,6 +71,6 @@ int queue_max_size(queue_t* queue) {
 }
 
 void queue_destroy(queue_t* queue) {
-    free(queue->buf);
-    free(queue);
+    FREE_TRACKED(queue->buf);
+    FREE_TRACKED(queue);
 }

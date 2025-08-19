@@ -1,22 +1,37 @@
 #include "ram.h"
 #include "../log.h"
+#include "../mem_track.h"
 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 
+// Static buffer for RAM instance (maximum 2MB PSX RAM)
+static psx_ram_t g_ram_instance;
+static uint8_t g_ram_buffer[RAM_SIZE_2MB];
+static int g_ram_instance_used = 0;
+
 psx_ram_t* psx_ram_create(void) {
-    return (psx_ram_t*)malloc(sizeof(psx_ram_t));
+    if (g_ram_instance_used) {
+        return NULL; // Only one instance allowed
+    }
+    g_ram_instance_used = 1;
+    
+    // Register static buffer sizes
+    REGISTER_STATIC_BUFFER(g_ram_instance, "ram_instance");
+    REGISTER_STATIC_BUFFER(g_ram_buffer, "ram_buffer_2MB");
+    
+    return &g_ram_instance;
 }
 
 void psx_ram_init(psx_ram_t* ram, psx_mc2_t* mc2, int size) {
     memset(ram, 0, sizeof(psx_ram_t));
 
     ram->io_base = PSX_RAM_BEGIN;
-    ram->io_size = PSX_RAM_SIZE;
+    ram->io_size = RAM_SIZE_2MB;
 
     ram->mc2 = mc2;
-    ram->buf = (uint8_t*)malloc(size);
+    ram->buf = g_ram_buffer;
     ram->size = size;
 
     // Size has to be a multiple of 2MB, default to 2MB
@@ -28,7 +43,7 @@ void psx_ram_init(psx_ram_t* ram, psx_mc2_t* mc2, int size) {
 
 uint32_t psx_ram_read32(psx_ram_t* ram, uint32_t offset) {
     if (((ram->mc2->ram_size >> 9) & 7) == 3)
-        if (offset >= 0x400000)
+        if (offset >= 0x200000)
             return 0xffffffff;
 
     offset &= ram->size - 1;
@@ -38,7 +53,7 @@ uint32_t psx_ram_read32(psx_ram_t* ram, uint32_t offset) {
 
 uint16_t psx_ram_read16(psx_ram_t* ram, uint32_t offset) {
     if (((ram->mc2->ram_size >> 9) & 7) == 3)
-        if (offset >= 0x400000)
+        if (offset >= 0x200000)
             return 0xffff;
 
     offset &= ram->size - 1;
@@ -48,7 +63,7 @@ uint16_t psx_ram_read16(psx_ram_t* ram, uint32_t offset) {
 
 uint8_t psx_ram_read8(psx_ram_t* ram, uint32_t offset) {
     if (((ram->mc2->ram_size >> 9) & 7) == 3)
-        if (offset >= 0x400000)
+        if (offset >= 0x200000)
             return 0xff;
 
     offset &= ram->size - 1;
@@ -75,6 +90,6 @@ void psx_ram_write8(psx_ram_t* ram, uint32_t offset, uint8_t value) {
 }
 
 void psx_ram_destroy(psx_ram_t* ram) {
-    free(ram->buf);
-    free(ram);
+    // Mark instance as available again
+    g_ram_instance_used = 0;
 }

@@ -4,6 +4,16 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include "../mem_track.h"
+
+// Static buffers for MDEC to avoid dynamic allocation
+#define MDEC_MAX_OUTPUT_SIZE (16 * 1024 * 1024)  // 16MB max output buffer
+#define MDEC_MAX_INPUT_SIZE (64 * 1024)          // 64KB max input buffer (should be enough)
+
+static uint8_t g_mdec_output_buffer[MDEC_MAX_OUTPUT_SIZE];
+static uint32_t g_mdec_input_buffer[MDEC_MAX_INPUT_SIZE / sizeof(uint32_t)];
+static psx_mdec_t g_mdec_instance;
+static int g_mdec_instance_in_use = 0;
 
 int zigzag[] = {
     0 , 1 , 5 , 6 , 14, 15, 27, 28,
@@ -179,10 +189,8 @@ void mdec_nop(psx_mdec_t* mdec) { /* Do nothing */ }
 
 void mdec_decode_macroblock(psx_mdec_t* mdec) {
     if (mdec->output_depth < 2) {
-        size_t block_size = (mdec->output_depth == 3) ? 512 : 768;
-        size_t size = block_size;
-
-        mdec->output = malloc(size);
+        // Use static buffer instead of dynamic allocation
+        mdec->output = g_mdec_output_buffer;
 
         rl_decode_block(mdec->yblk, (uint16_t*)mdec->input, mdec->y_quant_table, mdec->scale_table);
 
@@ -204,36 +212,52 @@ void mdec_decode_macroblock(psx_mdec_t* mdec) {
         uint16_t* in = (uint16_t*)mdec->input;
 
         size_t block_size = (mdec->output_depth == 3) ? 512 : 768;
-        size_t size = block_size;
 
         unsigned long bytes_processed = 0;
 
-        int block_count = 1;
+        // Estimate maximum blocks needed to avoid repeated realloc
+        size_t estimated_blocks = (mdec->input_size / 8) + 1;  // Conservative estimate
+        size_t max_output_size = estimated_blocks * block_size;
+        
+        // Cap the maximum output to prevent excessive memory usage (16MB max)
+        const size_t MAX_MDEC_OUTPUT = 16 * 1024 * 1024;
+        if (max_output_size > MAX_MDEC_OUTPUT) {
+            max_output_size = MAX_MDEC_OUTPUT;
+            estimated_blocks = max_output_size / block_size;
+        }
 
-        while (bytes_processed < mdec->input_size) {
-            if (!mdec->output) {
-                mdec->output = malloc(block_count * size);
-            } else {
-                mdec->output = realloc(mdec->output, block_count * size);
-            }
+        // Always allocate a fresh buffer to avoid realloc issues
+        // Use static buffer instead of dynamic allocation
+        mdec->output = g_mdec_output_buffer;
+        
+        // Debug logging for large allocations
+        if (max_output_size > 1024 * 1024) { // Log if > 1MB
+            log_info("MDEC: Using static buffer for %zu bytes (%.1f MB), input_size=%zu, estimated_blocks=%zu", 
+                     max_output_size, (double)max_output_size / (1024*1024), mdec->input_size, estimated_blocks);
+        }
 
+        // No need to check allocation failure with static buffer
+
+        int block_count = 0;
+
+        while (bytes_processed < mdec->input_size && block_count < estimated_blocks) {
             in = rl_decode_block(mdec->crblk, in, mdec->uv_quant_table, mdec->scale_table);
             in = rl_decode_block(mdec->cbblk, in, mdec->uv_quant_table, mdec->scale_table);
             in = rl_decode_block(mdec->yblk, in, mdec->y_quant_table, mdec->scale_table);
-            yuv_to_rgb(mdec, &mdec->output[(block_count * size) - block_size], 0, 0);
+            yuv_to_rgb(mdec, &mdec->output[block_count * block_size], 0, 0);
             in = rl_decode_block(mdec->yblk, in, mdec->y_quant_table, mdec->scale_table);
-            yuv_to_rgb(mdec, &mdec->output[(block_count * size) - block_size], 8, 0);
+            yuv_to_rgb(mdec, &mdec->output[block_count * block_size], 8, 0);
             in = rl_decode_block(mdec->yblk, in, mdec->y_quant_table, mdec->scale_table);
-            yuv_to_rgb(mdec, &mdec->output[(block_count * size) - block_size], 0, 8);
+            yuv_to_rgb(mdec, &mdec->output[block_count * block_size], 0, 8);
             in = rl_decode_block(mdec->yblk, in, mdec->y_quant_table, mdec->scale_table);
-            yuv_to_rgb(mdec, &mdec->output[(block_count * size) - block_size], 8, 8);
+            yuv_to_rgb(mdec, &mdec->output[block_count * block_size], 8, 8);
 
             bytes_processed = (uintptr_t)in - (uintptr_t)mdec->input;
 
             ++block_count;
         }
 
-        mdec->output_words_remaining = ((block_count - 1) * block_size) >> 2;
+        mdec->output_words_remaining = (block_count * block_size) >> 2;
         mdec->output_empty = 0;
         mdec->output_index = 0;
 
@@ -272,7 +296,17 @@ mdec_fn_t g_mdec_cmd_table[] = {
 };
 
 psx_mdec_t* psx_mdec_create(void) {
-    return (psx_mdec_t*)malloc(sizeof(psx_mdec_t));
+    if (g_mdec_instance_in_use) {
+        log_fatal("MDEC: Only one instance allowed!");
+        return NULL;
+    }
+    
+    g_mdec_instance_in_use = 1;
+    REGISTER_STATIC_BUFFER(g_mdec_output_buffer, "mdec_output_buffer");
+    REGISTER_STATIC_BUFFER(g_mdec_input_buffer, "mdec_input_buffer"); 
+    REGISTER_STATIC_BUFFER(g_mdec_instance, "mdec_instance");
+    
+    return &g_mdec_instance;
 }
 
 void psx_mdec_init(psx_mdec_t* mdec) {
@@ -364,7 +398,8 @@ void psx_mdec_write32(psx_mdec_t* mdec, uint32_t offset, uint32_t value) {
 
                     g_mdec_cmd_table[mdec->cmd >> 29](mdec);
 
-                    free(mdec->input);
+                    // No need to free static buffer - just clear pointer
+                    mdec->input = NULL;
                 }
 
                 break;
@@ -387,7 +422,7 @@ void psx_mdec_write32(psx_mdec_t* mdec, uint32_t offset, uint32_t value) {
                     mdec->busy = 0;
                     mdec->words_remaining = 0;
 
-                    log_fatal("MDEC %08x: NOP", mdec->cmd);
+                    log_info("MDEC %08x: NOP", mdec->cmd);
                 } break;
 
                 case MDEC_CMD_DECODE: {
@@ -405,7 +440,7 @@ void psx_mdec_write32(psx_mdec_t* mdec, uint32_t offset, uint32_t value) {
                     mdec->recv_color = mdec->cmd & 1;
                     mdec->words_remaining = mdec->recv_color ? 32 : 16;
 
-                    log_fatal("MDEC %08x: set quant tables %04x",
+                    log_info("MDEC %08x: set quant tables %04x",
                         mdec->cmd,
                         mdec->words_remaining
                     );
@@ -415,7 +450,7 @@ void psx_mdec_write32(psx_mdec_t* mdec, uint32_t offset, uint32_t value) {
                     //printf("mdec setst\n");
                     mdec->words_remaining = 32;
 
-                    log_fatal("MDEC %08x: set scale table %04x",
+                    log_info("MDEC %08x: set scale table %04x",
                         mdec->cmd,
                         mdec->words_remaining
                     );
@@ -428,7 +463,16 @@ void psx_mdec_write32(psx_mdec_t* mdec, uint32_t offset, uint32_t value) {
                 mdec->input_size = mdec->words_remaining * sizeof(uint32_t);
                 mdec->input_full = 0;
                 mdec->input_index = 0;
-                mdec->input = malloc(mdec->input_size);
+                
+                // Check if the requested size fits in our static buffer
+                if (mdec->input_size > MDEC_MAX_INPUT_SIZE) {
+                    log_warn("MDEC input size %zu exceeds static buffer size %d, clamping", 
+                             mdec->input_size, MDEC_MAX_INPUT_SIZE);
+                    mdec->input_size = MDEC_MAX_INPUT_SIZE;
+                    mdec->words_remaining = MDEC_MAX_INPUT_SIZE / sizeof(uint32_t);
+                }
+                
+                mdec->input = g_mdec_input_buffer;
             }
         } break;
 
@@ -466,7 +510,14 @@ void psx_mdec_write8(psx_mdec_t* mdec, uint32_t offset, uint8_t value) {
 }
 
 void psx_mdec_destroy(psx_mdec_t* mdec) {
-    free(mdec);
+    if (mdec && mdec == &g_mdec_instance) {
+        // Clear pointers but don't free static buffers
+        mdec->input = NULL;
+        mdec->output = NULL;
+        
+        // Mark instance as available
+        g_mdec_instance_in_use = 0;
+    }
 }
 
 #undef CLAMP

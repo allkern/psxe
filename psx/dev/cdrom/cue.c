@@ -5,6 +5,11 @@
 #include <ctype.h>
 
 #include "cue.h"
+#include "../../mem_track.h"
+
+static cue_track_t sCue_track;
+static cue_file_t  sCue_file;
+static cue_t sCue;
 
 static const char* cue_keywords[] = {
     "4CH",
@@ -198,7 +203,7 @@ cue_track_t* cue_parse_track(cue_t* cue) {
     if (!isdigit(cue->c))
         return NULL;
 
-    cue_track_t* track = malloc(sizeof(cue_track_t));
+    cue_track_t* track = &sCue_track;
 
     track->end = 0;
     track->start = 0;
@@ -223,10 +228,10 @@ cue_file_t* cue_parse_file(cue_t* cue, const char* p, const char* s) {
     if (cue->c != '\"')
         return NULL;
 
-    cue_file_t* file = malloc(sizeof(cue_file_t));
+    cue_file_t* file = &sCue_file;
 
     file->tracks = list_create();
-    file->name = malloc(512);
+    file->name = MALLOC_TRACKED(512);
 
     // Append root path to track file path
     char* ptr = file->name;
@@ -257,7 +262,7 @@ cue_file_t* cue_parse_file(cue_t* cue, const char* p, const char* s) {
 }
 
 cue_t* cue_create(void) {
-    return malloc(sizeof(cue_t));
+    return &sCue;
 }
 
 void cue_init(cue_t* cue) {
@@ -404,14 +409,13 @@ int cue_load(cue_t* cue, int mode) {
         data->buf_mode = mode;
         data->size = get_file_size(file);
 
-        // printf("Loaded \'%s\': size=%llx, sectors=%llu\n",
-        //     data->name,
-        //     data->size,
-        //     data->size / 0x930
-        // );
+        printf("Loaded \'%s\': size=%llx\n",
+            data->name,
+            data->size
+        );
 
         if (data->buf_mode == LD_BUFFERED) {
-            data->buf = malloc(data->size);
+            data->buf = MALLOC_TRACKED(data->size);
 
             fseek(file, 0, SEEK_SET);
 
@@ -440,15 +444,15 @@ void cue_destroy(cue_t* cue) {
         cue_file_t* file = node->data;
 
         if (file->buf_mode == LD_BUFFERED) {
-            free(file->buf);
+            FREE_TRACKED(file->buf);
         } else {
             fclose((FILE*)file->buf);
         }
 
         list_destroy(file->tracks);
 
-        free(file->name);
-        free(file);
+        FREE_TRACKED(file->name);
+        memset(&sCue_file, 0, sizeof(cue_file_t));
 
         node = node->next;
     }
@@ -458,14 +462,12 @@ void cue_destroy(cue_t* cue) {
     node = list_front(cue->tracks);
 
     while (node) {
-        free(node->data);
-
         node = node->next;
     }
 
     list_destroy(cue->tracks);
 
-    free(cue);
+    memset(cue, 0, sizeof(cue_t));
 }
 
 cue_track_t* get_sector_track(cue_t* cue, uint32_t lba) {

@@ -6,15 +6,13 @@
 #include "../log.h"
 #include "mc2.h"
 
-#define PSX_RAM_SIZE    0x800000 // 8MB window
+// #define PSX_RAM_SIZE    0x200000 // 2MB window
 #define PSX_RAM_BEGIN   0x00000000
-//#define PSX_RAM_END     0x001fffff
-#define PSX_RAM_END     0x1effffff
 #define RAM_INIT_FILL   0
 
 #define RAM_SIZE_2MB 0x200000
-#define RAM_SIZE_4MB 0x400000
-#define RAM_SIZE_8MB 0x800000
+// #define RAM_SIZE_4MB 0x400000
+// #define RAM_SIZE_8MB 0x800000
 
 typedef struct {
     uint32_t bus_delay;

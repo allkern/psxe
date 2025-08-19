@@ -12,15 +12,24 @@ const uint32_t g_psx_bus_region_mask_table[] = {
     0x7fffffff, 0x1fffffff, 0xffffffff, 0xffffffff
 };
 
+// Static buffer for bus instance
+static psx_bus_t g_bus_instance;
+static int g_bus_instance_used = 0;
+
 psx_bus_t* psx_bus_create(void) {
-    return (psx_bus_t*)malloc(sizeof(psx_bus_t));
+    if (g_bus_instance_used) {
+        return NULL; // Only one instance allowed
+    }
+    g_bus_instance_used = 1;
+    return &g_bus_instance;
 }
 
 // Does nothing for now
 void psx_bus_init(psx_bus_t* bus) {}
 
 void psx_bus_destroy(psx_bus_t* bus) {
-    free(bus);
+    // Mark instance as available again
+    g_bus_instance_used = 0;
 }
 
 #define HANDLE_READ(dev, bits) \

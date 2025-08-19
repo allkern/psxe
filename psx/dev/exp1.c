@@ -4,9 +4,10 @@
 
 #include "../log.h"
 #include "exp1.h"
+#include "../mem_track.h"
 
 psx_exp1_t* psx_exp1_create(void) {
-    return (psx_exp1_t*)malloc(sizeof(psx_exp1_t));
+    return (psx_exp1_t*)MALLOC_TRACKED(sizeof(psx_exp1_t));
 }
 
 int psx_exp1_init(psx_exp1_t* exp1, psx_mc1_t* mc1, const char* path) {
@@ -16,7 +17,7 @@ int psx_exp1_init(psx_exp1_t* exp1, psx_mc1_t* mc1, const char* path) {
     exp1->io_size = PSX_EXP1_SIZE;
 
     exp1->mc1 = mc1;
-    exp1->rom = (uint8_t*)malloc(PSX_EXP1_SIZE);
+    exp1->rom = (uint8_t*)MALLOC_TRACKED(PSX_EXP1_SIZE);
 
     memset(exp1->rom, 0xff, PSX_EXP1_SIZE);
 
@@ -68,6 +69,6 @@ void psx_exp1_write8(psx_exp1_t* exp1, uint32_t offset, uint8_t value) {
 }
 
 void psx_exp1_destroy(psx_exp1_t* exp1) {
-    free(exp1->rom);
-    free(exp1);
+    FREE_TRACKED(exp1->rom);
+    FREE_TRACKED(exp1);
 }

@@ -35,8 +35,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "../psx/mem_track.h"
+
+#ifdef ENABLE_MEM_TRACKING
+static void *(*ppmalloc)(size_t) = tracked_malloc_simple;
+static void (*ppfree)(void *) = tracked_free_simple;
+#else
 static void *(*ppmalloc)(size_t) = malloc;
 static void (*ppfree)(void *) = free;
+#endif
 
 void toml_set_memutil(void *(*xxmalloc)(size_t), void (*xxfree)(void *)) {
   if (xxmalloc)

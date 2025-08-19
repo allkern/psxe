@@ -154,15 +154,24 @@ void cpu_b_kcall_hook(psx_cpu_t* cpu) {
     }
 }
 
+// Static buffer for CPU instance
+static psx_cpu_t g_cpu_instance;
+static int g_cpu_instance_used = 0;
+
 psx_cpu_t* psx_cpu_create(void) {
-    return (psx_cpu_t*)malloc(sizeof(psx_cpu_t));
+    if (g_cpu_instance_used) {
+        return NULL; // Only one instance allowed
+    }
+    g_cpu_instance_used = 1;
+    return &g_cpu_instance;
 }
 
 void cpu_a_kcall_hook(psx_cpu_t*);
 void cpu_b_kcall_hook(psx_cpu_t*);
 
 void psx_cpu_destroy(psx_cpu_t* cpu) {
-    free(cpu);
+    // Mark instance as available again
+    g_cpu_instance_used = 0;
 }
 
 void psx_cpu_set_a_kcall_hook(psx_cpu_t* cpu, psx_cpu_kcall_hook_t hook) {
@@ -1033,16 +1042,16 @@ static inline void psx_cpu_i_sub(psx_cpu_t* cpu) {
 
     int32_t s = (int32_t)cpu->r[S];
     int32_t t = (int32_t)cpu->r[T];
-    int32_t r;
+    int r;
 
     DO_PENDING_LOAD;
 
-    int o = __builtin_ssub_overflow(s, t, &r);
+    int o = __builtin_ssub_overflow((int)s, (int)t, &r);
 
     if (o) {
         psx_cpu_exception(cpu, CAUSE_OV);
     } else {
-        cpu->r[D] = r;
+        cpu->r[D] = (uint32_t)r;
     }
 }
 

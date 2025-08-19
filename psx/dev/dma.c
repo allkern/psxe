@@ -7,8 +7,16 @@
 #include <string.h>
 #include <ctype.h>
 
+// Static buffer for DMA instance
+static psx_dma_t g_dma_instance;
+static int g_dma_instance_used = 0;
+
 psx_dma_t* psx_dma_create(void) {
-    return (psx_dma_t*)malloc(sizeof(psx_dma_t));
+    if (g_dma_instance_used) {
+        return NULL; // Only one instance allowed
+    }
+    g_dma_instance_used = 1;
+    return &g_dma_instance;
 }
 
 const uint32_t g_psx_dma_ctrl_hw_1_table[] = {
@@ -536,7 +544,8 @@ void psx_dma_update(psx_dma_t* dma, int cyc) {
 }
 
 void psx_dma_destroy(psx_dma_t* dma) {
-    free(dma);
+    // Mark instance as available again
+    g_dma_instance_used = 0;
 }
 
 #undef CR

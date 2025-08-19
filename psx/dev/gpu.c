@@ -5,6 +5,7 @@
 
 #include "gpu.h"
 #include "../log.h"
+#include "../mem_track.h"
 
 #define SE10(v) ((int16_t)((v) << 5) >> 5)
 
@@ -41,7 +42,11 @@ int max3(int a, int b, int c) {
 }
 
 psx_gpu_t* psx_gpu_create(void) {
-    return (psx_gpu_t*)malloc(sizeof(psx_gpu_t));
+    psx_gpu_t* gpu = (psx_gpu_t*)MALLOC_TRACKED(sizeof(psx_gpu_t));
+    if (gpu) {
+        memset(gpu, 0, sizeof(psx_gpu_t));
+    }
+    return gpu;
 }
 
 void psx_gpu_init(psx_gpu_t* gpu, psx_ic_t* ic) {
@@ -50,9 +55,10 @@ void psx_gpu_init(psx_gpu_t* gpu, psx_ic_t* ic) {
     gpu->io_base = PSX_GPU_BEGIN;
     gpu->io_size = PSX_GPU_SIZE;
 
-    gpu->vram = (uint16_t*)malloc(PSX_GPU_VRAM_SIZE);
-    gpu->empty = malloc(PSX_GPU_VRAM_SIZE);
+    gpu->vram = (uint16_t*)MALLOC_TRACKED(PSX_GPU_VRAM_SIZE);
+    gpu->empty = MALLOC_TRACKED(PSX_GPU_VRAM_SIZE);
 
+    memset(gpu->vram, 0, PSX_GPU_VRAM_SIZE);
     memset(gpu->empty, 0, PSX_GPU_VRAM_SIZE);
 
     gpu->state = GPU_STATE_RECV_CMD;
@@ -222,22 +228,36 @@ uint16_t gpu_fetch_texel_bilinear(psx_gpu_t* gpu, float tx, float ty, uint32_t t
 #define TL(z, a, b) \
     ((z < 0) || ((z == 0) && ((b.y > a.y) || ((b.y == a.y) && (b.x < a.x)))))
 
+// Fast saturate for color clamping using bit operations
+static inline unsigned int fast_saturate_u8(float val) {
+    if (val >= 255.0f) return 255;
+    if (val <= 0.0f) return 0;
+    return (unsigned int)(val + 0.5f);
+}
+
+// Optimized BGR555 conversion with direct bit operations
+static inline uint16_t fast_bgr555(uint32_t rgb) {
+    return ((rgb & 0xf8) >> 3) |
+           ((rgb & 0xf800) >> 6) |
+           ((rgb & 0xf80000) >> 9);
+}
+
 void gpu_render_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, poly_data_t data, int edge) {
-    vertex_t a, b, c, p;
+    vertex_t a, b, c;
 
-    int tpx = (data.texp & 0xf) << 6;
-    int tpy = (data.texp & 0x10) << 4;
-    int clutx = (data.clut & 0x3f) << 4;
-    int cluty = (data.clut >> 6) & 0x1ff;
-    int depth = (data.texp >> 7) & 3;
+    // Precompute texture and clut parameters
+    const int tpx = (data.texp & 0xf) << 6;
+    const int tpy = (data.texp & 0x10) << 4;
+    const int clutx = (data.clut & 0x3f) << 4;
+    const int cluty = (data.clut >> 6) & 0x1ff;
+    const int depth = (data.texp >> 7) & 3;
+    const int is_textured = (data.attrib & PA_TEXTURED) != 0;
+    const int is_shaded = (data.attrib & PA_SHADED) != 0;
+    const int is_raw = (data.attrib & PA_RAW) != 0;
     int transp = (data.attrib & PA_TRANSP) != 0;
-    int transp_mode;
-
-    if (data.attrib & PA_TEXTURED) {
-        transp_mode = (data.texp >> 5) & 3;
-    } else {
-        transp_mode = (gpu->gpustat >> 5) & 3;
-    }
+    
+    const int transp_mode = is_textured ? 
+        ((data.texp >> 5) & 3) : ((gpu->gpustat >> 5) & 3);
 
     a = v0;
 
@@ -250,174 +270,176 @@ void gpu_render_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, 
         c = v2;
     }
 
-    a.x += gpu->off_x;
-    b.x += gpu->off_x;
-    c.x += gpu->off_x;
-    a.y += gpu->off_y;
-    b.y += gpu->off_y;
-    c.y += gpu->off_y;
+    // Apply offset once
+    const int off_x = gpu->off_x;
+    const int off_y = gpu->off_y;
+    a.x += off_x;
+    b.x += off_x;
+    c.x += off_x;
+    a.y += off_y;
+    b.y += off_y;
+    c.y += off_y;
 
-    int xmin = min3(a.x, b.x, c.x);
-    int ymin = min3(a.y, b.y, c.y);
-    int xmax = max3(a.x, b.x, c.x);
-    int ymax = max3(a.y, b.y, c.y);
+    // Calculate bounding box with clipping
+    int xmin = max(min3(a.x, b.x, c.x), gpu->draw_x1);
+    int ymin = max(min3(a.y, b.y, c.y), gpu->draw_y1);
+    int xmax = min(max3(a.x, b.x, c.x), gpu->draw_x2);
+    int ymax = min(max3(a.y, b.y, c.y), gpu->draw_y2);
 
-    if (((xmax - xmin) > 2048) || ((ymax - ymin) > 1024))
+    // Early rejection for degenerate or out-of-bounds triangles
+    if (((xmax - xmin) > 2048) || ((ymax - ymin) > 1024) || 
+        (xmin >= xmax) || (ymin >= ymax))
         return;
 
-    float area = EDGE(a, b, c);
+    const float area = EDGE(a, b, c);
+    if (area <= 0.0f) return; // Degenerate triangle
+    
+    const float inv_area = 1.0f / area;
+    
+    // Cache constants for shaded rendering
+    uint32_t mod = is_shaded ? 0 : data.v[0].c;
+    
+    // Color component extractors for shading
+    int ac_r = is_shaded ? ((a.c >> 0) & 0xff) : 0;
+    int ac_g = is_shaded ? ((a.c >> 8) & 0xff) : 0;
+    int ac_b = is_shaded ? ((a.c >> 16) & 0xff) : 0;
+    int bc_r = is_shaded ? ((b.c >> 0) & 0xff) : 0;
+    int bc_g = is_shaded ? ((b.c >> 8) & 0xff) : 0;
+    int bc_b = is_shaded ? ((b.c >> 16) & 0xff) : 0;
+    int cc_r = is_shaded ? ((c.c >> 0) & 0xff) : 0;
+    int cc_g = is_shaded ? ((c.c >> 8) & 0xff) : 0;
+    int cc_b = is_shaded ? ((c.c >> 16) & 0xff) : 0;
 
     for (int y = ymin; y < ymax; y++) {
+        // Precompute y-dependent values outside inner loop
+        const int y_offset = y * 1024;
+        const int dy_dither = (y - ymin) & 3;
+        
         for (int x = xmin; x < xmax; x++) {
-            int bc = (x >= gpu->draw_x1) && (x <= gpu->draw_x2) &&
-                     (y >= gpu->draw_y1) && (y <= gpu->draw_y2);
+            // Fast edge function evaluation using integer arithmetic
+            const int z0_i = (c.x - b.x) * (y - b.y) - (c.y - b.y) * (x - b.x);
+            const int z1_i = (a.x - c.x) * (y - c.y) - (a.y - c.y) * (x - c.x);
+            const int z2_i = (b.x - a.x) * (y - a.y) - (b.y - a.y) * (x - a.x);
 
-            if (!bc)
-                continue;
-
-            p.x = x;
-            p.y = y;
-
-            float z0 = EDGE(b, c, p);
-
-            if (TL(z0, b, c))
-                continue;
-
-            float z1 = EDGE(c, a, p);
-
-            if (TL(z1, c, a))
-                continue;
-
-            float z2 = EDGE(a, b, p);
-
-            if (TL(z2, a, b))
+            // Top-left rule check - early rejection
+            if ((z0_i < 0) || (z1_i < 0) || (z2_i < 0) ||
+                (z0_i == 0 && ((c.y > b.y) || (c.y == b.y && c.x < b.x))) ||
+                (z1_i == 0 && ((a.y > c.y) || (a.y == c.y && a.x < c.x))) ||
+                (z2_i == 0 && ((b.y > a.y) || (b.y == a.y && b.x < a.x))))
                 continue;
 
             uint16_t color = 0;
-            uint32_t mod   = 0;
+            
+            if (is_shaded) {
+                // Convert to float for barycentric interpolation
+                const float z0 = (float)z0_i;
+                const float z1 = (float)z1_i;
+                const float z2 = (float)z2_i;
+                
+                float cr = (z0 * ac_r + z1 * bc_r + z2 * cc_r) * inv_area;
+                float cg = (z0 * ac_g + z1 * bc_g + z2 * cc_g) * inv_area;
+                float cb = (z0 * ac_b + z1 * bc_b + z2 * cc_b) * inv_area;
 
-            if (data.attrib & PA_SHADED) {
-                float cr = (z0 * ((a.c >>  0) & 0xff) + z1 * ((b.c >>  0) & 0xff) + z2 * ((c.c >>  0) & 0xff)) / area;
-                float cg = (z0 * ((a.c >>  8) & 0xff) + z1 * ((b.c >>  8) & 0xff) + z2 * ((c.c >>  8) & 0xff)) / area;
-                float cb = (z0 * ((a.c >> 16) & 0xff) + z1 * ((b.c >> 16) & 0xff) + z2 * ((c.c >> 16) & 0xff)) / area;
-
-                int dy = (y - ymin) & 3;
-                int dx = (x - xmin) & 3;
-
-                int dither = g_psx_gpu_dither_kernel[dx + (dy * 4)];
+                // Dithering with optimized kernel access
+                const int dx_dither = (x - xmin) & 3;
+                const int dither = g_psx_gpu_dither_kernel[dx_dither + (dy_dither << 2)];
 
                 cr += dither;
                 cg += dither;
                 cb += dither;
 
-                // Saturate (clamp) to 00-ff
-                cr = (cr >= 255.0f) ? 255.0f : ((cr <= 0.0f) ? 0.0f : cr);
-                cg = (cg >= 255.0f) ? 255.0f : ((cg <= 0.0f) ? 0.0f : cg);
-                cb = (cb >= 255.0f) ? 255.0f : ((cb <= 0.0f) ? 0.0f : cb);
+                const unsigned int ucr = fast_saturate_u8(cr);
+                const unsigned int ucg = fast_saturate_u8(cg);
+                const unsigned int ucb = fast_saturate_u8(cb);
 
-                unsigned int ucr = roundf(cr);
-                unsigned int ucg = roundf(cg);
-                unsigned int ucb = roundf(cb);
-
-                uint32_t rgb = (ucb << 16) | (ucg << 8) | ucr;
-
-                mod = rgb;
-            } else {
-                mod = data.v[0].c;
+                mod = (ucb << 16) | (ucg << 8) | ucr;
             }
 
-            if (data.attrib & PA_TEXTURED) {
-                float tx = ((z0 * a.tx) + (z1 * b.tx) + (z2 * c.tx)) / area;
-                float ty = ((z0 * a.ty) + (z1 * b.ty) + (z2 * c.ty)) / area;
+            if (is_textured) {
+                const float z0 = (float)z0_i;
+                const float z1 = (float)z1_i;
+                const float z2 = (float)z2_i;
+                
+                const float tx = (z0 * a.tx + z1 * b.tx + z2 * c.tx) * inv_area;
+                const float ty = (z0 * a.ty + z1 * b.ty + z2 * c.ty) * inv_area;
 
-                uint16_t texel = gpu_fetch_texel_bilinear(gpu, tx, ty, tpx, tpy, clutx, cluty, depth);
+                const uint16_t texel = gpu_fetch_texel_bilinear(gpu, tx, ty, tpx, tpy, clutx, cluty, depth);
 
-                if (!texel)
-                    continue;
+                if (!texel) continue;
 
                 if (data.attrib & PA_TRANSP)
                     transp = (texel & 0x8000) != 0;
 
-                if (data.attrib & PA_RAW) {
+                if (is_raw) {
                     color = texel;
                 } else {
-                    float tr = ((texel >> 0 ) & 0x1f) << 3;
-                    float tg = ((texel >> 5 ) & 0x1f) << 3;
-                    float tb = ((texel >> 10) & 0x1f) << 3;
+                    const float tr = ((texel >> 0) & 0x1f) << 3;
+                    const float tg = ((texel >> 5) & 0x1f) << 3;
+                    const float tb = ((texel >> 10) & 0x1f) << 3;
 
-                    float mr = (mod >> 0 ) & 0xff;
-                    float mg = (mod >> 8 ) & 0xff;
-                    float mb = (mod >> 16) & 0xff;
+                    const float mr = (mod >> 0) & 0xff;
+                    const float mg = (mod >> 8) & 0xff;
+                    const float mb = (mod >> 16) & 0xff;
 
-                    float cr = (tr * mr) / 128.0f;
-                    float cg = (tg * mg) / 128.0f;
-                    float cb = (tb * mb) / 128.0f;
+                    const float cr = (tr * mr) * (1.0f / 128.0f);
+                    const float cg = (tg * mg) * (1.0f / 128.0f);
+                    const float cb = (tb * mb) * (1.0f / 128.0f);
 
-                    cr = (cr >= 255.0f) ? 255.0f : ((cr <= 0.0f) ? 0.0f : cr);
-                    cg = (cg >= 255.0f) ? 255.0f : ((cg <= 0.0f) ? 0.0f : cg);
-                    cb = (cb >= 255.0f) ? 255.0f : ((cb <= 0.0f) ? 0.0f : cb);
+                    const unsigned int ucr = fast_saturate_u8(cr);
+                    const unsigned int ucg = fast_saturate_u8(cg);
+                    const unsigned int ucb = fast_saturate_u8(cb);
 
-                    unsigned int ucr = roundf(cr);
-                    unsigned int ucg = roundf(cg);
-                    unsigned int ucb = roundf(cb);
-
-                    uint32_t rgb = ucr | (ucg << 8) | (ucb << 16);
-
-                    color = BGR555(rgb);
+                    const uint32_t rgb = ucr | (ucg << 8) | (ucb << 16);
+                    color = fast_bgr555(rgb);
                 }
             } else {
-                color = BGR555(mod);
+                color = fast_bgr555(mod);
             }
 
-            float cr = ((color >> 0 ) & 0x1f) << 3;
-            float cg = ((color >> 5 ) & 0x1f) << 3;
-            float cb = ((color >> 10) & 0x1f) << 3;
+            // Transparency blending with optimized branches
+            if (__builtin_expect(transp, 0)) {
+                const uint16_t back = gpu->vram[x + y_offset];
+                
+                float cr = ((color >> 0) & 0x1f) << 3;
+                float cg = ((color >> 5) & 0x1f) << 3;
+                float cb = ((color >> 10) & 0x1f) << 3;
+                
+                const float br = ((back >> 0) & 0x1f) << 3;
+                const float bg = ((back >> 5) & 0x1f) << 3;
+                const float bb = ((back >> 10) & 0x1f) << 3;
 
-            if (transp) {
-                uint16_t back = gpu->vram[x + (y * 1024)];
-
-                float br = ((back >> 0 ) & 0x1f) << 3;
-                float bg = ((back >> 5 ) & 0x1f) << 3;
-                float bb = ((back >> 10) & 0x1f) << 3;
-
-                // Do we use transp or gpustat here?
                 switch (transp_mode) {
-                    case 0: {
-                        cr = (0.5f * br) + (0.5f * cr);
-                        cg = (0.5f * bg) + (0.5f * cg);
-                        cb = (0.5f * bb) + (0.5f * cb);
-                    } break;
-                    case 1: {
+                    case 0: // 0.5 * Back + 0.5 * Fore
+                        cr = br * 0.5f + cr * 0.5f;
+                        cg = bg * 0.5f + cg * 0.5f;
+                        cb = bb * 0.5f + cb * 0.5f;
+                        break;
+                    case 1: // Back + Fore
                         cr = br + cr;
                         cg = bg + cg;
                         cb = bb + cb;
-                    } break;
-                    case 2: {
+                        break;
+                    case 2: // Back - Fore
                         cr = br - cr;
                         cg = bg - cg;
                         cb = bb - cb;
-                    } break;
-                    case 3: {
-                        cr = br + (0.25 * cr);
-                        cg = bg + (0.25 * cg);
-                        cb = bb + (0.25 * cb);
-                    } break;
+                        break;
+                    case 3: // Back + 0.25 * Fore
+                        cr = br + cr * 0.25f;
+                        cg = bg + cg * 0.25f;
+                        cb = bb + cb * 0.25f;
+                        break;
                 }
 
-                cr = (cr >= 255.0f) ? 255.0f : ((cr <= 0.0f) ? 0.0f : cr);
-                cg = (cg >= 255.0f) ? 255.0f : ((cg <= 0.0f) ? 0.0f : cg);
-                cb = (cb >= 255.0f) ? 255.0f : ((cb <= 0.0f) ? 0.0f : cb);
+                const unsigned int ucr = fast_saturate_u8(cr);
+                const unsigned int ucg = fast_saturate_u8(cg);
+                const unsigned int ucb = fast_saturate_u8(cb);
 
-                unsigned int ucr = roundf(cr);
-                unsigned int ucg = roundf(cg);
-                unsigned int ucb = roundf(cb);
-
-                uint32_t rgb = ucr | (ucg << 8) | (ucb << 16);
-
-                color = BGR555(rgb);
+                const uint32_t rgb = ucr | (ucg << 8) | (ucb << 16);
+                color = fast_bgr555(rgb);
             }
 
-            gpu->vram[x + (y * 1024)] = color;
+            gpu->vram[x + y_offset] = color;
         }
     }
 }
@@ -1985,6 +2007,7 @@ void* psx_gpu_get_display_buffer(psx_gpu_t* gpu) {
 }
 
 void psx_gpu_destroy(psx_gpu_t* gpu) {
-    free(gpu->vram);
-    free(gpu);
+    FREE_TRACKED(gpu->vram);
+    FREE_TRACKED(gpu->empty);  // Missing free for the empty buffer!
+    FREE_TRACKED(gpu);
 }
