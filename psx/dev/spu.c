@@ -347,6 +347,8 @@ void spu_kon(psx_spu_t* spu, uint32_t value) {
 
             adsr_load_attack(spu, i);
             spu_read_block(spu, i);
+
+            spu->voice[i].envcvol = 0x7fff;
         }
     }
 
