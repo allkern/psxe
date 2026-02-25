@@ -26,6 +26,9 @@ enum {
     MCD_W_STATE_RX_LSB,
     MCD_W_STATE_RX_DATA,
     MCD_W_STATE_RX_CHK,
+#if 1  // add.
+    MCD_W_STATE_RX_CHK2,
+#endif
     MCD_W_STATE_TX_ACK1,
     MCD_W_STATE_TX_ACK2,
     MCD_W_STATE_TX_MEB,
