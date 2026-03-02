@@ -425,11 +425,14 @@ void gpu_render_triangle(psx_gpu_t* gpu, vertex_t v0, vertex_t v1, vertex_t v2, 
 #define CLAMP(v, d, u) ((v) <= (d)) ? (d) : (((v) >= (u)) ? (u) : (v))
 
 void gpu_render_rect(psx_gpu_t* gpu, rect_data_t data) {
+
+#if 0 //PATCH2:Fix clipping bug.
     if ((data.v0.x >= 1024) || (data.v0.y >= 512))
         return;
 
     if ((data.v0.x <= -1024) || (data.v0.y <= -512))
         return;
+#endif
 
     uint16_t width, height;
 
@@ -450,7 +453,10 @@ void gpu_render_rect(psx_gpu_t* gpu, rect_data_t data) {
     /* Offset coordinates */
     data.v0.x += gpu->off_x;
     data.v0.y += gpu->off_y;
-
+#if 1 //PATCH2:Fix clipping bug.
+    data.v0.x = SE10(data.v0.x);
+    data.v0.y = SE10(data.v0.y);
+#endif
     /* Calculate bounding box */
     int xmax = data.v0.x + width;
     int ymax = data.v0.y + height;

@@ -1,6 +1,9 @@
 #include "mcd.h"
 #include "../log.h"
 
+#define PATCH1   1  // 1=Fix memory card access.
+
+
 psx_mcd_t* psx_mcd_create(void) {
     return (psx_mcd_t*)malloc(sizeof(psx_mcd_t));
 }
@@ -35,7 +38,16 @@ int psx_mcd_init(psx_mcd_t* mcd, const char* path) {
 uint8_t psx_mcd_read(psx_mcd_t* mcd) {
     switch (mcd->state) {
         case MCD_STATE_TX_HIZ: mcd->tx_data = 0xff; break;
-        case MCD_STATE_TX_FLG: mcd->tx_data = mcd->flag; mcd->flag = 0x00; break;
+        case MCD_STATE_TX_FLG: 
+#if PATCH1
+			if((mcd->rx_data == 0x81) ||(mcd->rx_data == 0x01) ) {
+	            mcd->tx_data_ready = 1;
+	            mcd->tx_data = 0xff;
+	            mcd->state = MCD_STATE_TX_HIZ;
+	            break;
+			}
+#endif
+        	mcd->tx_data = mcd->flag; mcd->flag = 0x00; break;
         case MCD_STATE_TX_ID1: mcd->tx_data = 0x5a; break;
         case MCD_STATE_TX_ID2: {
             mcd->tx_data_ready = 1;
@@ -45,6 +57,13 @@ uint8_t psx_mcd_read(psx_mcd_t* mcd) {
                 case 'R': mcd->state = MCD_R_STATE_RX_MSB; break;
                 case 'W': mcd->state = MCD_W_STATE_RX_MSB; break;
                 case 'S': mcd->state = MCD_S_STATE_TX_ACK1; break;
+#if PATCH1
+				default:
+		            mcd->tx_data_ready = 0;
+		            mcd->tx_data = 0xff;
+		            mcd->state = MCD_STATE_TX_HIZ;
+				    return mcd->tx_data;
+#endif
             }
 
             // printf("mcd read %02x\n", mcd->tx_data);
@@ -102,7 +121,11 @@ uint8_t psx_mcd_read(psx_mcd_t* mcd) {
         /* Write states */
         case MCD_W_STATE_RX_MSB: mcd->tx_data = 0x00; break;
         case MCD_W_STATE_RX_LSB: mcd->tx_data = mcd->msb;
+#if PATCH1
+                                 mcd->pending_bytes = 128; break;
+#else
                                  mcd->pending_bytes = 127; break;
+#endif
         case MCD_W_STATE_RX_DATA: {
              --mcd->pending_bytes;
 
@@ -123,6 +146,9 @@ uint8_t psx_mcd_read(psx_mcd_t* mcd) {
             return mcd->rx_data;
         } break;
         case MCD_W_STATE_RX_CHK: mcd->tx_data = mcd->rx_data; break;
+#if PATCH1
+        case MCD_W_STATE_RX_CHK2: mcd->tx_data = mcd->rx_data; break;
+#endif
         case MCD_W_STATE_TX_ACK1: mcd->tx_data = 0x5c; break;
         case MCD_W_STATE_TX_ACK2: mcd->tx_data = 0x5d; break;
         case MCD_W_STATE_TX_MEB: {
@@ -156,7 +182,10 @@ void psx_mcd_write(psx_mcd_t* mcd, uint8_t data) {
     // log_fatal("mcd write %02x", data);
     // log_set_quiet(1);
 
-    printf("mcd write %02x\n", data);
+#if PATCH1
+	mcd->rx_data = data;
+#endif
+//  printf("mcd write %02x\n", data);
 
     switch (mcd->state) {
         case MCD_STATE_TX_FLG: mcd->mode = data; break;
