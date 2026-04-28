@@ -1,0 +1,49 @@
+TARGET_NAME := psxe
+
+platform ?= unix
+
+CC ?= gcc
+AR ?= ar
+
+VERSION_TAG := $(shell git describe --always --tags --abbrev=0 2>/dev/null || echo latest)
+COMMIT_HASH := $(shell git rev-parse --short HEAD 2>/dev/null || echo latest)
+OS_INFO := $(shell uname -sr 2>/dev/null | tr ' ' '_' || echo unknown)
+
+SOURCES := $(wildcard psx/*.c)
+SOURCES += $(wildcard psx/dev/*.c)
+SOURCES += $(wildcard psx/dev/cdrom/*.c)
+SOURCES += $(wildcard psx/input/*.c)
+SOURCES += frontend/libretro.c
+
+OBJ := $(SOURCES:.c=.o)
+
+CFLAGS += -Ofast -flto -Wall -Wextra -pedantic -Wno-address-of-packed-member -Wno-overflow
+CFLAGS += -fPIC -I. -Ipsx -Ifrontend
+CFLAGS += -DOS_INFO=\"$(OS_INFO)\"
+CFLAGS += -DREP_VERSION=\"$(VERSION_TAG)\"
+CFLAGS += -DREP_COMMIT_HASH=\"$(COMMIT_HASH)\"
+
+LDFLAGS += -flto
+LIBS += -lm
+
+ifeq ($(platform), unix)
+	TARGET := $(TARGET_NAME)_libretro.so
+	SHARED := -shared -Wl,-no-undefined
+else ifeq ($(platform), osx)
+	TARGET := $(TARGET_NAME)_libretro.dylib
+	SHARED := -dynamiclib
+else ifneq (,$(findstring win,$(platform)))
+	TARGET := $(TARGET_NAME)_libretro.dll
+	SHARED := -shared
+else
+	TARGET := $(TARGET_NAME)_libretro.so
+	SHARED := -shared
+endif
+
+all: $(TARGET)
+
+$(TARGET): $(OBJ)
+	$(CC) $(SHARED) -o $@ $(OBJ) $(LDFLAGS) $(LIBS)
+
+clean:
+	rm -f $(OBJ) $(TARGET)
