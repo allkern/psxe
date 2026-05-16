@@ -467,13 +467,14 @@ static void update_input(void) {
 static void reset_core_state(void) {
     if (g_core.input) {
         psx_input_destroy(g_core.input);
-        g_core.input = NULL;
     }
 
     if (g_core.psx) {
         psx_destroy(g_core.psx);
         g_core.psx = NULL;
     }
+
+    g_core.input = NULL;
 
     free(g_core.video_buf);
     g_core.video_buf = NULL;
@@ -528,6 +529,7 @@ static bool attach_input_devices(void) {
     psxi_sda_init_input(controller, g_core.input);
 
     psx_pad_attach_joy(g_core.psx->pad, 0, g_core.input);
+    g_core.input = NULL;
 
     return true;
 }
