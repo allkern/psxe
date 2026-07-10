@@ -38,7 +38,11 @@ int main(int argc, const char* argv[]) {
     log_set_level(cfg->log_level);
 
     psx_t* psx = psx_create();
-    psx_init(psx, cfg->bios, cfg->exp_path);
+    int result = psx_init(psx, cfg->bios, cfg->exp_path);
+    if (result != 0) {
+        log_fatal("Failed to initialize psx. Closing...");
+        return 1;
+    }
 
     psx_cdrom_t* cdrom = psx_get_cdrom(psx);
 

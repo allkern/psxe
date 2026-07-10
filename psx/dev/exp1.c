@@ -32,11 +32,15 @@ int psx_exp1_load(psx_exp1_t* exp1, const char* path) {
 
     FILE* file = fopen(path, "rb");
 
-    if (!file)
+    if (!file) {
+        log_fatal("Failed to find expansion ROM file");
         return 1;
+    }
 
-    if (!fread(exp1->rom, 1, PSX_EXP1_SIZE, file))
+    if (!fread(exp1->rom, 1, PSX_EXP1_SIZE, file)) {
+        log_fatal("Failed to read from expansion ROM file");
         return 2;
+    }
 
     fclose(file);
 
