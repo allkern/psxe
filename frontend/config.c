@@ -29,7 +29,7 @@ static const char g_default_settings[] =
     "[bios]\n"
     "    search_path     = \"bios\"\n"
     "    preferred_model = \"SCPH-1001\"\n"
-    "    override_file   = \"\"\n"
+    "    override_file   = \"bios.bin\"\n"
     "\n"
     "# Console settings\n"
     "[console]\n"
@@ -182,6 +182,7 @@ void psxe_cfg_load(psxe_config_t* cfg, int argc, const char* argv[]) {
 
         if (!settings) {
             settings = fopen("settings.toml", "w+b");
+            log_warn("Couldn't find settings file. Creating one...");
 
             if (!settings) {
                 log_error("Couldn't create settings file, loading default settings");
